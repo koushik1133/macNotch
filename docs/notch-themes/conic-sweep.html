@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%2309090A%22/%3E%3Cpath d=%22M16 5l2.6 8.4L27 16l-8.4 2.6L16 27l-2.6-8.4L5 16l8.4-2.6z%22 fill=%22%23F01822%22/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conic Sweep · SparkV</title>
+<meta name="description" content="SparkV notch theme: an animated conic-gradient border, red to white to red, rotates around the notch outline on hover.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#09090A; --paper:#F7F7F5; --red:#F01822;
+  --muted:rgba(247,247,245,.62); --faint:rgba(247,247,245,.38);
+  --line:rgba(247,247,245,.09); --card:#111113; --card2:#0d0d0f;
+  --sans:"Geist",system-ui,-apple-system,sans-serif; --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sf:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark;background:var(--ink)}
+body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+.wrap{max-width:1480px;margin:0 auto;padding:40px 28px 72px}
+@media (max-width:640px){.wrap{padding:24px 16px 56px}}
+
+/* ---------- header ---------- */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px rgba(240,24,34,.9)}
+.sib{display:flex;flex-wrap:wrap;gap:6px}
+.sib a{font:500 12.5px/1 var(--sans);text-decoration:none;color:var(--muted);padding:8px 12px;border:1px solid var(--line);border-radius:999px;transition:color .2s,border-color .2s,background .2s}
+.sib a:hover{color:var(--paper);border-color:rgba(247,247,245,.25)}
+.sib a[aria-current]{color:var(--paper);background:rgba(240,24,34,.14);border-color:rgba(240,24,34,.55)}
+h1{font:600 clamp(38px,5.4vw,68px)/.98 var(--sans);letter-spacing:-.038em;margin:30px 0 16px}
+h1 em{font-style:normal;color:var(--red)}
+.lede{max-width:70ch;color:var(--muted);font-size:17px;line-height:1.55;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.meta span{font:500 12px/1 var(--mono);color:var(--muted);padding:8px 11px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
+.meta b{color:var(--paper);font-weight:500}
+
+/* ---------- frames ---------- */
+.sec-h{display:flex;align-items:baseline;gap:14px;margin:52px 0 16px}
+.sec-h h2{font:600 22px/1.1 var(--sans);letter-spacing:-.02em;margin:0}
+.sec-h p{margin:0;color:var(--faint);font-size:14px}
+.frames{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:16px;align-items:start}
+@media (max-width:1100px){.frames{grid-template-columns:1fr 1fr}.frames .f-open{grid-column:1/-1}}
+@media (max-width:640px){.frames{grid-template-columns:1fr}}
+.frame{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-width:0}
+.frame-h{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.num{font:600 12px/1 var(--mono);color:var(--red)}
+.lab{font:600 12.5px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase}
+.spec{margin-left:auto;font:400 12px/1 var(--mono);color:var(--faint)}
+.frame-f{padding:12px 16px 15px;color:var(--muted);font-size:13.5px;line-height:1.5;border-top:1px solid var(--line)}
+.frame-f b{color:var(--paper);font-weight:500}
+.sw{position:relative;width:100%;aspect-ratio:var(--ar);overflow:hidden;background:#000}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;isolation:isolate}
+
+/* ---------- simulated screen ---------- */
+.wall{position:absolute;inset:0;background:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMin slice'%3E %3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23040b11'/%3E%3Cstop offset='1' stop-color='%230b2730'/%3E%3C/linearGradient%3E %3CradialGradient id='gl' cx='.28' cy='.12' r='.7'%3E%3Cstop offset='0' stop-color='%232c8c92' stop-opacity='.55'/%3E%3Cstop offset='1' stop-color='%232c8c92' stop-opacity='0'/%3E%3C/radialGradient%3E %3CradialGradient id='gl2' cx='.85' cy='.35' r='.5'%3E%3Cstop offset='0' stop-color='%23d9e9e4' stop-opacity='.16'/%3E%3Cstop offset='1' stop-color='%23d9e9e4' stop-opacity='0'/%3E%3C/radialGradient%3E%3ClinearGradient id='w0' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%230f3a48'/%3E%3Cstop offset='1' stop-color='%2306141c'/%3E%3C/linearGradient%3E%3ClinearGradient id='w1' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23145061'/%3E%3Cstop offset='1' stop-color='%23071a22'/%3E%3C/linearGradient%3E%3ClinearGradient id='w2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%231b6874'/%3E%3Cstop offset='1' stop-color='%23082028'/%3E%3C/linearGradient%3E%3ClinearGradient id='w3' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23238088'/%3E%3Cstop offset='1' stop-color='%230a2a32'/%3E%3C/linearGradient%3E%3C/defs%3E %3Crect width='1600' height='900' fill='url(%23bg)'/%3E%3Crect width='1600' height='900' fill='url(%23gl)'/%3E%3Cpath d='M0 150 C 260 60 520 240 800 150 S 1340 60 1600 160 V900 H0Z' fill='url(%23w0)' opacity='0.75'/%3E%3Cpath d='M0 150 C 260 60 520 240 800 150 S 1340 60 1600 160' fill='none' stroke='%23a7e3e0' stroke-opacity='0.18' stroke-width='1.6'/%3E%3Cpath d='M0 275 C 260 185 520 365 800 275 S 1340 185 1600 285 V900 H0Z' fill='url(%23w1)' opacity='0.85'/%3E%3Cpath d='M0 275 C 260 185 520 365 800 275 S 1340 185 1600 285' fill='none' stroke='%23a7e3e0' stroke-opacity='0.22' stroke-width='1.6'/%3E%3Cpath d='M0 400 C 260 310 520 490 800 400 S 1340 310 1600 410 V900 H0Z' fill='url(%23w2)' opacity='0.92'/%3E%3Cpath d='M0 400 C 260 310 520 490 800 400 S 1340 310 1600 410' fill='none' stroke='%23a7e3e0' stroke-opacity='0.26' stroke-width='1.6'/%3E%3Cpath d='M0 525 C 260 435 520 615 800 525 S 1340 435 1600 535 V900 H0Z' fill='url(%23w3)' opacity='1'/%3E%3Cpath d='M0 525 C 260 435 520 615 800 525 S 1340 435 1600 535' fill='none' stroke='%23a7e3e0' stroke-opacity='0.3' stroke-width='1.6'/%3E%3Crect width='1600' height='900' fill='url(%23gl2)'/%3E%3C/svg%3E") #071820;background-size:cover;background-position:center top}
+.menubar{position:absolute;left:0;right:0;top:0;height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;
+  font:500 13px/1 var(--sf);color:rgba(255,255,255,.92);background:rgba(12,12,16,.30);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.05)}
+.mb-l,.mb-r{display:flex;align-items:center;gap:17px;white-space:nowrap;overflow:hidden;width:calc(50% - 128px)}
+.mb-l b{font-weight:700}
+.mb-r{justify-content:flex-end;gap:15px}
+.mb-r svg{flex:none;display:block}
+.mb-r .clock{flex:none;font-weight:500;letter-spacing:.01em}
+.narrow .day,.narrow .mb-l span{display:none}
+.rt .menubar{background:#1b1b1f;-webkit-backdrop-filter:none;backdrop-filter:none}
+
+/* ---------- island ---------- */
+.island{position:absolute;left:50%;top:0;width:0;height:0}
+.island > *{position:absolute}
+.isl-svg{left:-700px;top:-120px;width:1400px;height:520px;overflow:visible;pointer-events:none}
+.body{fill:#000}
+.shadow{top:0;opacity:0;box-shadow:0 26px 60px -12px rgba(0,0,0,.8),0 8px 18px rgba(0,0,0,.45);transition:opacity .3s}
+.is-open .shadow{opacity:1}
+.content{top:0;overflow:hidden}
+.drawer{position:absolute;left:50%;top:0;width:572px;height:160px;transform:translateX(-50%) scale(.965);transform-origin:50% 0;opacity:0;filter:blur(6px);
+  background:radial-gradient(60% 95% at 6% 52%,rgba(92,32,104,.78),rgba(60,20,70,.35) 45%,transparent 80%),#000;
+  transition:opacity .12s,transform .2s,filter .12s;pointer-events:none}
+.is-open .drawer{opacity:1;transform:translateX(-50%) scale(1);filter:none;transition:opacity .26s .17s,transform .42s .1s cubic-bezier(.2,.8,.2,1),filter .26s .17s}
+.shot{position:absolute;left:30px;top:0;width:512px;height:108px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent),linear-gradient(180deg,#000 86%,transparent);
+  -webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent),linear-gradient(180deg,#000 86%,transparent);mask-composite:intersect}
+.shot img{display:block;width:612px;height:141px;margin-left:-50px;margin-top:0}
+.chips{position:absolute;left:34px;right:34px;top:118px;display:flex;justify-content:center;gap:6px;font:500 10.5px/1 var(--sf);color:rgba(247,247,245,.82)}
+.chips span{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.075);white-space:nowrap}
+.chips i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.cursor{position:absolute;left:0;top:0;z-index:20;pointer-events:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))}
+.blurfx{}
+.rt .blurfx{display:none}
+
+/* ---------- theme ---------- */
+
+@property --cs-a{syntax:'<angle>';inherits:true;initial-value:119deg}
+.island{--cs-a:119deg}
+.island.is-hover{animation:csSpin 5.6s linear infinite}
+@keyframes csSpin{from{--cs-a:119deg}to{--cs-a:479deg}}
+.cs-ring{background:conic-gradient(from var(--cs-a) at 50% 42%,#F01822 0turn,#ff6a70 .1turn,#F7F7F5 .17turn,#ff6a70 .24turn,#F01822 .34turn,#8f0c13 .42turn,#F01822 .5turn,#ff6a70 .6turn,#F7F7F5 .67turn,#ff6a70 .74turn,#F01822 .84turn,#8f0c13 .92turn,#F01822 1turn);
+  -webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;pointer-events:none}
+.cs-glow{filter:blur(7px);opacity:0;transition:opacity .35s;pointer-events:none}
+.cs-glow .cs-ring{position:absolute;inset:0}
+.cs-thin{opacity:0;transition:opacity .3s}
+.is-hover .cs-glow{opacity:1}
+.is-hover .cs-thin{opacity:1}
+.is-open .cs-glow{opacity:.7}
+.rm .island,.rm .island.is-hover{animation:none}
+
+
+/* ---------- live ---------- */
+.live .frame-h{gap:12px}
+.btn{font:600 13px/1 var(--sans);color:var(--ink);background:var(--paper);border:0;border-radius:999px;padding:9px 15px;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{background:#fff}
+.btn:focus-visible,.tog input:focus-visible + span{outline:2px solid var(--red);outline-offset:2px}
+.pills{display:flex;gap:4px;margin-left:auto;font:500 12px/1 var(--mono)}
+.pills span{padding:7px 10px;border-radius:999px;color:var(--faint);border:1px solid var(--line);transition:all .2s}
+.pills span.on{color:var(--paper);border-color:rgba(240,24,34,.6);background:rgba(240,24,34,.16)}
+.live-f{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
+.tog{display:inline-flex;gap:9px;align-items:center;cursor:pointer;font-size:13px;color:var(--muted)}
+.tog input{position:absolute;opacity:0;pointer-events:none}
+.tog span{width:30px;height:18px;border-radius:999px;background:rgba(247,247,245,.16);position:relative;transition:background .2s}
+.tog span::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--paper);transition:transform .2s}
+.tog input:checked + span{background:var(--red)}
+.tog input:checked + span::after{transform:translateX(12px)}
+.live-f .hint{margin-left:auto;color:var(--faint);font-size:13px}
+
+/* ---------- build note ---------- */
+.build{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+@media (max-width:980px){.build{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 22px 20px;min-width:0}
+.card h3{font:600 12.5px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;margin:0 0 14px;color:var(--muted)}
+.card p{margin:0 0 12px;line-height:1.6;color:rgba(247,247,245,.82);font-size:15px}
+.card p:last-child{margin-bottom:0}
+.card p{overflow-wrap:anywhere}
+.card code{font:500 13px var(--mono);color:var(--paper);background:rgba(247,247,245,.07);padding:1px 5px;border-radius:5px}
+pre{margin:16px 0 0;padding:16px 18px;background:var(--card2);border:1px solid var(--line);border-radius:12px;overflow:auto;font:400 12.5px/1.65 var(--mono);color:rgba(247,247,245,.86)}
+pre .k{color:#ff6a70} pre .c{color:rgba(247,247,245,.4)}
+dl{margin:0;display:grid;grid-template-columns:1fr;gap:0}
+dl div{padding:13px 0;border-top:1px solid var(--line)}
+dl div:first-child{border-top:0;padding-top:0}
+dt{font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+dd{margin:0;font-size:14.5px;line-height:1.55;color:rgba(247,247,245,.82)}
+.foot{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:13px;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+
+@media (prefers-reduced-motion: reduce){ .drawer,.is-open .drawer{transition:opacity .15s} }
+.rm .drawer,.rm .is-open .drawer{transition:opacity .15s;transform:translateX(-50%);filter:none}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="tfg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="9"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <mask id="topfade" maskUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><rect x="-700" y="-120" width="1400" height="520" fill="url(#tfg)"/></mask>
+    <filter id="b3" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="b6" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="b10" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="b16" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="b22" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="22"/></filter>
+    
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow"><span class="dot"></span>SparkV · Notch theme · Red series 2/4</div>
+    <nav class="sib" aria-label="Red series themes"><a href="index.html">&larr; All 12 themes</a><a href="sparkv-red-rim.html">Red Rim</a><a href="conic-sweep.html" aria-current="page">Conic Sweep</a><a href="breathing-pulse.html">Breathing Pulse</a><a href="neon-tube.html">Neon Tube</a></nav>
+  </header>
+
+  <h1>Conic <em>Sweep</em></h1>
+  <p class="lede">A border that moves. A conic gradient running red to white to red orbits the island outline while you hover, like light chasing around the rim of a lens, with a soft halo following it.</p>
+  <div class="meta"><span>Hover: <b>conic orbit, highlight every 2.8 s</b></span><span>Idle cost: <b>0 frames</b></span><span>Wallpaper: <b>Ink Waves</b></span><span>Min macOS: <b>13</b></span></div>
+
+  <div class="sec-h"><h2>Three states</h2><p>Same pixels, same scale family, frozen so you can compare them.</p></div>
+  <div class="frames">
+    <section class="frame">
+      <div class="frame-h"><span class="num">01</span><span class="lab">Resting</span><span class="spec">220 × 38 pt</span></div>
+      <div class="sw" id="f-rest"></div>
+      <div class="frame-f">Black and still. The gradient layer exists but is fully transparent and has no animation attached, so it costs nothing.</div>
+    </section>
+    <section class="frame">
+      <div class="frame-h"><span class="num">02</span><span class="lab">Hovered</span><span class="spec">pointer on notch</span></div>
+      <div class="sw" id="f-hover"></div>
+      <div class="frame-f">A conic gradient, <b>red → white → red</b>, orbits the 2 pt border; a white highlight passes every 2.8 s; a blurred copy behind the body gives it a halo.</div>
+    </section>
+    <section class="frame f-open">
+      <div class="frame-h"><span class="num">03</span><span class="lab">Open</span><span class="spec">572 × 160 pt · after 350 ms</span></div>
+      <div class="sw" id="f-open"></div>
+      <div class="frame-f">The sweep keeps orbiting the larger shape while the halo drops to 70 %, so the drawer content reads first.</div>
+    </section>
+  </div>
+
+  <div class="sec-h"><h2>Live</h2><p>Point at the notch. It lights up, opens after 350 ms, and closes when you leave.</p></div>
+  <section class="frame live">
+    <div class="frame-h">
+      <span class="num">04</span><span class="lab">Live preview</span>
+      <button class="btn" id="replay" type="button"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1.2v9.6L10.4 6z" fill="currentColor"/></svg>Replay</button>
+      <div class="pills" aria-live="polite"><span data-s="rest" class="on">Resting</span><span data-s="hover">Hovered</span><span data-s="open">Open</span></div>
+    </div>
+    <div class="sw" id="f-live"></div>
+    <div class="frame-f live-f">
+      <label class="tog"><input type="checkbox" id="t-rm"><span></span>Simulate Reduce Motion</label>
+      <label class="tog"><input type="checkbox" id="t-rt"><span></span>Simulate Reduce Transparency</label>
+      <span class="hint">Touch screens: tap the notch to open and close.</span>
+    </div>
+  </section>
+
+  <div class="sec-h"><h2>How SparkV will build it</h2><p>Native layers, not a web view.</p></div>
+  <div class="build">
+    <div class="card">
+      <h3>Technique</h3>
+      <p>Quickest SwiftUI version: <code>IslandShape().stroke(AngularGradient(stops:center:angle:), lineWidth: 2)</code> inside a <code>TimelineView(.animation(minimumInterval: 1/30, paused: !hovering))</code>, with a blurred copy behind the body for the halo. It works, but re-evaluates the view on every frame.</p>
+<p>SparkV ships the Core Animation version: a square <code>CAGradientLayer</code> of type <code>.conic</code>, larger than the island so it covers the outline at every angle, masked by a <code>CAShapeLayer</code> stroke of the outline and rotated by a repeating <code>CABasicAnimation</code>. The rotation runs in the window server, so SparkV's process does no per-frame work; only the mask path is swapped during the open spring.</p>
+      <pre><span class="c">// AppKit: the spin runs in the render server, SparkV&#x27;s process stays idle</span>
+let sweep = CAGradientLayer()
+sweep.type = .conic
+sweep.colors = [red, paper, red, deepRed, red, paper, red, deepRed, red].map(\.cgColor)
+sweep.locations = [0, 0.17, 0.34, 0.42, 0.5, 0.67, 0.84, 0.92, 1]   <span class="c">// two highlights</span>
+sweep.startPoint = CGPoint(x: 0.5, y: 0.5)        <span class="c">// conic centre</span>
+sweep.endPoint   = CGPoint(x: 0.5, y: 0)
+sweep.frame = squareCovering(islandBounds)        <span class="c">// covers every angle</span>
+
+let ring = CAShapeLayer()                         <span class="c">// mask = 2 pt outline</span>
+ring.path = islandOutline(for: metrics)
+ring.lineWidth = 2; ring.fillColor = nil; ring.strokeColor = .white
+borderHost.mask = ring
+borderHost.addSublayer(sweep)
+
+let spin = CABasicAnimation(keyPath: &quot;transform.rotation.z&quot;)
+spin.byValue = 2 * Double.pi; spin.duration = 5.6; spin.repeatCount = .infinity
+spin.preferredFrameRateRange = CAFrameRateRange(minimum: 24, maximum: 30, preferred: 30)
+if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+    sweep.add(spin, forKey: &quot;sweep&quot;)              <span class="c">// removed again on mouse exit</span>
+}</pre>
+    </div>
+    <div class="card">
+      <h3>Cost and accessibility</h3>
+      <dl><div><dt>GPU and battery</dt><dd>Continuous only while hovered or open: one ~620 × 200 pt layer recomposited per frame, capped at 30 fps on ProMotion. About 1–2 % GPU while visible. The animation is removed, not paused, at rest, so idle cost is zero.</dd></div><div><dt>Reduce Motion</dt><dd>The spin is never added. The gradient is frozen with its white highlight at the bottom centre, so the border still reads as lit.</dd></div><div><dt>Reduce Transparency</dt><dd>The blurred halo layer is dropped; only the crisp 2 pt gradient border remains.</dd></div><div><dt>macOS support</dt><dd>macOS 13+ (<code>CAGradientLayer</code> .conic, <code>AngularGradient</code>). No dependency on <code>.glassEffect</code>, so macOS 26 looks identical.</dd></div></dl>
+    </div>
+  </div>
+
+  <footer class="foot"><span>SparkV · sparkv.si · signal red #F01822 on near-black #09090A</span><span>HTML simulation of the native effect. Drawer image: real SparkV Home render.</span></footer>
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const mq = matchMedia('(prefers-reduced-motion: reduce)');
+  if (mq.matches) root.classList.add('rm');
+  const isRM = () => root.classList.contains('rm');
+
+  const GEO = { rest:{w:220,h:38,rb:12,s:10}, open:{w:572,h:160,rb:32,s:16} };
+
+  // Island outline, x centred on 0, y = 0 at the top edge of the screen.
+  function paths(g){
+    const w=g.w, h=Math.max(12,g.h), s=Math.max(0,Math.min(g.s, h/3)), r=Math.max(2,Math.min(g.rb, h-s-1, w/2));
+    const L=-w/2, R=w/2, f=n=>Math.round(n*100)/100;
+    const run=`A ${f(s)} ${f(s)} 0 0 1 ${f(L)} ${f(s)} L ${f(L)} ${f(h-r)} A ${f(r)} ${f(r)} 0 0 0 ${f(L+r)} ${f(h)} L ${f(R-r)} ${f(h)} A ${f(r)} ${f(r)} 0 0 0 ${f(R)} ${f(h-r)} L ${f(R)} ${f(s)} A ${f(s)} ${f(s)} 0 0 1 ${f(R+s)} 0`;
+    const outline=`M ${f(L-s)} 0 ${run}`;
+    const left=`M 0 ${f(h)} L ${f(L+r)} ${f(h)} A ${f(r)} ${f(r)} 0 0 1 ${f(L)} ${f(h-r)} L ${f(L)} ${f(s)} A ${f(s)} ${f(s)} 0 0 0 ${f(L-s)} 0`;
+    const right=`M 0 ${f(h)} L ${f(R-r)} ${f(h)} A ${f(r)} ${f(r)} 0 0 0 ${f(R)} ${f(h-r)} L ${f(R)} ${f(s)} A ${f(s)} ${f(s)} 0 0 1 ${f(R+s)} 0`;
+    return {outline, fill:`M ${f(L-s)} -2 L ${f(L-s)} 0 ${run} L ${f(R+s)} -2 Z`, left, right, w, h, s, r};
+  }
+
+  const THEME = (function(){ 
+const mask=(P,pad,sw)=>{const x=-(P.w/2+P.s+pad),y=-pad,W=P.w+2*P.s+2*pad,H=P.h+2*pad;
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='${x} ${y} ${W} ${H}' width='${W}' height='${H}'><defs><linearGradient id='f' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='0' y2='9'><stop offset='0' stop-color='white' stop-opacity='0'/><stop offset='1' stop-color='white'/></linearGradient></defs><path d='${P.outline}' fill='none' stroke='url(#f)' stroke-width='${sw}' stroke-linejoin='round'/></svg>`;
+  return {box:`left:${x}px;top:${y}px;width:${W}px;height:${H}px;`, url:`url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`};};
+return {behind:"<div class=\"cs-glow blurfx\"><div class=\"cs-ring cs-wide\"></div></div>",over:"<div class=\"cs-ring cs-thin\"></div>",
+  init(isl){ isl.csGlow=isl.q('.cs-glow'); isl.csWide=isl.q('.cs-wide'); isl.csThin=isl.q('.cs-thin'); },
+  geo(isl,P){ const a=mask(P,14,8), b=mask(P,14,2.2);
+    isl.csGlow.style.cssText=a.box; isl.csWide.style.webkitMaskImage=a.url; isl.csWide.style.maskImage=a.url;
+    isl.csThin.style.cssText=b.box+`-webkit-mask-image:${b.url};mask-image:${b.url}`; }};
+ })();
+
+  const MENUBAR = `
+    <div class="mb-l"><b>SparkV</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span></div>
+    <div class="mb-r">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.4 1.5 4 9h3.6L6.6 14.5 12 7H8.4z" fill="#fff"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12" aria-hidden="true"><rect x=".5" y=".5" width="21" height="11" rx="3.2" fill="none" stroke="rgba(255,255,255,.55)"/><rect x="2" y="2" width="15" height="8" rx="1.8" fill="#fff"/><rect x="22.6" y="4" width="1.6" height="4" rx=".8" fill="rgba(255,255,255,.55)"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.2 5.6 8.6a3.4 3.4 0 0 1 4.8 0zM3.6 6.6a6.2 6.2 0 0 1 8.8 0l-1.3 1.3a4.4 4.4 0 0 0-6.2 0zM1.3 4.3a9.4 9.4 0 0 1 13.4 0l-1.3 1.3a7.6 7.6 0 0 0-10.8 0z" fill="#fff"/></svg>
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="5.8" cy="5.8" r="4.2" fill="none" stroke="#fff" stroke-width="1.6"/><path d="m9 9 3.6 3.6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <svg width="16" height="14" viewBox="0 0 16 14" aria-hidden="true"><rect x=".8" y="1" width="14.4" height="5.2" rx="2.6" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="12.4" cy="3.6" r="1.5" fill="#fff"/><rect x=".8" y="7.8" width="14.4" height="5.2" rx="2.6" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="3.6" cy="10.4" r="1.5" fill="#fff"/></svg>
+      <span class="clock"><span class="day">Thu 22 Oct&nbsp;&nbsp;</span>9:41</span>
+    </div>`;
+
+  const CURSOR = `<svg width="17" height="25" viewBox="0 0 17 25" aria-hidden="true"><path d="M1.2 1.2v19.4l4.7-4.5 3 7 3.2-1.4-3-6.8h6.6z" fill="#000" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+
+  const ro = new ResizeObserver(es => { for (const e of es) { const st=e.target._stage; st.style.transform=`scale(${e.contentRect.width/st._W})`; } });
+
+  function buildStage(id, W, H){
+    const sw=document.getElementById(id); sw.style.setProperty('--ar', W+' / '+H);
+    const st=document.createElement('div'); st.className='stage'+(W<600?' narrow':''); st._W=W; st.style.width=W+'px'; st.style.height=H+'px';
+    st.innerHTML=`<div class="wall"></div><div class="menubar">${MENUBAR}</div>`;
+    sw.appendChild(st); sw._stage=st; ro.observe(sw); return st;
+  }
+
+  class Island {
+    constructor(stage, onState){
+      this.onState=onState;
+      const el=this.el=document.createElement('div'); el.className='island'; el.dataset.state='rest';
+      el.innerHTML=`${THEME.behind||''}<div class="shadow"></div>
+        <svg class="isl-svg back" viewBox="-700 -120 1400 520"><g class="fx-back" mask="url(#topfade)">${THEME.back||''}</g><path class="body" data-p="fill"/></svg>
+        ${THEME.under||''}
+        <div class="content"><div class="drawer">
+          <div class="shot"><img src="assets/01-home.png" alt="SparkV Home drawer: Midnight City by M83 playing, Dictate and Capture to Tray buttons, camera Mirror" draggable="false"></div>
+          <div class="chips"><span><i style="--c:#7d6bff"></i>Focus · 42 min</span><span><i style="--c:#ff4f6d"></i>Clipboard · 12</span><span><i style="--c:#4cd964"></i>Translate On</span><span><i style="--c:#F01822"></i>2 agents running</span></div>
+        </div></div>
+        <svg class="isl-svg front" viewBox="-700 -120 1400 520"><g class="fx-front" mask="url(#topfade)">${THEME.front||''}</g></svg>
+        ${THEME.over||''}`;
+      stage.appendChild(el);
+      this.content=el.querySelector('.content'); this.shadow=el.querySelector('.shadow');
+      this.pathEls=[...el.querySelectorAll('[data-p]')];
+      this.g={...GEO.rest}; this.v={w:0,h:0,rb:0,s:0}; this.target=GEO.rest; this.state='rest';
+      THEME.init && THEME.init(this);
+      this.apply();
+    }
+    q(s){ return this.el.querySelector(s); }
+    apply(){
+      const P=paths(this.g);
+      for (const p of this.pathEls) p.setAttribute('d', P[p.dataset.p]);
+      const box=`left:${-P.w/2}px;width:${P.w}px;height:${P.h}px;border-radius:0 0 ${P.r}px ${P.r}px`;
+      this.content.style.cssText=box; this.shadow.style.cssText=box;
+      const s=this.el.style; s.setProperty('--w',P.w); s.setProperty('--h',P.h); s.setProperty('--s',P.s);
+      THEME.geo && THEME.geo(this, P);
+    }
+    set(state, instant){
+      if (state===this.state && !instant) return;
+      const prev=this.state; this.state=state;
+      this.el.classList.toggle('is-hover', state!=='rest');
+      this.el.classList.toggle('is-open', state==='open');
+      this.el.dataset.state=state;
+      this.target = state==='open' ? GEO.open : GEO.rest;
+      this.cfg = state==='open' ? {resp:.42, damp:.76} : {resp:.34, damp:1};
+      THEME.state && THEME.state(this, state, prev);
+      this.onState && this.onState(state);
+      if (instant || isRM()) { cancelAnimationFrame(this.raf); this.raf=null; this.g={...this.target}; this.v={w:0,h:0,rb:0,s:0}; this.apply(); return; }
+      if (!this.raf) { this.last=performance.now(); this.raf=requestAnimationFrame(t=>this.step(t)); }
+    }
+    step(t){
+      const dt=Math.min(.1,Math.max(0,(t-this.last)/1000)); this.last=t; const n=Math.max(2,Math.ceil(dt/.004));
+      const om=2*Math.PI/this.cfg.resp, k=om*om, c=2*this.cfg.damp*om; let moving=false;
+      for (const key in this.g){
+        for (let i=0;i<n;i++){ const h=dt/n; const a=k*(this.target[key]-this.g[key])-c*this.v[key]; this.v[key]+=a*h; this.g[key]+=this.v[key]*h; }
+        if (Math.abs(this.target[key]-this.g[key])>.04 || Math.abs(this.v[key])>.04) moving=true;
+      }
+      if (!moving){ this.g={...this.target}; this.v={w:0,h:0,rb:0,s:0}; }
+      this.apply();
+      this.raf = moving ? requestAnimationFrame(tt=>this.step(tt)) : null;
+    }
+  }
+
+  function addCursor(stage, x, y){ const c=document.createElement('div'); c.className='cursor'; c.innerHTML=CURSOR; c.style.transform=`translate(${x}px,${y}px)`; stage.appendChild(c); return c; }
+
+  // ---- static frames ----
+  const sRest=buildStage('f-rest',420,162); new Island(sRest).set('rest',true);
+  const sHover=buildStage('f-hover',420,162); new Island(sHover).set('hover',true); addCursor(sHover,210+46,21);
+  const sOpen=buildStage('f-open',780,300); new Island(sOpen).set('open',true); addCursor(sOpen,390+150,74);
+
+  // ---- live frame ----
+  const narrowLive=document.getElementById('f-live').clientWidth<760; const LW=narrowLive?660:1100, LH=narrowLive?300:380;
+  const sLive=buildStage('f-live',LW,LH);
+  const pills=[...document.querySelectorAll('.pills span')];
+  const live=new Island(sLive, st => pills.forEach(p=>p.classList.toggle('on', p.dataset.s===st)));
+  const hit=live.content; hit.style.pointerEvents='auto';
+  let openT=null, token=0;
+  const fake=addCursor(sLive, LW/2+320, 300); fake.style.opacity=0;
+  function hoverIn(){ if (live.state==='rest') live.set('hover'); clearTimeout(openT); openT=setTimeout(()=>live.set('open'),350); }
+  function hoverOut(){ clearTimeout(openT); live.set('rest'); }
+  function cancelScript(){ token++; fake.style.opacity=0; }
+  hit.addEventListener('pointerenter', e=>{ if (e.pointerType==='touch') return; cancelScript(); hoverIn(); });
+  hit.addEventListener('pointerleave', e=>{ if (e.pointerType==='touch') return; if (fake.style.opacity==='1') return; hoverOut(); });
+  hit.addEventListener('click', ()=>{ cancelScript(); if (live.state==='open') hoverOut(); else { clearTimeout(openT); live.set('open'); } });
+
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  function moveFake(x,y,ms){ fake.style.transition = isRM() ? 'opacity .2s' : `transform ${ms}ms cubic-bezier(.4,0,.15,1), opacity .2s`; fake.style.transform=`translate(${x}px,${y}px)`; }
+  async function replay(){
+    const my=++token; clearTimeout(openT); live.set('rest',true);
+    fake.style.transition='none'; fake.style.transform=`translate(${LW/2+330}px,300px)`; fake.style.opacity=1;
+    await wait(60); if (my!==token) return;
+    moveFake(LW/2+44,20,1000); await wait(1000); if (my!==token) return;
+    hoverIn(); await wait(350+2900); if (my!==token) return;
+    moveFake(LW/2+150,96,700); await wait(1100); if (my!==token) return;
+    moveFake(LW/2+400,320,800); await wait(260); if (my!==token) return;
+    hoverOut(); await wait(900); if (my!==token) return;
+    fake.style.opacity=0;
+  }
+  document.getElementById('replay').addEventListener('click', replay);
+  setTimeout(replay, 900);
+
+  // ---- accessibility simulation ----
+  const tRM=document.getElementById('t-rm'), tRT=document.getElementById('t-rt');
+  tRM.checked=isRM();
+  tRM.addEventListener('change',()=>root.classList.toggle('rm',tRM.checked));
+  tRT.addEventListener('change',()=>root.classList.toggle('rt',tRT.checked));
+  mq.addEventListener('change',e=>{ root.classList.toggle('rm',e.matches); tRM.checked=e.matches; });
+})();
+</script>
+</body>
+</html>

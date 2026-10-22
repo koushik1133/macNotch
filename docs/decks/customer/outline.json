@@ -1,0 +1,2148 @@
+{
+  "deck": {
+    "title": "SparkV: Your notch, now an AI command center",
+    "kind": "customer",
+    "audience": "Mac users, freelancers, creators, students, teams",
+    "goal": "Buy Pro or start the 14-day Pro trial",
+    "narrative": [
+      "problem",
+      "solution",
+      "feature_groups",
+      "proof",
+      "value_comparison",
+      "market_fit",
+      "pricing",
+      "cta"
+    ],
+    "canvas": {
+      "w": 3840,
+      "h": 2160,
+      "pptx_in": [
+        13.333,
+        7.5
+      ],
+      "emu_per_px": 3175
+    },
+    "safe_area": {
+      "left": 192,
+      "right": 192,
+      "top": 160,
+      "bottom": 160
+    },
+    "grid": {
+      "cols": 12,
+      "col_w": 244,
+      "gutter": 48,
+      "x0": 192
+    },
+    "type_scale_px": {
+      "display": 176,
+      "h1": 128,
+      "h2": 88,
+      "subtitle": 64,
+      "body": 48,
+      "caption": 32,
+      "min": 28
+    },
+    "image_root": "/Users/koushikgoudshaganti/Desktop/Agency/Apple Face id/NotchIsland/docs/screenshots",
+    "media_root": "/Users/koushikgoudshaganti/Desktop/Agency/Apple Face id/NotchIsland/docs/decks/customer",
+    "image_rules": {
+      "max_upscale": 1.25,
+      "prefer_final_if_exists": true,
+      "screenshots_are_2x": true
+    },
+    "crop_rects": {
+      "R-FULL": [
+        0,
+        0,
+        3840,
+        2160
+      ],
+      "R-TOP-16x9": [
+        960,
+        0,
+        1920,
+        1080
+      ],
+      "R-DRAWER-HOME": [
+        1260,
+        0,
+        1320,
+        300
+      ],
+      "R-DRAWER-MID": [
+        1260,
+        0,
+        1320,
+        430
+      ],
+      "R-DRAWER-HUB": [
+        1260,
+        0,
+        1320,
+        500
+      ],
+      "R-BAND": [
+        1260,
+        0,
+        1320,
+        240
+      ]
+    },
+    "feature_names": {
+      "clicky": "Clicky"
+    },
+    "blueprint": "BLUEPRINT.md",
+    "updated": "2026-10-22",
+    "publish_blockers": [
+      "Developer ID signing + notarization",
+      "Lemon Squeezy licensing and trial code",
+      "Face Unlock excluded from sold build",
+      "Legal review of competitor names (slide 13)",
+      "Re-check competitor prices on vendor sites"
+    ]
+  },
+  "styles": {
+    "a": {
+      "name": "sparkv.si red/black",
+      "source": "live CSS of https://www.sparkv.si (dark theme variables)",
+      "bg": "#09090A",
+      "bg-hero": "#080809",
+      "surface": "#111113",
+      "line": "#FFFFFF1F",
+      "text": "#F7F7F5",
+      "text-muted": "#9A9AA1",
+      "accent": "#F01822",
+      "accent-2": "#F7F7F5",
+      "accent-ink": "#FFFFFF",
+      "glow": {
+        "type": "radial",
+        "color": "#F01822",
+        "opacity": 0.28,
+        "radius": 1400,
+        "center": [
+          1920,
+          420
+        ]
+      },
+      "mockup-bezel": "#000000",
+      "chart": [
+        "#F01822",
+        "#F7F7F5",
+        "#9A9AA1",
+        "#3A3A40"
+      ],
+      "font-display": "SF Pro Display",
+      "font-display-weight": "Bold",
+      "header_accent_style": "italic+accent",
+      "font-body": "SF Pro Text",
+      "font-mono": "SF Mono",
+      "fallback_fonts": [
+        "Helvetica Neue",
+        "Arial"
+      ]
+    },
+    "b": {
+      "name": "Apple minimal",
+      "bg": "#FFFFFF",
+      "bg-alt": "#F5F5F7",
+      "bg-hero": "#000000",
+      "surface": "#FBFBFD",
+      "line": "#D2D2D7",
+      "text": "#1D1D1F",
+      "text-on-hero": "#F5F5F7",
+      "text-muted": "#6E6E73",
+      "accent": "#0071E3",
+      "accent-2": "#1D1D1F",
+      "accent-ink": "#FFFFFF",
+      "glow": null,
+      "shadow": "0 60px 160px #00000040",
+      "mockup-bezel": "#000000",
+      "mockup-edge": "#2C2C2E",
+      "chart": [
+        "#0071E3",
+        "#1D1D1F",
+        "#86868B",
+        "#D2D2D7"
+      ],
+      "font-display": "SF Pro Display",
+      "font-display-weight": "Semibold",
+      "header_accent_style": "none",
+      "font-body": "SF Pro Text",
+      "font-mono": "SF Mono",
+      "fallback_fonts": [
+        "Helvetica Neue",
+        "Arial"
+      ],
+      "dark_slides": [
+        1,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        16
+      ],
+      "light_slides": [
+        2,
+        4,
+        12,
+        13,
+        14,
+        15,
+        "A1",
+        "A2"
+      ],
+      "use_body_min": true
+    },
+    "c": {
+      "name": "Dark cyberpunk",
+      "bg": "#07060D",
+      "bg-hero": "#07060D",
+      "hero_grid": {
+        "size": 64,
+        "color": "#FFFFFF08"
+      },
+      "scanlines_opacity": 0.04,
+      "surface": "#120F22",
+      "line": "#2A2547",
+      "text": "#EAE6FF",
+      "text-muted": "#8B86A8",
+      "accent": "#FF2A6D",
+      "accent-2": "#05D9E8",
+      "accent-ink": "#07060D",
+      "glow": {
+        "type": "dual_radial",
+        "colors": [
+          [
+            "#FF2A6D",
+            0.3,
+            [
+              1400,
+              420
+            ]
+          ],
+          [
+            "#05D9E8",
+            0.22,
+            [
+              2440,
+              420
+            ]
+          ]
+        ],
+        "radius": 1200,
+        "drawer_rim": "2px #05D9E8 40%"
+      },
+      "mockup-bezel": "#000000",
+      "mockup-rim": "#05D9E866",
+      "chart": [
+        "#FF2A6D",
+        "#05D9E8",
+        "#B967FF",
+        "#3B3561"
+      ],
+      "font-display": "Space Grotesk",
+      "font-display-weight": "Bold",
+      "header_accent_style": "accent",
+      "font-body": "Inter",
+      "font-mono": "JetBrains Mono",
+      "hotkey_chip": "2px #05D9E8 outline, mono"
+    }
+  },
+  "slides": [
+    {
+      "n": 1,
+      "id": "title",
+      "layout": "key_visual_header",
+      "header": "Your notch, now an AI command center.",
+      "header_accent": "AI command center",
+      "subtitle": "Dictation, meetings, screen help and 20 more tools. Private by default, pay once.",
+      "body": [
+        "SparkV for macOS",
+        "Try Pro free for 14 days · sparkv.si"
+      ],
+      "body_roles": [
+        "overline",
+        "pill_button"
+      ],
+      "notes": "This is the MacBook notch. Most of us look straight past it. SparkV turns it into a drawer: hover, and your music, your files, your day and more than 20 AI agents slide out. The AI runs on your Mac, and Pro is a one-time purchase. Everything you will see today is the real app, not a mock-up.",
+      "mockup": {
+        "type": "notch",
+        "placement": {
+          "x": 192,
+          "y": 0,
+          "w": 3456,
+          "h": 720
+        }
+      },
+      "images": [
+        {
+          "file": "01-home.png",
+          "role": "hero",
+          "frame": "notch_mockup",
+          "placement": {
+            "x": 1308,
+            "y": 0,
+            "w": 1224,
+            "h": 282
+          },
+          "final": "media/stills/C01-hero-0008-R-DRAWER-HOME.png",
+          "crop_rect": "R-DRAWER-HOME",
+          "clip": "C01"
+        },
+        {
+          "file": "46-compact-wings.png",
+          "role": "ghost_closed_state",
+          "frame": "band",
+          "placement": {
+            "x": 1308,
+            "y": 760,
+            "w": 1224,
+            "h": 180
+          },
+          "final": "media/stills/C01-hero-0002-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C01"
+        }
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 1120,
+          "w": 3456,
+          "h": 220
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 1360,
+          "w": 3456,
+          "h": 160
+        },
+        "body": {
+          "x": 192,
+          "y": 1560,
+          "w": 3456,
+          "h": 300
+        }
+      },
+      "background": "bg-hero",
+      "glow": true
+    },
+    {
+      "n": 2,
+      "id": "problem",
+      "layout": "minimal_body",
+      "header": "Your Mac work lives in six apps and six bills.",
+      "header_accent": "six bills",
+      "subtitle": "And the best spot on your screen does nothing.",
+      "body": [
+        "Dictation, meeting notes, clipboard, screenshots, a launcher, a notch app.",
+        "Bought separately: about $492 in year one.",
+        "Monthly AI fees for work your Mac can do itself.",
+        "The notch: prime screen space, zero use."
+      ],
+      "body_min": [
+        "Six apps. About $492 in year one.",
+        "Monthly AI fees for work your Mac can do itself.",
+        "The notch: prime screen space, zero use."
+      ],
+      "emphasis": [
+        "$492"
+      ],
+      "notes": "Think about the small tools a busy Mac user pays for: a dictation app, an AI meeting recorder, a clipboard manager, a screenshot tool, a launcher with AI, a notch app. Bought one by one, that comes to about four hundred and ninety-two dollars in the first year; slide 13 shows the breakdown. Many of those charge monthly for AI. Meanwhile, the notch sits in the middle of your screen doing nothing. [Figure = sum of year-one prices on slide 13; third-party listings, re-check before publishing.]",
+      "images": [],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 360,
+          "w": 2148,
+          "h": 400
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 780,
+          "w": 2148,
+          "h": 140
+        },
+        "body": {
+          "x": 192,
+          "y": 1000,
+          "w": 2148,
+          "h": 900
+        }
+      },
+      "background": "bg"
+    },
+    {
+      "n": 3,
+      "id": "solution",
+      "layout": "key_visual_header",
+      "header": "Hover the notch. Everything is there.",
+      "header_accent": "Everything",
+      "subtitle": "One black drawer: media, files, your day, and a hub of 20+ agents.",
+      "body": [
+        "Hover to open. Move away to close.",
+        "Drop any file on the notch.",
+        "Every agent is one click or one hotkey away."
+      ],
+      "body_roles": [
+        "caption_col_1",
+        "caption_col_2",
+        "caption_col_3"
+      ],
+      "notes": "Move the pointer onto the notch and the drawer opens; move away and it closes half a second later. The header switches pages: Home, Widgets, Tray, Today, Converter, Spaces. The grid icon opens the Agents hub, 22 tiles that launch every tool in SparkV. Most also have a hotkey, so you rarely need the mouse.",
+      "mockup": {
+        "type": "notch",
+        "placement": {
+          "x": 192,
+          "y": 0,
+          "w": 3456,
+          "h": 720
+        }
+      },
+      "images": [
+        {
+          "file": "10-agents-hub.png",
+          "role": "hero",
+          "frame": "notch_mockup",
+          "placement": {
+            "x": 1308,
+            "y": 0,
+            "w": 1224,
+            "h": 456
+          },
+          "final": "media/stills/C02-hub-0006-R-DRAWER-HUB.png",
+          "crop_rect": "R-DRAWER-HUB",
+          "clip": "C02"
+        }
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 1180,
+          "w": 3456,
+          "h": 200
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 1400,
+          "w": 3456,
+          "h": 140
+        },
+        "body": {
+          "x": 192,
+          "y": 1700,
+          "w": 3456,
+          "h": 200
+        }
+      },
+      "background": "bg-hero",
+      "glow": true
+    },
+    {
+      "n": 4,
+      "id": "day",
+      "layout": "timeline",
+      "header": "A day with SparkV",
+      "subtitle": "One notch, every part of your day.",
+      "body": [
+        "09:56 · Meeting heads-up under the notch. ⌃⌥J joins.",
+        "10:00 · One click records notes. No bot joins the call.",
+        "12:30 · Hold fn, talk, release. Clean text appears.",
+        "15:00 · Drop a PDF. Convert, compress or OCR it.",
+        "17:00 · Focus rounds end with a recap."
+      ],
+      "timeline": {
+        "rail_y": 1180,
+        "nodes": [
+          {
+            "time": "09:56",
+            "text": "Meeting heads-up under the notch. ⌃⌥J joins.",
+            "image": "06-today.png",
+            "final": "media/stills/C04-today-0002-R-BAND.png",
+            "x": 384
+          },
+          {
+            "time": "10:00",
+            "text": "One click records notes. No bot joins the call.",
+            "image": "36-meeting-notes.png",
+            "final": "media/stills/C10-notes-0022.png",
+            "x": 1152
+          },
+          {
+            "time": "12:30",
+            "text": "Hold fn, talk, release. Clean text appears.",
+            "image": "50-dictation.png",
+            "final": "media/stills/C05-dictation-0008-R-BAND.png",
+            "active": true,
+            "x": 1920
+          },
+          {
+            "time": "15:00",
+            "text": "Drop a PDF. Convert, compress or OCR it.",
+            "image": "07-converter.png",
+            "final": "media/stills/C13-converter-0011-R-DRAWER-MID.png",
+            "x": 2688
+          },
+          {
+            "time": "17:00",
+            "text": "Focus rounds end with a recap.",
+            "image": "28-focus.png",
+            "final": "media/stills/C14-focus-0003-R-DRAWER-HOME.png",
+            "x": 3456
+          }
+        ],
+        "times_are_illustrative": true
+      },
+      "notes": "Here is what a normal day looks like. A meeting shows up under the notch ten minutes before it starts, with a Join button. One click records it; SparkV listens to your mic and the call audio, so no bot joins. At lunch you answer messages by voice. In the afternoon you convert a PDF without opening a website. You finish with focus rounds and a short recap. [Times are illustrative.]",
+      "images": [
+        {
+          "file": "06-today.png",
+          "role": "timeline_node_1",
+          "frame": "card",
+          "placement": {
+            "x": 84,
+            "y": 640,
+            "w": 600,
+            "h": 400
+          },
+          "final": "media/stills/C04-today-0002-R-BAND.png"
+        },
+        {
+          "file": "36-meeting-notes.png",
+          "role": "timeline_node_2",
+          "frame": "card",
+          "placement": {
+            "x": 852,
+            "y": 640,
+            "w": 600,
+            "h": 400
+          },
+          "final": "media/stills/C10-notes-0022.png"
+        },
+        {
+          "file": "50-dictation.png",
+          "role": "timeline_node_3",
+          "frame": "card",
+          "placement": {
+            "x": 1620,
+            "y": 640,
+            "w": 600,
+            "h": 400
+          },
+          "final": "media/stills/C05-dictation-0008-R-BAND.png"
+        },
+        {
+          "file": "07-converter.png",
+          "role": "timeline_node_4",
+          "frame": "card",
+          "placement": {
+            "x": 2388,
+            "y": 640,
+            "w": 600,
+            "h": 400
+          },
+          "final": "media/stills/C13-converter-0011-R-DRAWER-MID.png"
+        },
+        {
+          "file": "28-focus.png",
+          "role": "timeline_node_5",
+          "frame": "card",
+          "placement": {
+            "x": 3156,
+            "y": 640,
+            "w": 600,
+            "h": 400
+          },
+          "final": "media/stills/C14-focus-0003-R-DRAWER-HOME.png"
+        }
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 200,
+          "w": 3456,
+          "h": 200
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 410,
+          "w": 3456,
+          "h": 120
+        },
+        "body": {
+          "x": 192,
+          "y": 1240,
+          "w": 3456,
+          "h": 600
+        }
+      },
+      "background": "bg"
+    },
+    {
+      "n": 5,
+      "id": "notch_essentials",
+      "layout": "feature_showcase",
+      "header": "The notch, finally useful.",
+      "header_accent": "finally useful",
+      "subtitle": "All of this is in the free plan.",
+      "body": [
+        "Media for any app: artwork glow, scrubber, bookmarks.",
+        "A Tray for files, with an AirDrop target.",
+        "Today: meetings with Join, plus a Pomodoro timer.",
+        "Live activities: volume, battery, notifications."
+      ],
+      "notes": "This is the free plan, and it is already a full notch app. Media controls work with any player that reports Now Playing. The Tray holds files you are moving between apps, with AirDrop built in. Today shows your next meetings with a Join button and runs a Pomodoro timer. When the drawer is closed, volume, battery and notifications appear as small live activities around the camera. [Live check required: media, tray drag, AirDrop, calendar, live activities.]",
+      "images": [
+        {
+          "file": "01-home.png",
+          "role": "hero",
+          "frame": "notch_mockup",
+          "placement": {
+            "x": 558,
+            "y": 0,
+            "w": 1224,
+            "h": 282
+          },
+          "final": "media/stills/C01-hero-0008-R-DRAWER-HOME.png",
+          "crop_rect": "R-DRAWER-HOME",
+          "clip": "C01"
+        },
+        {
+          "file": "42-volume-hud.png",
+          "role": "band_1",
+          "frame": "band",
+          "placement": {
+            "x": 558,
+            "y": 420,
+            "w": 1224,
+            "h": 180
+          },
+          "final": "media/stills/C03-band-0002-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C03"
+        },
+        {
+          "file": "43-battery.png",
+          "role": "band_2",
+          "frame": "band",
+          "placement": {
+            "x": 558,
+            "y": 624,
+            "w": 1224,
+            "h": 180
+          },
+          "final": "media/stills/C03-band-0006-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C03"
+        },
+        {
+          "file": "45-notification.png",
+          "role": "band_3",
+          "frame": "band",
+          "placement": {
+            "x": 558,
+            "y": 828,
+            "w": 1224,
+            "h": 200
+          },
+          "final": "media/stills/C03-band-0010-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C03"
+        },
+        {
+          "file": "04-tray.png",
+          "role": "card_1",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 1180,
+            "w": 980,
+            "h": 298
+          },
+          "final": "media/stills/C03-tray-0019-R-DRAWER-MID.png",
+          "crop_rect": "R-DRAWER-MID",
+          "clip": "C03"
+        },
+        {
+          "file": "06-today.png",
+          "role": "card_2",
+          "frame": "card",
+          "placement": {
+            "x": 1220,
+            "y": 1180,
+            "w": 928,
+            "h": 214
+          },
+          "final": "media/stills/C04-today-0010-R-DRAWER-HOME.png",
+          "crop_rect": "R-DRAWER-HOME",
+          "clip": "C04"
+        }
+      ],
+      "clips": [
+        "C01",
+        "C03",
+        "C04"
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 2196,
+          "y": 220,
+          "w": 1452,
+          "h": 420
+        },
+        "subtitle": {
+          "x": 2196,
+          "y": 660,
+          "w": 1452,
+          "h": 200
+        },
+        "body": {
+          "x": 2196,
+          "y": 900,
+          "w": 1452,
+          "h": 1000
+        }
+      },
+      "background": "bg",
+      "callout": "media scrubber on hero",
+      "plan_badge": "Free"
+    },
+    {
+      "n": 6,
+      "id": "talk",
+      "layout": "feature_showcase",
+      "header": "Talk instead of type.",
+      "header_accent": "Talk",
+      "subtitle": "Hold fn anywhere. Talk. Release.",
+      "body": [
+        "Dictation removes filler words and formats lists.",
+        "Reply Drafter (⌃⌥R) writes a reply in your tone. You press Send.",
+        "Prompt Refiner turns a rough ask into a clear AI prompt.",
+        "Add your own words so names are spelled right."
+      ],
+      "notes": "Put the cursor in any text field, hold fn, speak, let go. SparkV cleans up the text and types it in. Double-tap fn for hands-free. In Mail, Slack or Messages, Control-Option-R reads the thread and drafts a reply in your tone; you check it and press Send yourself. Prompt Refiner asks two to five quick questions and gives you a structured prompt for whichever AI tool you use. [Live check required: fn key, speech, Reply Drafter.]",
+      "images": [
+        {
+          "file": "50-dictation.png",
+          "role": "hero",
+          "frame": "band",
+          "placement": {
+            "x": 558,
+            "y": 0,
+            "w": 1224,
+            "h": 180
+          },
+          "final": "media/stills/C05-dictation-0008-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C05"
+        },
+        {
+          "file": "11-flow.png",
+          "role": "card_1",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 420,
+            "w": 1224,
+            "h": 282
+          },
+          "final": "media/stills/C05-flow-0019-R-DRAWER-HOME.png",
+          "crop_rect": "R-DRAWER-HOME",
+          "clip": "C05"
+        },
+        {
+          "file": "17-reply-drafter.png",
+          "role": "card_2",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 940,
+            "w": 1224,
+            "h": 282
+          },
+          "final": "media/stills/C06-reply-0014.png",
+          "clip": "C06"
+        },
+        {
+          "file": "20-prompt-refiner-panel.png",
+          "role": "card_3",
+          "frame": "card",
+          "placement": {
+            "x": 1460,
+            "y": 940,
+            "w": 688,
+            "h": 666
+          },
+          "final": "media/stills/C07-prompt-0018.png",
+          "clip": "C07"
+        }
+      ],
+      "clips": [
+        "C05",
+        "C06",
+        "C07"
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 2196,
+          "y": 220,
+          "w": 1452,
+          "h": 420
+        },
+        "subtitle": {
+          "x": 2196,
+          "y": 660,
+          "w": 1452,
+          "h": 200
+        },
+        "body": {
+          "x": 2196,
+          "y": 900,
+          "w": 1452,
+          "h": 1000
+        }
+      },
+      "background": "bg",
+      "hotkey_chips": [
+        "hold fn",
+        "⌃⌥R"
+      ],
+      "background_still": "media/stills/C05-dictation-0015-R-FULL.png",
+      "plan_badge": "Pro (basic dictation is Free)",
+      "feature_names": {
+        "clicky": "Clicky"
+      }
+    },
+    {
+      "n": 7,
+      "id": "screen_help",
+      "layout": "feature_showcase",
+      "header": "Ask about anything on your screen.",
+      "header_accent": "anything",
+      "subtitle": "Works in any app, on any display.",
+      "body": [
+        "Hold ⌃⌥ and ask. Clicky answers and points to the spot.",
+        "⌃⌥S: select a chart or an error, then ask about it.",
+        "⌃⌥T: copy text from images, videos and locked PDFs."
+      ],
+      "notes": "Stuck in an app you don't know? Hold Control-Option and ask out loud. Clicky looks at the screen under your mouse, answers out loud and in the band under the notch, and flies a pointer to the right spot. It points; it doesn't click for you. Control-Option-S lets you select part of the screen and ask about it. Control-Option-T copies the text out of anything: a screenshot, a video frame, a locked PDF. [Without an optional Groq key, Clicky reads screen text on device. Live check required.]",
+      "images": [
+        {
+          "file": "51-clicky-answer.png",
+          "role": "hero_band",
+          "frame": "band",
+          "placement": {
+            "x": 558,
+            "y": 0,
+            "w": 1224,
+            "h": 220
+          },
+          "final": "media/stills/C08-clicky-0012-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C08"
+        },
+        {
+          "file": "12-clicky.png",
+          "role": "card_1",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 1300,
+            "w": 1224,
+            "h": 282
+          },
+          "final": "",
+          "clip": "C08"
+        },
+        {
+          "file": "18-ask-screen.png",
+          "role": "card_2",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 1640,
+            "w": 980,
+            "h": 226
+          },
+          "final": "media/stills/C09-ask-0010.png",
+          "clip": "C09"
+        },
+        {
+          "file": "48-copy-text.png",
+          "role": "card_3",
+          "frame": "card",
+          "placement": {
+            "x": 1220,
+            "y": 1640,
+            "w": 928,
+            "h": 136
+          },
+          "final": "media/stills/C09-copytext-0017-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C09"
+        }
+      ],
+      "clips": [
+        "C08",
+        "C09"
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 2196,
+          "y": 220,
+          "w": 1452,
+          "h": 420
+        },
+        "subtitle": {
+          "x": 2196,
+          "y": 660,
+          "w": 1452,
+          "h": 200
+        },
+        "body": {
+          "x": 2196,
+          "y": 900,
+          "w": 1452,
+          "h": 1000
+        }
+      },
+      "background": "bg",
+      "hotkey_chips": [
+        "⌃⌥",
+        "⌃⌥S",
+        "⌃⌥T"
+      ],
+      "background_still": {
+        "file": "media/stills/C08-clicky-0010-R-FULL.png",
+        "placement": {
+          "x": 192,
+          "y": 260,
+          "w": 2148,
+          "h": 1208
+        },
+        "note": "full-frame still at 0.56x; until recorded, use a dark surface panel"
+      },
+      "plan_badge": "Pro",
+      "callout": "accent arrow following the Clicky pointer"
+    },
+    {
+      "n": 8,
+      "id": "meetings",
+      "layout": "feature_showcase",
+      "header": "Meeting notes, no bot in the call.",
+      "header_accent": "no bot",
+      "subtitle": "One click to record. Transcribed on your Mac.",
+      "body": [
+        "Minutes, decisions and your tasks with due days.",
+        "A suggested answer when someone asks you a question.",
+        "Live translated captions, on device.",
+        "Filed into the right Space automatically."
+      ],
+      "notes": "Click the red button and SparkV records your microphone and the call's audio. Nothing joins the meeting. If someone asks you a question, a suggested answer appears under the notch. When you stop, you get minutes, decisions, your own tasks with due days, other people's tasks and the full transcript, filed into the right Space. Turn on Live Translation and other people's speech becomes captions in your language, translated on your Mac. [Live check required: audio capture, translation.]",
+      "images": [
+        {
+          "file": "36-meeting-notes.png",
+          "role": "hero",
+          "frame": "window",
+          "placement": {
+            "x": 192,
+            "y": 220,
+            "w": 1764,
+            "h": 1188
+          },
+          "final": "media/stills/C10-notes-0022.png",
+          "clip": "C10"
+        },
+        {
+          "file": "37-meeting-live-answers.png",
+          "role": "overlay_1",
+          "frame": "window",
+          "placement": {
+            "x": 1100,
+            "y": 1100,
+            "w": 1048,
+            "h": 706
+          },
+          "final": "media/stills/C10-answer-0009-R-BAND.png",
+          "crop_rect": "R-BAND",
+          "clip": "C10"
+        },
+        {
+          "file": "38-live-translation.png",
+          "role": "overlay_2",
+          "frame": "window",
+          "placement": {
+            "x": 192,
+            "y": 1560,
+            "w": 1024,
+            "h": 320
+          },
+          "final": "media/stills/C11-translate-0010.png",
+          "clip": "C11"
+        }
+      ],
+      "clips": [
+        "C10",
+        "C11"
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 2196,
+          "y": 220,
+          "w": 1452,
+          "h": 420
+        },
+        "subtitle": {
+          "x": 2196,
+          "y": 660,
+          "w": 1452,
+          "h": 200
+        },
+        "body": {
+          "x": 2196,
+          "y": 900,
+          "w": 1452,
+          "h": 1000
+        }
+      },
+      "background": "bg",
+      "plan_badge": "Pro",
+      "callout": "Your tasks section"
+    },
+    {
+      "n": 9,
+      "id": "files_search",
+      "layout": "feature_showcase",
+      "header": "Every file, clip and note, one search away.",
+      "header_accent": "one search away",
+      "subtitle": "⌥Space searches your Spaces, meetings, dictations, clipboard and Tray.",
+      "body": [
+        "Clipboard history with a paste stack: ⌘⇧V.",
+        "Converter: PDF, image and document tools that work offline.",
+        "Downloads sorted by your rules as they finish.",
+        "Spaces: one memory per client or project, with cited answers."
+      ],
+      "notes": "Option-Space searches everything SparkV knows: Spaces, meetings, dictations, clipboard and Tray. Press Tab and it writes an answer from your own items with citations. Clipboard history is off until you turn it on, and it skips passwords; Command-Shift-V opens a paste stack right at your cursor. The Converter handles merge, split, compress, OCR and more without uploading anything. Downloads get sorted as they finish. [Search verified on sample data: 21 results for 'launch'. Downloads and drag need a live check.]",
+      "images": [
+        {
+          "file": "16-universal-search-panel.png",
+          "role": "hero",
+          "frame": "window",
+          "placement": {
+            "x": 446,
+            "y": 220,
+            "w": 1448,
+            "h": 1024
+          },
+          "final": "media/stills/C12-search-0007.png",
+          "clip": "C12"
+        },
+        {
+          "file": "14-clipboard-stack.png",
+          "role": "card_1",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 1320,
+            "w": 636,
+            "h": 522
+          },
+          "final": "media/stills/C12-stack-0015.png",
+          "clip": "C12"
+        },
+        {
+          "file": "07-converter.png",
+          "role": "card_2",
+          "frame": "card",
+          "placement": {
+            "x": 876,
+            "y": 1320,
+            "w": 1272,
+            "h": 387
+          },
+          "final": "media/stills/C13-converter-0011-R-DRAWER-MID.png",
+          "crop_rect": "R-DRAWER-MID",
+          "clip": "C13"
+        },
+        {
+          "file": "31-downloads.png",
+          "role": "card_3",
+          "frame": "card",
+          "placement": {
+            "x": 2196,
+            "y": 1500,
+            "w": 720,
+            "h": 219
+          },
+          "final": "media/stills/C13-downloads-0018-R-DRAWER-MID.png",
+          "crop_rect": "R-DRAWER-MID",
+          "clip": "C13"
+        },
+        {
+          "file": "09-spaces-window.png",
+          "role": "card_4",
+          "frame": "card",
+          "placement": {
+            "x": 2964,
+            "y": 1500,
+            "w": 684,
+            "h": 448
+          },
+          "final": ""
+        }
+      ],
+      "clips": [
+        "C12",
+        "C13"
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 2196,
+          "y": 220,
+          "w": 1452,
+          "h": 420
+        },
+        "subtitle": {
+          "x": 2196,
+          "y": 660,
+          "w": 1452,
+          "h": 200
+        },
+        "body": {
+          "x": 2196,
+          "y": 880,
+          "w": 1452,
+          "h": 580
+        }
+      },
+      "background": "bg",
+      "hotkey_chips": [
+        "⌥Space",
+        "⌘⇧V"
+      ],
+      "plan_badge": "Pro (clipboard last 25 is Free)"
+    },
+    {
+      "n": 10,
+      "id": "focus",
+      "layout": "feature_showcase",
+      "header": "Deep work on a schedule.",
+      "header_accent": "Deep work",
+      "subtitle": "Focus rounds, one-click Modes and a nudge to sit back.",
+      "body": [
+        "Focus: 25/5, 50/10 or 90/15 rounds, Do Not Disturb and a recap.",
+        "Modes: one click sets apps, wallpaper, volume and music. Turn it off to restore.",
+        "Screen Distance: a reminder when you sit closer than 40 cm."
+      ],
+      "notes": "Pick a rhythm and start Focus. SparkV turns on Do Not Disturb, runs the rounds, nudges you when you open a distracting app and writes a recap. A glowing border marks the start, breaks and the end. Modes switch your whole setup in one click, Study, Meeting, Presentation, and put everything back when you turn them off. Screen Distance is off by default; switch it on and it reminds you to move back from the screen. [Live check required: DND, glow, modes, camera.]",
+      "images": [
+        {
+          "file": "28-focus.png",
+          "role": "hero",
+          "frame": "notch_mockup",
+          "placement": {
+            "x": 558,
+            "y": 0,
+            "w": 1224,
+            "h": 282
+          },
+          "final": "media/stills/C14-focus-0003-R-DRAWER-HOME.png",
+          "crop_rect": "R-DRAWER-HOME",
+          "clip": "C14"
+        },
+        {
+          "file": "33-modes.png",
+          "role": "card_1",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 420,
+            "w": 1096,
+            "h": 200
+          },
+          "final": "",
+          "clip": "C14"
+        },
+        {
+          "file": "34-mode-editor.png",
+          "role": "card_2",
+          "frame": "window",
+          "placement": {
+            "x": 1000,
+            "y": 680,
+            "w": 1148,
+            "h": 896
+          },
+          "final": "media/stills/C14-modes-0019.png",
+          "clip": "C14"
+        },
+        {
+          "file": "29-focus-settings.png",
+          "role": "card_3",
+          "frame": "window",
+          "placement": {
+            "x": 192,
+            "y": 680,
+            "w": 744,
+            "h": 864
+          },
+          "final": ""
+        },
+        {
+          "file": "27-screen-distance.png",
+          "role": "card_4",
+          "frame": "card",
+          "placement": {
+            "x": 192,
+            "y": 1640,
+            "w": 1224,
+            "h": 282
+          },
+          "final": ""
+        }
+      ],
+      "clips": [
+        "C14"
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 2196,
+          "y": 220,
+          "w": 1452,
+          "h": 420
+        },
+        "subtitle": {
+          "x": 2196,
+          "y": 660,
+          "w": 1452,
+          "h": 200
+        },
+        "body": {
+          "x": 2196,
+          "y": 900,
+          "w": 1452,
+          "h": 1000
+        }
+      },
+      "background": "bg",
+      "plan_badge": "Pro",
+      "slide_border_glow": {
+        "a": true,
+        "b": false,
+        "c": true
+      }
+    },
+    {
+      "n": 11,
+      "id": "builders",
+      "layout": "feature_showcase",
+      "header": "Power tools for builders and job seekers.",
+      "header_accent": "builders",
+      "subtitle": "Included in Pro.",
+      "body": [
+        "UI Audit tests your own site and writes a fix prompt for your AI coding assistant.",
+        "Flow Canvas chains links, PDFs and notes into AI workflows.",
+        "Job Agent scores your fit and tracks every application.",
+        "Browser Flows (beta) records a web chore once and replays it."
+      ],
+      "notes": "Type your site's address into UI Audit and SparkV walks it like a tester: forms, buttons, mobile and desktop layouts, accessibility and console errors. One button copies a fix prompt you can paste into your AI coding assistant. Flow Canvas is a whiteboard for AI workflows. Job Agent saves a posting with fn plus Control and scores your fit against your resume. Browser Flows is in beta. UI Audit and Browser Flows need Node.js and only run on sites you own or may test. [UI Audit verified end to end; Job Agent scoring verified (fit 81% on sample data); Browser Flows self-test not clean.]",
+      "images": [
+        {
+          "file": "22-ui-audit-window.png",
+          "role": "hero",
+          "frame": "window",
+          "placement": {
+            "x": 192,
+            "y": 220,
+            "w": 1836,
+            "h": 1224
+          },
+          "final": "media/stills/C15-uiaudit-0011.png",
+          "clip": "C15"
+        },
+        {
+          "file": "35-flow-canvas.png",
+          "role": "card_1",
+          "frame": "window",
+          "placement": {
+            "x": 192,
+            "y": 1500,
+            "w": 660,
+            "h": 420
+          },
+          "final": "media/stills/C16-canvas-0006.png",
+          "clip": "C16"
+        },
+        {
+          "file": "24-job-agent-window.png",
+          "role": "card_2",
+          "frame": "window",
+          "placement": {
+            "x": 900,
+            "y": 1500,
+            "w": 690,
+            "h": 420
+          },
+          "final": "media/stills/C16-jobs-0015.png",
+          "clip": "C16"
+        },
+        {
+          "file": "26-browser-flows-window.png",
+          "role": "card_3_beta",
+          "frame": "window",
+          "placement": {
+            "x": 1638,
+            "y": 1500,
+            "w": 637,
+            "h": 416
+          },
+          "final": ""
+        }
+      ],
+      "clips": [
+        "C15",
+        "C16"
+      ],
+      "text_boxes": {
+        "header": {
+          "x": 2196,
+          "y": 220,
+          "w": 1452,
+          "h": 420
+        },
+        "subtitle": {
+          "x": 2196,
+          "y": 660,
+          "w": 1452,
+          "h": 200
+        },
+        "body": {
+          "x": 2196,
+          "y": 900,
+          "w": 1452,
+          "h": 1000
+        }
+      },
+      "background": "bg",
+      "plan_badge": "Pro",
+      "tags": {
+        "26-browser-flows-window.png": "beta"
+      },
+      "requirements_note": "Node.js required for UI Audit and Browser Flows"
+    },
+    {
+      "n": 12,
+      "id": "proof",
+      "layout": "metrics_dashboard",
+      "header": "Private by default. Tested in the real build.",
+      "header_accent": "Private by default.",
+      "subtitle": "Internal checks on the current build, 22 Oct 2026.",
+      "body": [
+        "$0 cloud AI needed. Apple Intelligence, Vision, Speech and Translation run on your Mac.",
+        "50 real app views in this deck. No mock-ups.",
+        "69 issues UI Audit found on a planted-issue test site. Runner self-test: 48/48.",
+        "195 / 195 clipboard and paste-stack checks passed.",
+        "29,283 widget checks passed, 0 failed.",
+        "[TBD: private beta users] · [TBD: beta testimonial]"
+      ],
+      "metrics": [
+        {
+          "value": "$0",
+          "label": "cloud AI needed. Apple Intelligence, Vision, Speech and Translation run on your Mac.",
+          "accent": true,
+          "source": "Business plan §9"
+        },
+        {
+          "value": "50",
+          "label": "real app views in this deck. No mock-ups.",
+          "source": "Feature guide, Verification summary"
+        },
+        {
+          "value": "69",
+          "label": "issues UI Audit found on a planted-issue test site. Runner self-test: 48/48.",
+          "source": "Feature guide §25"
+        },
+        {
+          "value": "195 / 195",
+          "label": "clipboard and paste-stack checks passed.",
+          "source": "Feature guide, Verification summary"
+        },
+        {
+          "value": "29,283",
+          "label": "widget checks passed, 0 failed.",
+          "source": "Feature guide, Verification summary"
+        },
+        {
+          "value": "[TBD]",
+          "label": "[TBD: private beta users] · [TBD: beta testimonial]",
+          "tbd": true,
+          "source": "after private beta"
+        }
+      ],
+      "grid": {
+        "cols": 3,
+        "rows": 2,
+        "tile_w": 1120,
+        "tile_h": 760,
+        "origin": [
+          192,
+          600
+        ],
+        "gap": 48
+      },
+      "notes": "By default, everything stays on your Mac: speech, screenshots, clipboard, meeting audio. Groq is optional and only used with your own key, only when you turn it on. Every screen in this deck is the real app rendered from the current source. Before launch we ran the test suites: UI Audit found 69 planted issues on a test site, clipboard checks passed 195 of 195, widget checks passed all 29,283. Beta numbers and quotes go here once the private beta has run. [These are internal tests, not customer metrics; keep the subtitle visible.]",
+      "images": [],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 200,
+          "w": 3456,
+          "h": 200
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 410,
+          "w": 3456,
+          "h": 120
+        },
+        "body": {
+          "x": 192,
+          "y": 600,
+          "w": 3456,
+          "h": 1360
+        }
+      },
+      "background": "bg"
+    },
+    {
+      "n": 13,
+      "id": "comparison",
+      "layout": "two_column_comparison",
+      "header": "One app instead of six.",
+      "header_accent": "One app",
+      "subtitle": "What the same jobs cost as separate apps.",
+      "body": [
+        "Separate apps, year one: about $492.",
+        "SparkV Pro: $39 once. Updates after year one are optional."
+      ],
+      "footnote": "Prices from public third-party listings, Oct 2026 (SparkV Business Plan §3). Feature sets differ; SparkV does not copy every feature of these apps. Re-check vendor pricing before publishing.",
+      "table": {
+        "columns": [
+          "Job",
+          "Typical app",
+          "Its price",
+          "In SparkV"
+        ],
+        "rows": [
+          [
+            "Notch hub",
+            "NotchNook",
+            "$25 one-time (or $3/mo)",
+            "Free plan"
+          ],
+          [
+            "Notch island",
+            "Alcove",
+            "about $13.99 one-time",
+            "Free plan"
+          ],
+          [
+            "Launcher with AI",
+            "Raycast Pro",
+            "$8/mo billed yearly ($10 monthly)",
+            "Pro: ⌥Space Universal Search + agents"
+          ],
+          [
+            "AI dictation",
+            "Wispr Flow",
+            "$15/mo ($144/yr)",
+            "Pro: AI dictation"
+          ],
+          [
+            "AI meeting notes",
+            "Granola Business",
+            "$14/user/mo",
+            "Pro: Meetings"
+          ],
+          [
+            "Clipboard manager",
+            "Paste",
+            "$29.99/yr",
+            "Pro: unlimited history + Paste Stack"
+          ],
+          [
+            "Screenshots and recording",
+            "CleanShot X",
+            "$29 one-time, then $19/yr updates (optional)",
+            "Pro: Copy Text, Quick Capture, Screen Recorder"
+          ],
+          [
+            "All of the above",
+            "SparkV Pro",
+            "$39 one-time (launch $29)",
+            ""
+          ]
+        ],
+        "highlight_row": 7,
+        "placement": {
+          "x": 192,
+          "y": 600,
+          "w": 2004,
+          "h": 1340
+        }
+      },
+      "chart": {
+        "type": "bar_stacked_clustered",
+        "title": "What you pay (USD)",
+        "kind": "revenue_buyer_spend",
+        "categories": [
+          "Year 1",
+          "Year 2"
+        ],
+        "groups": [
+          {
+            "name": "Separate apps",
+            "stacked": true,
+            "series": [
+              {
+                "name": "NotchNook",
+                "values": [
+                  25.0,
+                  0.0
+                ]
+              },
+              {
+                "name": "Raycast Pro (yearly)",
+                "values": [
+                  96.0,
+                  96.0
+                ]
+              },
+              {
+                "name": "Wispr Flow (yearly)",
+                "values": [
+                  144.0,
+                  144.0
+                ]
+              },
+              {
+                "name": "Granola Business",
+                "values": [
+                  168.0,
+                  168.0
+                ]
+              },
+              {
+                "name": "Paste (yearly)",
+                "values": [
+                  29.99,
+                  29.99
+                ]
+              },
+              {
+                "name": "CleanShot X",
+                "values": [
+                  29.0,
+                  19.0
+                ]
+              }
+            ],
+            "totals": [
+              491.99,
+              456.99
+            ]
+          },
+          {
+            "name": "SparkV Pro",
+            "stacked": false,
+            "series": [
+              {
+                "name": "SparkV Pro",
+                "values": [
+                  39.0,
+                  0.0
+                ]
+              }
+            ],
+            "totals": [
+              39.0,
+              0.0
+            ],
+            "value_notes": [
+              "launch week $29",
+              "optional $19 renewal"
+            ]
+          }
+        ],
+        "data_table": [
+          {
+            "item": "NotchNook",
+            "year1": 25.0,
+            "year2": 0.0,
+            "source": "iMore; Lowyat (Business Plan §3)"
+          },
+          {
+            "item": "Raycast Pro (yearly)",
+            "year1": 96.0,
+            "year2": 96.0,
+            "source": "Raycast blog; tech-insider (Business Plan §3)"
+          },
+          {
+            "item": "Wispr Flow (yearly)",
+            "year1": 144.0,
+            "year2": 144.0,
+            "source": "getvoibe; spokenly (Business Plan §3)"
+          },
+          {
+            "item": "Granola Business",
+            "year1": 168.0,
+            "year2": 168.0,
+            "source": "granola.ai (Business Plan §3)"
+          },
+          {
+            "item": "Paste (yearly)",
+            "year1": 29.99,
+            "year2": 29.99,
+            "source": "App Store (Business Plan §3)"
+          },
+          {
+            "item": "CleanShot X",
+            "year1": 29.0,
+            "year2": 19.0,
+            "source": "toolradar; TrustRadius (Business Plan §3)"
+          },
+          {
+            "item": "Separate apps total",
+            "year1": 491.99,
+            "year2": 456.99,
+            "source": "sum"
+          },
+          {
+            "item": "SparkV Pro",
+            "year1": 39.0,
+            "year2": 0.0,
+            "source": "Business Plan §6a (optional $19/yr renewal)"
+          }
+        ],
+        "excluded": "Alcove (same job as NotchNook)",
+        "source": "Public prices collected in SparkV Business Plan §3, 22 Oct 2026; third-party listings.",
+        "placement": {
+          "x": 2244,
+          "y": 600,
+          "w": 1404,
+          "h": 1300
+        }
+      },
+      "notes": "Here is the honest maths. These are the public prices of popular single-purpose apps that do jobs SparkV also does. Bought separately, the first year is about four hundred and ninety-two dollars, and most of it repeats every year. SparkV Pro is thirty-nine dollars once, twenty-nine during launch week. These apps have features we don't have, and we don't claim otherwise; the point is the jobs most people actually use them for. [Legal review required before naming competitors. Re-check every price on vendor sites on publish day.]",
+      "images": [],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 200,
+          "w": 3456,
+          "h": 200
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 410,
+          "w": 3456,
+          "h": 120
+        },
+        "body": {
+          "x": 2244,
+          "y": 1920,
+          "w": 1404,
+          "h": 100
+        }
+      },
+      "background": "bg",
+      "legal_review": true
+    },
+    {
+      "n": 14,
+      "id": "market",
+      "layout": "metrics_dashboard",
+      "header": "Made for the Mac you already have.",
+      "header_accent": "already have",
+      "subtitle": "Apple silicon · macOS 15 or later · best on a MacBook Pro with a notch.",
+      "body": [
+        "100M+ active Macs (Apple, Oct 2018: the latest official figure).",
+        "7.1M Macs shipped in Q4 2025 alone (IDC, preliminary).",
+        "No notch? The island sits in the menu bar.",
+        "[TBD: share of Macs that are Apple silicon on macOS 15+]"
+      ],
+      "metrics": [
+        {
+          "value": "100M+",
+          "label": "active Macs (Apple, Oct 2018: the latest official figure)",
+          "source": "https://techcrunch.com/2018/10/30/there-are-now-100-million-macs-in-use"
+        },
+        {
+          "value": "7.1M",
+          "label": "Macs shipped in Q4 2025 alone (IDC, preliminary)",
+          "source": "https://www.mactech.com/2026/01/12/well-idc-says-global-mac-sales-only-grew-0-2-annual-as-of-the-fourth-quarter-of-2025/"
+        },
+        {
+          "value": "[TBD]",
+          "label": "share of Macs that are Apple silicon on macOS 15+",
+          "tbd": true,
+          "source": "[TBD]"
+        }
+      ],
+      "chart": {
+        "type": "column_clustered",
+        "title": "Apple Mac shipments, 2025 (millions of units, IDC preliminary)",
+        "kind": "market",
+        "categories": [
+          "Q1 2025",
+          "Q2 2025",
+          "Q3 2025",
+          "Q4 2025"
+        ],
+        "series": [
+          {
+            "name": "Mac shipments (M units)",
+            "values": [
+              5.5,
+              6.2,
+              null,
+              7.1
+            ]
+          }
+        ],
+        "tbd": {
+          "Q3 2025": "[TBD: IDC Q3 2025 Mac shipments]"
+        },
+        "data_table": [
+          {
+            "quarter": "Q1 2025",
+            "units_m": 5.5,
+            "source": "IDC via AppleInsider, 8 Apr 2025: https://appleinsider.com/articles/25/04/08/apple-gains-ground-as-pc-market-heads-into-rocky-2025"
+          },
+          {
+            "quarter": "Q2 2025",
+            "units_m": 6.2,
+            "source": "IDC via MacTrast, Jul 2025: https://www.mactrast.com/2025/07/new-data-released-by-idc-shows-mac-shipments-are-continuing-to-increase/"
+          },
+          {
+            "quarter": "Q3 2025",
+            "units_m": null,
+            "source": "[TBD: IDC Q3 2025 Mac shipments]"
+          },
+          {
+            "quarter": "Q4 2025",
+            "units_m": 7.1,
+            "source": "IDC via MacTech, 12 Jan 2026: https://www.mactech.com/2026/01/12/well-idc-says-global-mac-sales-only-grew-0-2-annual-as-of-the-fourth-quarter-of-2025/"
+          }
+        ],
+        "source": "IDC preliminary data as reported by AppleInsider, MacTrast and MacTech. Verify against IDC press releases before publishing.",
+        "placement": {
+          "x": 192,
+          "y": 600,
+          "w": 2148,
+          "h": 1300
+        }
+      },
+      "notes": "SparkV is built for Apple silicon Macs on macOS 15 or later, and it is best on a 14 or 16-inch MacBook Pro with a notch. On other displays the island sits in the menu bar. Apple last said there were over 100 million active Macs, back in 2018, and IDC estimates Apple shipped more than seven million Macs in the last quarter of 2025 alone. This is a large and growing group of people who already own the hardware. [Do not imply all of these Macs can run SparkV.]",
+      "images": [],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 200,
+          "w": 3456,
+          "h": 200
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 410,
+          "w": 3456,
+          "h": 120
+        },
+        "body": {
+          "x": 2436,
+          "y": 600,
+          "w": 1212,
+          "h": 1300
+        }
+      },
+      "background": "bg"
+    },
+    {
+      "n": 15,
+      "id": "pricing",
+      "layout": "pricing_table",
+      "header": "Pay once. Keep it forever.",
+      "header_accent": "Pay once.",
+      "subtitle": "Start with a 14-day Pro trial. No card needed.",
+      "body": [
+        "Launch week: Pro $29 (₹999).",
+        "Students and teachers: 50% off Pro.",
+        "30-day refunds, no questions asked.",
+        "2 Macs per license."
+      ],
+      "table": {
+        "columns": [
+          "",
+          "Free",
+          "Pro (recommended)",
+          "Team"
+        ],
+        "highlight_column": 2,
+        "rows": [
+          [
+            "Price",
+            "$0",
+            "$39 one-time · ₹1,499 (launch week $29 · ₹999)",
+            "$8 per seat / month, billed yearly · ₹499 · minimum 3 seats"
+          ],
+          [
+            "Updates",
+            "n/a",
+            "12 months included, then optional $19/yr (₹799). The app keeps working.",
+            "Included"
+          ],
+          [
+            "Macs",
+            "1",
+            "2 per person",
+            "2 per seat"
+          ],
+          [
+            "Notch core",
+            "Media, HUD, battery, notifications, mirror, AirDrop, Tray (5 items), 2 Shortcut buttons, Timer, Today",
+            "Everything",
+            "Everything"
+          ],
+          [
+            "Widgets",
+            "World Clock, System Gauges",
+            "All widgets",
+            "All widgets"
+          ],
+          [
+            "Productivity",
+            "Clipboard (last 25), Copy Text, Flow history",
+            "Unlimited clipboard + Paste Stack, Converter, File Drop, Downloads rules, Quick Capture, Screen Recorder, Universal Search, Spaces, Focus, Modes, Screen Distance",
+            "Everything"
+          ],
+          [
+            "AI assistants",
+            "Dictation (no AI formatting)",
+            "AI dictation, Clicky, Ask Screen, Reply Drafter, Prompt Refiner, Tray AI, Job Agent",
+            "Everything"
+          ],
+          [
+            "Meetings",
+            "none",
+            "Recorder, transcripts, summaries, Live Translation",
+            "Everything"
+          ],
+          [
+            "Developer tools",
+            "none",
+            "UI Audit, Browser Flows (beta), Flow Canvas",
+            "Everything"
+          ],
+          [
+            "Team extras",
+            "none",
+            "none",
+            "One invoice, seat management, shared Spaces packages, priority email support (1 business day), MDM install package"
+          ],
+          [
+            "Try it",
+            "Free forever",
+            "14-day full trial, no card. Falls back to Free, never locks.",
+            "30-day pilot, up to 5 seats"
+          ]
+        ],
+        "card_summary": {
+          "Free": [
+            "Complete notch app",
+            "World Clock and gauges",
+            "Clipboard (last 25), Copy Text",
+            "Dictation"
+          ],
+          "Pro": [
+            "Everything in Free, plus:",
+            "AI assistants",
+            "Meetings and translation",
+            "Productivity suite",
+            "Focus and Modes",
+            "Developer tools"
+          ],
+          "Team": [
+            "Everything in Pro, plus:",
+            "One invoice",
+            "Seat management",
+            "Shared Spaces packages",
+            "Priority support",
+            "MDM package"
+          ]
+        },
+        "placement": {
+          "x": 192,
+          "y": 600,
+          "w": 3456,
+          "h": 1200
+        }
+      },
+      "notes": "Three plans. Free is a complete notch app. Pro is thirty-nine dollars once, or fourteen ninety-nine rupees, and includes everything plus a year of updates; after that, updates are optional and the app keeps working. Launch week, Pro is twenty-nine dollars. Teams pay eight dollars per seat per month, billed yearly, with one invoice and priority support. Every Pro feature can be tried free for fourteen days without a card; when the trial ends you simply drop to Free and keep your data. [INR launch price is ₹999 per Business Plan §6a. Team shared Spaces means file packages, not live sync.]",
+      "images": [],
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 200,
+          "w": 3456,
+          "h": 200
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 410,
+          "w": 3456,
+          "h": 120
+        },
+        "body": {
+          "x": 192,
+          "y": 1860,
+          "w": 3456,
+          "h": 140
+        }
+      },
+      "background": "bg",
+      "source": "SparkV Business Plan §6a, §6c"
+    },
+    {
+      "n": 16,
+      "id": "cta",
+      "layout": "cta",
+      "header": "Turn on your notch.",
+      "header_accent": "notch",
+      "subtitle": "Try every Pro feature free for 14 days.",
+      "body": [
+        "sparkv.si",
+        "Launch price $29 for the first 7 days or first 500 buyers.",
+        "[TBD: download / checkout URL] · [TBD: QR code to checkout]"
+      ],
+      "body_roles": [
+        "button",
+        "caption",
+        "tbd_block"
+      ],
+      "button": {
+        "text": "sparkv.si",
+        "url": "https://www.sparkv.si",
+        "placement": {
+          "x": 1440,
+          "y": 1560,
+          "w": 960,
+          "h": 160
+        }
+      },
+      "qr": {
+        "tbd": true,
+        "label": "[TBD: QR code to checkout]",
+        "placement": {
+          "x": 2460,
+          "y": 1460,
+          "w": 360,
+          "h": 360
+        }
+      },
+      "notes": "Download SparkV from sparkv.si, start the fourteen-day trial, and see what your notch can do. Launch week, Pro is twenty-nine dollars for the first seven days or the first five hundred buyers. Students get half off. Thanks for watching. [Do not publish until Developer ID notarization and Lemon Squeezy licensing exist.]",
+      "mockup": {
+        "type": "notch",
+        "placement": {
+          "x": 624,
+          "y": 0,
+          "w": 2592,
+          "h": 540
+        }
+      },
+      "images": [
+        {
+          "file": "01-home.png",
+          "role": "hero",
+          "frame": "notch_mockup",
+          "placement": {
+            "x": 1461,
+            "y": 0,
+            "w": 918,
+            "h": 212
+          },
+          "final": "media/stills/C01-hero-0008-R-DRAWER-HOME.png",
+          "crop_rect": "R-DRAWER-HOME",
+          "clip": "C01"
+        }
+      ],
+      "video_loop": {
+        "clip": "C01",
+        "in": "00:00",
+        "out": "00:08"
+      },
+      "text_boxes": {
+        "header": {
+          "x": 192,
+          "y": 900,
+          "w": 3456,
+          "h": 220
+        },
+        "subtitle": {
+          "x": 192,
+          "y": 1140,
+          "w": 3456,
+          "h": 140
+        },
+        "body": {
+          "x": 192,
+          "y": 1760,
+          "w": 3456,
+          "h": 120
+        }
+      },
+      "background": "bg-hero",
+      "glow": true,
+      "glow_strength": 0.36
+    }
+  ],
+  "appendix": [
+    {
+      "n": "A1",
+      "id": "packs",
+      "layout": "pricing_table",
+      "hidden": true,
+      "header": "Prefer to pay for just what you use?",
+      "subtitle": "Feature packs (alternative model; not planned for launch).",
+      "body": [],
+      "table": {
+        "columns": [
+          "Pack",
+          "Includes",
+          "USD",
+          "INR"
+        ],
+        "highlight_row": 5,
+        "rows": [
+          [
+            "Notch & Media",
+            "Media extras, HUD, all Widgets, Modes, Focus, Screen Distance, unlimited Tray",
+            "$9",
+            "₹499"
+          ],
+          [
+            "Productivity",
+            "Clipboard + Paste Stack, Converter, File Drop, Downloads, Quick Capture, Screenshot to Clipboard, Copy Text, Screen Recorder, Universal Search, Spaces",
+            "$15",
+            "₹799"
+          ],
+          [
+            "AI Assistants",
+            "AI dictation, Clicky, Ask Screen, Reply Drafter, Prompt Refiner, Tray AI, Job Agent",
+            "$19",
+            "₹999"
+          ],
+          [
+            "Meetings",
+            "Recorder, transcriber, summaries, notes, Live Translation, calendar join",
+            "$15",
+            "₹799"
+          ],
+          [
+            "Developer Tools",
+            "UI Audit, Browser Flows, Flow Canvas",
+            "$19",
+            "₹999"
+          ],
+          [
+            "Everything (= Pro)",
+            "All 5 packs",
+            "$39 (separately $77)",
+            "₹1,499 (separately ₹4,095)"
+          ]
+        ],
+        "placement": {
+          "x": 192,
+          "y": 600,
+          "w": 3456,
+          "h": 1300
+        }
+      },
+      "notes": "Backup only. The business plan recommends launching with three plans, not packs. Use this if the launch audience asks for a cheaper single-purpose entry, for example Meetings only.",
+      "images": [],
+      "source": "SparkV Business Plan §6b, §6d",
+      "background": "bg"
+    },
+    {
+      "n": "A2",
+      "id": "why_once",
+      "layout": "metrics_dashboard",
+      "hidden": true,
+      "header": "Why we can charge once.",
+      "subtitle": "Your $39 Pro purchase, and what it pays for.",
+      "body": [
+        "AI runs on your Mac, so there is no per-user AI bill.",
+        "Groq is optional and uses your own key."
+      ],
+      "chart": {
+        "type": "waterfall",
+        "title": "Per $39 Pro sale (USD)",
+        "kind": "revenue_per_sale",
+        "categories": [
+          "Pro price",
+          "Merchant-of-record fee (5% + $0.50)",
+          "Cloud AI cost",
+          "Kept by SparkV"
+        ],
+        "series": [
+          {
+            "name": "USD",
+            "values": [
+              39.0,
+              -2.45,
+              0.0,
+              36.55
+            ]
+          }
+        ],
+        "data_table": [
+          {
+            "line": "Pro price",
+            "usd": 39.0,
+            "source": "Business Plan §6a"
+          },
+          {
+            "line": "Merchant-of-record fee (5% + $0.50)",
+            "usd": -2.45,
+            "source": "Business Plan §4 (Lemon Squeezy; about +1.5% more on non-US orders)"
+          },
+          {
+            "line": "Cloud AI cost",
+            "usd": 0.0,
+            "source": "Business Plan §9"
+          },
+          {
+            "line": "Kept by SparkV",
+            "usd": 36.55,
+            "source": "Business Plan §4"
+          }
+        ],
+        "fallback_type": "bar_clustered",
+        "source": "SparkV Business Plan §4, §6a, §9",
+        "placement": {
+          "x": 192,
+          "y": 600,
+          "w": 2148,
+          "h": 1300
+        }
+      },
+      "notes": "Backup for 'why isn't this a subscription?'. Because the AI runs on Apple's on-device frameworks, we pay nothing per user for AI, so a one-time price is sustainable.",
+      "images": [],
+      "background": "bg"
+    }
+  ]
+}

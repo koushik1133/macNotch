@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Contact</title>
+<style>body{font-family:sans-serif;margin:20px} .row{margin-top:10px} .err{color:#c00;font-size:12px;display:block}</style></head><body>
+<main><h1>Contact us</h1>
+<form id="contact" novalidate>
+  <div class="row"><label for="cemail">Your email</label><input id="cemail" name="email" type="email" required><span class="err" id="cemail-err"></span></div>
+  <div class="row"><input id="cphone" name="phone" type="text" placeholder="Phone"></div>
+  <div class="row"><label for="cweb">Website</label><input id="cweb" name="website" type="url"></div>
+  <div class="row"><label for="cmsg">Message</label><textarea id="cmsg" name="message"></textarea></div>
+  <button type="submit">Send message</button>
+  <button type="button" onclick="return false">Pay now</button>
+</form></main>
+<script>
+// Vague, unassociated error message on blur for the email field only.
+document.getElementById('cemail').addEventListener('blur', (e) => {
+  document.getElementById('cemail-err').textContent = e.target.value && !e.target.value.includes('@') ? 'Invalid' : '';
+});
+document.getElementById('contact').addEventListener('submit', (e) => { e.preventDefault(); fetch('/api/contact', { method: 'POST', body: new FormData(e.target) }); });
+</script></body></html>

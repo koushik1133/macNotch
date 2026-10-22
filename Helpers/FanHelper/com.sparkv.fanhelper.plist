@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template. install-fanhelper.sh replaces ProgramArguments item 2 with the
+     designated code-signing requirement of the SparkV.app it installs from,
+     then copies this file to /Library/LaunchDaemons (root:wheel, 644). -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.sparkv.fanhelper</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Library/PrivilegedHelperTools/com.sparkv.fanhelper</string>
+		<string>--client-requirement</string>
+		<string>__CLIENT_REQUIREMENT__</string>
+	</array>
+	<!-- Shows the daemon under SparkV in System Settings > General > Login Items. -->
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>com.sparkv.app</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<!-- Restart after a crash (the new instance returns every fan to Auto
+	     first). A configuration error exits 0 and is not restarted. -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>StandardErrorPath</key>
+	<string>/Library/Logs/SparkV/fanhelper.log</string>
+	<key>StandardOutPath</key>
+	<string>/Library/Logs/SparkV/fanhelper.log</string>
+</dict>
+</plist>

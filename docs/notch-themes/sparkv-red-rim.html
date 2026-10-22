@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%2309090A%22/%3E%3Cpath d=%22M16 5l2.6 8.4L27 16l-8.4 2.6L16 27l-2.6-8.4L5 16l8.4-2.6z%22 fill=%22%23F01822%22/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SparkV Red Rim · SparkV</title>
+<meta name="description" content="SparkV notch theme: a crisp signal-red rim light traces the notch outline on hover with a soft red outer glow.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#09090A; --paper:#F7F7F5; --red:#F01822;
+  --muted:rgba(247,247,245,.62); --faint:rgba(247,247,245,.38);
+  --line:rgba(247,247,245,.09); --card:#111113; --card2:#0d0d0f;
+  --sans:"Geist",system-ui,-apple-system,sans-serif; --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sf:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark;background:var(--ink)}
+body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+.wrap{max-width:1480px;margin:0 auto;padding:40px 28px 72px}
+@media (max-width:640px){.wrap{padding:24px 16px 56px}}
+
+/* ---------- header ---------- */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px rgba(240,24,34,.9)}
+.sib{display:flex;flex-wrap:wrap;gap:6px}
+.sib a{font:500 12.5px/1 var(--sans);text-decoration:none;color:var(--muted);padding:8px 12px;border:1px solid var(--line);border-radius:999px;transition:color .2s,border-color .2s,background .2s}
+.sib a:hover{color:var(--paper);border-color:rgba(247,247,245,.25)}
+.sib a[aria-current]{color:var(--paper);background:rgba(240,24,34,.14);border-color:rgba(240,24,34,.55)}
+h1{font:600 clamp(38px,5.4vw,68px)/.98 var(--sans);letter-spacing:-.038em;margin:30px 0 16px}
+h1 em{font-style:normal;color:var(--red)}
+.lede{max-width:70ch;color:var(--muted);font-size:17px;line-height:1.55;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.meta span{font:500 12px/1 var(--mono);color:var(--muted);padding:8px 11px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
+.meta b{color:var(--paper);font-weight:500}
+
+/* ---------- frames ---------- */
+.sec-h{display:flex;align-items:baseline;gap:14px;margin:52px 0 16px}
+.sec-h h2{font:600 22px/1.1 var(--sans);letter-spacing:-.02em;margin:0}
+.sec-h p{margin:0;color:var(--faint);font-size:14px}
+.frames{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:16px;align-items:start}
+@media (max-width:1100px){.frames{grid-template-columns:1fr 1fr}.frames .f-open{grid-column:1/-1}}
+@media (max-width:640px){.frames{grid-template-columns:1fr}}
+.frame{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-width:0}
+.frame-h{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.num{font:600 12px/1 var(--mono);color:var(--red)}
+.lab{font:600 12.5px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase}
+.spec{margin-left:auto;font:400 12px/1 var(--mono);color:var(--faint)}
+.frame-f{padding:12px 16px 15px;color:var(--muted);font-size:13.5px;line-height:1.5;border-top:1px solid var(--line)}
+.frame-f b{color:var(--paper);font-weight:500}
+.sw{position:relative;width:100%;aspect-ratio:var(--ar);overflow:hidden;background:#000}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;isolation:isolate}
+
+/* ---------- simulated screen ---------- */
+.wall{position:absolute;inset:0;background:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMin slice'%3E %3Cdefs%3E %3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%230a0f22'/%3E%3Cstop offset='.3' stop-color='%231b2350'/%3E%3Cstop offset='.5' stop-color='%234b3a78'/%3E%3Cstop offset='.64' stop-color='%23a6607e'/%3E%3Cstop offset='.76' stop-color='%23ec9a7c'/%3E%3Cstop offset='1' stop-color='%23f6c49a'/%3E%3C/linearGradient%3E %3CradialGradient id='sun' cx='.7' cy='.62' r='.32'%3E%3Cstop offset='0' stop-color='%23ffd9b0' stop-opacity='.85'/%3E%3Cstop offset='1' stop-color='%23ffd9b0' stop-opacity='0'/%3E%3C/radialGradient%3E %3ClinearGradient id='m1' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%235b4a86'/%3E%3Cstop offset='1' stop-color='%232a2550'/%3E%3C/linearGradient%3E %3ClinearGradient id='m2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%232f2a5c'/%3E%3Cstop offset='1' stop-color='%2315143a'/%3E%3C/linearGradient%3E %3C/defs%3E %3Crect width='1600' height='900' fill='url(%23s)'/%3E%3Crect width='1600' height='900' fill='url(%23sun)'/%3E%3Ccircle cx='518' cy='57' r='1.3' fill='%23fff' opacity='0.29'/%3E%3Ccircle cx='857' cy='139' r='0.7' fill='%23fff' opacity='0.53'/%3E%3Ccircle cx='60' cy='165' r='0.7' fill='%23fff' opacity='0.30'/%3E%3Ccircle cx='679' cy='314' r='0.7' fill='%23fff' opacity='0.37'/%3E%3Ccircle cx='1004' cy='360' r='1.2' fill='%23fff' opacity='0.47'/%3E%3Ccircle cx='1562' cy='18' r='1.5' fill='%23fff' opacity='0.41'/%3E%3Ccircle cx='231' cy='45' r='0.9' fill='%23fff' opacity='0.70'/%3E%3Ccircle cx='289' cy='221' r='1.3' fill='%23fff' opacity='0.45'/%3E%3Ccircle cx='876' cy='24' r='0.7' fill='%23fff' opacity='0.36'/%3E%3Ccircle cx='1089' cy='162' r='0.9' fill='%23fff' opacity='0.57'/%3E%3Ccircle cx='725' cy='114' r='1.5' fill='%23fff' opacity='0.63'/%3E%3Ccircle cx='391' cy='218' r='1.2' fill='%23fff' opacity='0.73'/%3E%3Ccircle cx='1167' cy='109' r='1.7' fill='%23fff' opacity='0.31'/%3E%3Ccircle cx='669' cy='288' r='0.8' fill='%23fff' opacity='0.52'/%3E%3Ccircle cx='63' cy='254' r='1.4' fill='%23fff' opacity='0.57'/%3E%3Ccircle cx='1401' cy='119' r='1.4' fill='%23fff' opacity='0.58'/%3E%3Ccircle cx='928' cy='173' r='1.5' fill='%23fff' opacity='0.77'/%3E%3Ccircle cx='759' cy='252' r='0.7' fill='%23fff' opacity='0.64'/%3E%3Ccircle cx='1035' cy='377' r='1.5' fill='%23fff' opacity='0.41'/%3E%3Ccircle cx='617' cy='254' r='0.6' fill='%23fff' opacity='0.50'/%3E%3Ccircle cx='269' cy='44' r='0.7' fill='%23fff' opacity='0.67'/%3E%3Ccircle cx='207' cy='94' r='1.0' fill='%23fff' opacity='0.73'/%3E%3Ccircle cx='129' cy='171' r='1.2' fill='%23fff' opacity='0.74'/%3E%3Ccircle cx='1311' cy='328' r='0.9' fill='%23fff' opacity='0.48'/%3E%3Ccircle cx='574' cy='336' r='1.7' fill='%23fff' opacity='0.33'/%3E%3Ccircle cx='282' cy='88' r='0.9' fill='%23fff' opacity='0.52'/%3E%3Ccircle cx='943' cy='100' r='0.6' fill='%23fff' opacity='0.48'/%3E%3Ccircle cx='591' cy='215' r='1.6' fill='%23fff' opacity='0.63'/%3E%3Ccircle cx='825' cy='235' r='1.3' fill='%23fff' opacity='0.28'/%3E%3Ccircle cx='1439' cy='296' r='1.6' fill='%23fff' opacity='0.69'/%3E%3Ccircle cx='628' cy='152' r='0.7' fill='%23fff' opacity='0.60'/%3E%3Ccircle cx='100' cy='26' r='0.8' fill='%23fff' opacity='0.34'/%3E%3Ccircle cx='544' cy='20' r='0.6' fill='%23fff' opacity='0.33'/%3E%3Ccircle cx='162' cy='138' r='0.6' fill='%23fff' opacity='0.73'/%3E%3Ccircle cx='983' cy='56' r='0.9' fill='%23fff' opacity='0.44'/%3E%3Ccircle cx='583' cy='47' r='1.5' fill='%23fff' opacity='0.80'/%3E%3Ccircle cx='746' cy='184' r='0.7' fill='%23fff' opacity='0.31'/%3E%3Ccircle cx='548' cy='101' r='1.5' fill='%23fff' opacity='0.34'/%3E%3Ccircle cx='37' cy='361' r='1.2' fill='%23fff' opacity='0.33'/%3E%3Ccircle cx='869' cy='10' r='1.2' fill='%23fff' opacity='0.79'/%3E%3Ccircle cx='1381' cy='265' r='0.9' fill='%23fff' opacity='0.45'/%3E%3Ccircle cx='267' cy='293' r='1.2' fill='%23fff' opacity='0.68'/%3E%3Ccircle cx='527' cy='85' r='1.5' fill='%23fff' opacity='0.79'/%3E%3Ccircle cx='1364' cy='306' r='1.5' fill='%23fff' opacity='0.66'/%3E%3Ccircle cx='363' cy='197' r='1.0' fill='%23fff' opacity='0.27'/%3E%3Ccircle cx='45' cy='106' r='0.9' fill='%23fff' opacity='0.63'/%3E%3Ccircle cx='1530' cy='170' r='1.6' fill='%23fff' opacity='0.79'/%3E%3Ccircle cx='1528' cy='139' r='0.8' fill='%23fff' opacity='0.37'/%3E%3Ccircle cx='315' cy='78' r='1.3' fill='%23fff' opacity='0.75'/%3E%3Ccircle cx='1345' cy='182' r='1.3' fill='%23fff' opacity='0.69'/%3E%3Ccircle cx='136' cy='251' r='1.6' fill='%23fff' opacity='0.68'/%3E%3Ccircle cx='1200' cy='182' r='0.8' fill='%23fff' opacity='0.68'/%3E%3Ccircle cx='532' cy='304' r='1.7' fill='%23fff' opacity='0.47'/%3E%3Ccircle cx='642' cy='360' r='1.4' fill='%23fff' opacity='0.34'/%3E%3Ccircle cx='203' cy='57' r='1.6' fill='%23fff' opacity='0.69'/%3E%3Ccircle cx='234' cy='314' r='1.7' fill='%23fff' opacity='0.61'/%3E%3Ccircle cx='561' cy='208' r='0.7' fill='%23fff' opacity='0.26'/%3E%3Ccircle cx='1553' cy='247' r='1.2' fill='%23fff' opacity='0.76'/%3E%3Ccircle cx='694' cy='331' r='1.5' fill='%23fff' opacity='0.37'/%3E%3Ccircle cx='403' cy='111' r='0.9' fill='%23fff' opacity='0.57'/%3E%3Ccircle cx='415' cy='159' r='0.7' fill='%23fff' opacity='0.75'/%3E%3Ccircle cx='566' cy='174' r='1.2' fill='%23fff' opacity='0.75'/%3E%3Ccircle cx='673' cy='349' r='1.2' fill='%23fff' opacity='0.54'/%3E%3Ccircle cx='838' cy='7' r='1.1' fill='%23fff' opacity='0.35'/%3E%3Ccircle cx='6' cy='304' r='0.8' fill='%23fff' opacity='0.51'/%3E%3Ccircle cx='1160' cy='211' r='1.0' fill='%23fff' opacity='0.54'/%3E%3Ccircle cx='889' cy='298' r='0.7' fill='%23fff' opacity='0.56'/%3E%3Ccircle cx='398' cy='105' r='1.4' fill='%23fff' opacity='0.53'/%3E%3Ccircle cx='899' cy='289' r='1.6' fill='%23fff' opacity='0.49'/%3E%3Ccircle cx='980' cy='192' r='1.2' fill='%23fff' opacity='0.63'/%3E%3Ccircle cx='724' cy='203' r='1.1' fill='%23fff' opacity='0.77'/%3E%3Ccircle cx='1119' cy='333' r='1.6' fill='%23fff' opacity='0.39'/%3E%3Ccircle cx='895' cy='358' r='1.5' fill='%23fff' opacity='0.33'/%3E%3Ccircle cx='195' cy='168' r='0.7' fill='%23fff' opacity='0.38'/%3E%3Ccircle cx='117' cy='254' r='1.5' fill='%23fff' opacity='0.74'/%3E%3Ccircle cx='247' cy='272' r='1.3' fill='%23fff' opacity='0.33'/%3E%3Ccircle cx='1413' cy='368' r='0.8' fill='%23fff' opacity='0.77'/%3E%3Ccircle cx='637' cy='185' r='1.7' fill='%23fff' opacity='0.71'/%3E%3Ccircle cx='258' cy='164' r='1.2' fill='%23fff' opacity='0.44'/%3E%3Ccircle cx='313' cy='121' r='1.4' fill='%23fff' opacity='0.26'/%3E%3Ccircle cx='886' cy='167' r='0.6' fill='%23fff' opacity='0.43'/%3E%3Ccircle cx='998' cy='195' r='0.7' fill='%23fff' opacity='0.79'/%3E%3Ccircle cx='1261' cy='369' r='0.7' fill='%23fff' opacity='0.40'/%3E%3Ccircle cx='63' cy='296' r='0.9' fill='%23fff' opacity='0.32'/%3E%3Ccircle cx='676' cy='346' r='1.5' fill='%23fff' opacity='0.39'/%3E%3Ccircle cx='239' cy='349' r='1.2' fill='%23fff' opacity='0.64'/%3E%3Ccircle cx='143' cy='22' r='1.4' fill='%23fff' opacity='0.48'/%3E%3Ccircle cx='116' cy='357' r='1.3' fill='%23fff' opacity='0.69'/%3E%3Ccircle cx='134' cy='325' r='0.7' fill='%23fff' opacity='0.72'/%3E%3Ccircle cx='726' cy='129' r='1.2' fill='%23fff' opacity='0.76'/%3E %3Cpath d='M0 520 L110 470 L220 500 L340 420 L470 480 L600 400 L720 455 L860 380 L990 450 L1120 410 L1260 470 L1400 420 L1520 455 L1600 440 V900 H0Z' fill='url(%23m1)' opacity='.9'/%3E %3Cpath d='M0 600 C180 520 320 580 480 540 S780 470 920 545 S1240 500 1400 560 S1560 545 1600 550 V900 H0Z' fill='url(%23m2)'/%3E %3Cpath d='M0 690 C240 630 420 680 640 650 S1020 610 1220 670 S1500 660 1600 650 V900 H0Z' fill='%230b0a1f'/%3E %3C/svg%3E") #141a35;background-size:cover;background-position:center top}
+.menubar{position:absolute;left:0;right:0;top:0;height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;
+  font:500 13px/1 var(--sf);color:rgba(255,255,255,.92);background:rgba(12,12,16,.30);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.05)}
+.mb-l,.mb-r{display:flex;align-items:center;gap:17px;white-space:nowrap;overflow:hidden;width:calc(50% - 128px)}
+.mb-l b{font-weight:700}
+.mb-r{justify-content:flex-end;gap:15px}
+.mb-r svg{flex:none;display:block}
+.mb-r .clock{flex:none;font-weight:500;letter-spacing:.01em}
+.narrow .day,.narrow .mb-l span{display:none}
+.rt .menubar{background:#1b1b1f;-webkit-backdrop-filter:none;backdrop-filter:none}
+
+/* ---------- island ---------- */
+.island{position:absolute;left:50%;top:0;width:0;height:0}
+.island > *{position:absolute}
+.isl-svg{left:-700px;top:-120px;width:1400px;height:520px;overflow:visible;pointer-events:none}
+.body{fill:#000}
+.shadow{top:0;opacity:0;box-shadow:0 26px 60px -12px rgba(0,0,0,.8),0 8px 18px rgba(0,0,0,.45);transition:opacity .3s}
+.is-open .shadow{opacity:1}
+.content{top:0;overflow:hidden}
+.drawer{position:absolute;left:50%;top:0;width:572px;height:160px;transform:translateX(-50%) scale(.965);transform-origin:50% 0;opacity:0;filter:blur(6px);
+  background:radial-gradient(60% 95% at 6% 52%,rgba(92,32,104,.78),rgba(60,20,70,.35) 45%,transparent 80%),#000;
+  transition:opacity .12s,transform .2s,filter .12s;pointer-events:none}
+.is-open .drawer{opacity:1;transform:translateX(-50%) scale(1);filter:none;transition:opacity .26s .17s,transform .42s .1s cubic-bezier(.2,.8,.2,1),filter .26s .17s}
+.shot{position:absolute;left:30px;top:0;width:512px;height:108px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent),linear-gradient(180deg,#000 86%,transparent);
+  -webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent),linear-gradient(180deg,#000 86%,transparent);mask-composite:intersect}
+.shot img{display:block;width:612px;height:141px;margin-left:-50px;margin-top:0}
+.chips{position:absolute;left:34px;right:34px;top:118px;display:flex;justify-content:center;gap:6px;font:500 10.5px/1 var(--sf);color:rgba(247,247,245,.82)}
+.chips span{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.075);white-space:nowrap}
+.chips i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.cursor{position:absolute;left:0;top:0;z-index:20;pointer-events:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))}
+.blurfx{}
+.rt .blurfx{display:none}
+
+/* ---------- theme ---------- */
+
+.rr-bloom,.rr-halo{fill:none;opacity:0;transition:opacity .35s}
+.rr-bloom{stroke:#F01822;stroke-width:16}
+.rr-halo{stroke:#FF2A33;stroke-width:4}
+.is-hover .rr-bloom{opacity:.8;transition:opacity .55s .14s}
+.is-hover .rr-halo{opacity:.9;transition:opacity .4s .1s}
+.is-open .rr-bloom{opacity:.42}
+.is-open .rr-halo{opacity:.7}
+.rr-rim{opacity:0;transition:opacity .25s .32s}
+.is-hover .rr-rim{opacity:1;transition:opacity .06s}
+.rr-rim path{fill:none;stroke:url(#rrGrad);stroke-width:1.7;stroke-dasharray:1 1;stroke-dashoffset:1;transition:stroke-dashoffset .38s cubic-bezier(.5,0,.75,0)}
+.is-hover .rr-rim path{stroke-dashoffset:0;transition:stroke-dashoffset .46s cubic-bezier(.25,.8,.25,1)}
+.rr-spec{fill:none;stroke:url(#rrSpec);stroke-width:.8;opacity:0;transition:opacity .2s}
+.is-hover .rr-spec{opacity:1;transition:opacity .35s .32s}
+.is-open .rr-spec{opacity:.6}
+.rt .rr-halo{filter:none;stroke-width:2.4}
+.rm .rr-rim path,.rm .is-hover .rr-rim path{transition:none;stroke-dashoffset:0}
+.rm .rr-rim,.rm .is-hover .rr-rim,.rm .rr-spec,.rm .is-hover .rr-spec{transition:opacity .15s}
+
+
+/* ---------- live ---------- */
+.live .frame-h{gap:12px}
+.btn{font:600 13px/1 var(--sans);color:var(--ink);background:var(--paper);border:0;border-radius:999px;padding:9px 15px;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{background:#fff}
+.btn:focus-visible,.tog input:focus-visible + span{outline:2px solid var(--red);outline-offset:2px}
+.pills{display:flex;gap:4px;margin-left:auto;font:500 12px/1 var(--mono)}
+.pills span{padding:7px 10px;border-radius:999px;color:var(--faint);border:1px solid var(--line);transition:all .2s}
+.pills span.on{color:var(--paper);border-color:rgba(240,24,34,.6);background:rgba(240,24,34,.16)}
+.live-f{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
+.tog{display:inline-flex;gap:9px;align-items:center;cursor:pointer;font-size:13px;color:var(--muted)}
+.tog input{position:absolute;opacity:0;pointer-events:none}
+.tog span{width:30px;height:18px;border-radius:999px;background:rgba(247,247,245,.16);position:relative;transition:background .2s}
+.tog span::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--paper);transition:transform .2s}
+.tog input:checked + span{background:var(--red)}
+.tog input:checked + span::after{transform:translateX(12px)}
+.live-f .hint{margin-left:auto;color:var(--faint);font-size:13px}
+
+/* ---------- build note ---------- */
+.build{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+@media (max-width:980px){.build{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 22px 20px;min-width:0}
+.card h3{font:600 12.5px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;margin:0 0 14px;color:var(--muted)}
+.card p{margin:0 0 12px;line-height:1.6;color:rgba(247,247,245,.82);font-size:15px}
+.card p:last-child{margin-bottom:0}
+.card p{overflow-wrap:anywhere}
+.card code{font:500 13px var(--mono);color:var(--paper);background:rgba(247,247,245,.07);padding:1px 5px;border-radius:5px}
+pre{margin:16px 0 0;padding:16px 18px;background:var(--card2);border:1px solid var(--line);border-radius:12px;overflow:auto;font:400 12.5px/1.65 var(--mono);color:rgba(247,247,245,.86)}
+pre .k{color:#ff6a70} pre .c{color:rgba(247,247,245,.4)}
+dl{margin:0;display:grid;grid-template-columns:1fr;gap:0}
+dl div{padding:13px 0;border-top:1px solid var(--line)}
+dl div:first-child{border-top:0;padding-top:0}
+dt{font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+dd{margin:0;font-size:14.5px;line-height:1.55;color:rgba(247,247,245,.82)}
+.foot{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:13px;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+
+@media (prefers-reduced-motion: reduce){ .drawer,.is-open .drawer{transition:opacity .15s} }
+.rm .drawer,.rm .is-open .drawer{transition:opacity .15s;transform:translateX(-50%);filter:none}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="tfg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="9"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <mask id="topfade" maskUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><rect x="-700" y="-120" width="1400" height="520" fill="url(#tfg)"/></mask>
+    <filter id="b3" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="b6" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="b10" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="b16" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="b22" filterUnits="userSpaceOnUse" x="-700" y="-120" width="1400" height="520"><feGaussianBlur stdDeviation="22"/></filter>
+    <linearGradient id="rrGrad" gradientUnits="userSpaceOnUse" x1="-170" y1="0" x2="170" y2="0"><stop offset="0" stop-color="#F01822"/><stop offset=".5" stop-color="#FF5A61"/><stop offset="1" stop-color="#F01822"/></linearGradient>
+    <linearGradient id="rrSpec" gradientUnits="userSpaceOnUse" x1="-110" y1="0" x2="110" y2="0"><stop offset="0" stop-color="#FFE1E2" stop-opacity="0"/><stop offset=".5" stop-color="#FFE1E2" stop-opacity=".95"/><stop offset="1" stop-color="#FFE1E2" stop-opacity="0"/></linearGradient>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow"><span class="dot"></span>SparkV · Notch theme · Red series 1/4</div>
+    <nav class="sib" aria-label="Red series themes"><a href="index.html">&larr; All 12 themes</a><a href="sparkv-red-rim.html" aria-current="page">Red Rim</a><a href="conic-sweep.html">Conic Sweep</a><a href="breathing-pulse.html">Breathing Pulse</a><a href="neon-tube.html">Neon Tube</a></nav>
+  </header>
+
+  <h1>SparkV <em>Red Rim</em></h1>
+  <p class="lede">The house style. A crisp line of signal red, the same #F01822 as sparkv.si, traces the notch outline the moment your pointer arrives, backed by a soft red glow. One short animation, then it holds perfectly still.</p>
+  <div class="meta"><span>Hover: <b>rim trace, 460 ms</b></span><span>Idle cost: <b>0 frames</b></span><span>Wallpaper: <b>Dusk Ridge</b></span><span>Min macOS: <b>13</b></span></div>
+
+  <div class="sec-h"><h2>Three states</h2><p>Same pixels, same scale family, frozen so you can compare them.</p></div>
+  <div class="frames">
+    <section class="frame">
+      <div class="frame-h"><span class="num">01</span><span class="lab">Resting</span><span class="spec">220 × 38 pt</span></div>
+      <div class="sw" id="f-rest"></div>
+      <div class="frame-f">Pure black, 12 pt bottom corners, flared shoulders melting into the menu bar. No light at all, so the notch reads as hardware.</div>
+    </section>
+    <section class="frame">
+      <div class="frame-h"><span class="num">02</span><span class="lab">Hovered</span><span class="spec">pointer on notch</span></div>
+      <div class="sw" id="f-hover"></div>
+      <div class="frame-f">A 1.6 pt <b>signal-red rim</b> draws from the bottom centre up both sides in 460 ms, with a soft red bloom behind it and a white-hot core at the lowest point.</div>
+    </section>
+    <section class="frame f-open">
+      <div class="frame-h"><span class="num">03</span><span class="lab">Open</span><span class="spec">572 × 160 pt · after 350 ms</span></div>
+      <div class="sw" id="f-open"></div>
+      <div class="frame-f">The rim rides the spring into the 572 × 160 pt drawer and dims to 70 %, framing the Home page without competing with the album art.</div>
+    </section>
+  </div>
+
+  <div class="sec-h"><h2>Live</h2><p>Point at the notch. It lights up, opens after 350 ms, and closes when you leave.</p></div>
+  <section class="frame live">
+    <div class="frame-h">
+      <span class="num">04</span><span class="lab">Live preview</span>
+      <button class="btn" id="replay" type="button"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1.2v9.6L10.4 6z" fill="currentColor"/></svg>Replay</button>
+      <div class="pills" aria-live="polite"><span data-s="rest" class="on">Resting</span><span data-s="hover">Hovered</span><span data-s="open">Open</span></div>
+    </div>
+    <div class="sw" id="f-live"></div>
+    <div class="frame-f live-f">
+      <label class="tog"><input type="checkbox" id="t-rm"><span></span>Simulate Reduce Motion</label>
+      <label class="tog"><input type="checkbox" id="t-rt"><span></span>Simulate Reduce Transparency</label>
+      <span class="hint">Touch screens: tap the notch to open and close.</span>
+    </div>
+  </section>
+
+  <div class="sec-h"><h2>How SparkV will build it</h2><p>Native layers, not a web view.</p></div>
+  <div class="build">
+    <div class="card">
+      <h3>Technique</h3>
+      <p>The island is one custom SwiftUI <code>Shape</code>, <code>IslandShape</code>, whose <code>animatableData</code> carries width, height, bottom radius and shoulder radius. The same outline drives the black body, the rim and the glow, so all three ride the open spring together.</p>
+<p>The rim is two mirrored half-outlines with <code>.trim(from: 0, to: progress)</code>: that is why the light starts at the bottom centre and climbs both sides into the menu bar. In SparkV's AppKit panel the same idea is a <code>CAShapeLayer</code> with a <code>strokeEnd</code> animation, and the glow layer has <code>shadowPath</code> set, so Core Animation never derives the shadow from pixels.</p>
+      <pre><span class="c">// IslandShape: flared shoulders, rounded bottom. animatableData = (w, h, rb, s)</span>
+IslandShape(metrics: m)
+    .fill(.black)
+    .background {                          <span class="c">// soft red bloom, rendered once</span>
+        IslandOutline(metrics: m)
+            .stroke(Color.sparkRed, lineWidth: 16)
+            .blur(radius: 16)
+            .opacity(reduceTransparency ? 0 : (hovering ? 0.62 : 0))
+            .drawingGroup()
+    }
+    .overlay {                             <span class="c">// rim light from the bottom centre</span>
+        ForEach(IslandHalf.allCases) { half in
+            IslandHalfOutline(half, metrics: m)
+                .trim(from: 0, to: hovering ? 1 : 0)
+                .stroke(rimGradient, lineWidth: 1.6)
+        }
+    }
+    .animation(reduceMotion
+        ? .easeOut(duration: 0.15)
+        : .timingCurve(0.25, 0.8, 0.25, 1, duration: 0.46), value: hovering)</pre>
+    </div>
+    <div class="card">
+      <h3>Cost and accessibility</h3>
+      <dl><div><dt>GPU and battery</dt><dd>One 460 ms animation when the pointer arrives, then zero redraws while it rests. The glow is rasterised once per size change and only its opacity moves. Budget: under 1 % GPU during the trace, 0 % idle.</dd></div><div><dt>Reduce Motion</dt><dd>Reads <code>accessibilityReduceMotion</code>: no trace. The full rim and glow crossfade in over 150 ms, and the open spring becomes a plain fade.</dd></div><div><dt>Reduce Transparency</dt><dd>The blurred bloom is dropped. The rim and a tight halo stay at full opacity, so the highlight is still clear on any wallpaper.</dd></div><div><dt>macOS support</dt><dd>macOS 13+ (Shape, trim, drawingGroup). On macOS 26 this theme deliberately skips <code>.glassEffect</code>: the body must stay pure black to match the camera housing.</dd></div></dl>
+    </div>
+  </div>
+
+  <footer class="foot"><span>SparkV · sparkv.si · signal red #F01822 on near-black #09090A</span><span>HTML simulation of the native effect. Drawer image: real SparkV Home render.</span></footer>
+</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const mq = matchMedia('(prefers-reduced-motion: reduce)');
+  if (mq.matches) root.classList.add('rm');
+  const isRM = () => root.classList.contains('rm');
+
+  const GEO = { rest:{w:220,h:38,rb:12,s:10}, open:{w:572,h:160,rb:32,s:16} };
+
+  // Island outline, x centred on 0, y = 0 at the top edge of the screen.
+  function paths(g){
+    const w=g.w, h=Math.max(12,g.h), s=Math.max(0,Math.min(g.s, h/3)), r=Math.max(2,Math.min(g.rb, h-s-1, w/2));
+    const L=-w/2, R=w/2, f=n=>Math.round(n*100)/100;
+    const run=`A ${f(s)} ${f(s)} 0 0 1 ${f(L)} ${f(s)} L ${f(L)} ${f(h-r)} A ${f(r)} ${f(r)} 0 0 0 ${f(L+r)} ${f(h)} L ${f(R-r)} ${f(h)} A ${f(r)} ${f(r)} 0 0 0 ${f(R)} ${f(h-r)} L ${f(R)} ${f(s)} A ${f(s)} ${f(s)} 0 0 1 ${f(R+s)} 0`;
+    const outline=`M ${f(L-s)} 0 ${run}`;
+    const left=`M 0 ${f(h)} L ${f(L+r)} ${f(h)} A ${f(r)} ${f(r)} 0 0 1 ${f(L)} ${f(h-r)} L ${f(L)} ${f(s)} A ${f(s)} ${f(s)} 0 0 0 ${f(L-s)} 0`;
+    const right=`M 0 ${f(h)} L ${f(R-r)} ${f(h)} A ${f(r)} ${f(r)} 0 0 0 ${f(R)} ${f(h-r)} L ${f(R)} ${f(s)} A ${f(s)} ${f(s)} 0 0 1 ${f(R+s)} 0`;
+    return {outline, fill:`M ${f(L-s)} -2 L ${f(L-s)} 0 ${run} L ${f(R+s)} -2 Z`, left, right, w, h, s, r};
+  }
+
+  const THEME = (function(){ return {behind:'',back:"<path data-p=\"outline\" class=\"rr-bloom blurfx\" filter=\"url(#b16)\"/><path data-p=\"outline\" class=\"rr-halo\" filter=\"url(#b3)\"/>",front:"<g class=\"rr-rim\"><path data-p=\"left\" pathLength=\"1\"/><path data-p=\"right\" pathLength=\"1\"/></g><path data-p=\"outline\" class=\"rr-spec\"/>",over:''}; })();
+
+  const MENUBAR = `
+    <div class="mb-l"><b>SparkV</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span></div>
+    <div class="mb-r">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.4 1.5 4 9h3.6L6.6 14.5 12 7H8.4z" fill="#fff"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12" aria-hidden="true"><rect x=".5" y=".5" width="21" height="11" rx="3.2" fill="none" stroke="rgba(255,255,255,.55)"/><rect x="2" y="2" width="15" height="8" rx="1.8" fill="#fff"/><rect x="22.6" y="4" width="1.6" height="4" rx=".8" fill="rgba(255,255,255,.55)"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.2 5.6 8.6a3.4 3.4 0 0 1 4.8 0zM3.6 6.6a6.2 6.2 0 0 1 8.8 0l-1.3 1.3a4.4 4.4 0 0 0-6.2 0zM1.3 4.3a9.4 9.4 0 0 1 13.4 0l-1.3 1.3a7.6 7.6 0 0 0-10.8 0z" fill="#fff"/></svg>
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="5.8" cy="5.8" r="4.2" fill="none" stroke="#fff" stroke-width="1.6"/><path d="m9 9 3.6 3.6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <svg width="16" height="14" viewBox="0 0 16 14" aria-hidden="true"><rect x=".8" y="1" width="14.4" height="5.2" rx="2.6" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="12.4" cy="3.6" r="1.5" fill="#fff"/><rect x=".8" y="7.8" width="14.4" height="5.2" rx="2.6" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="3.6" cy="10.4" r="1.5" fill="#fff"/></svg>
+      <span class="clock"><span class="day">Thu 22 Oct&nbsp;&nbsp;</span>9:41</span>
+    </div>`;
+
+  const CURSOR = `<svg width="17" height="25" viewBox="0 0 17 25" aria-hidden="true"><path d="M1.2 1.2v19.4l4.7-4.5 3 7 3.2-1.4-3-6.8h6.6z" fill="#000" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+
+  const ro = new ResizeObserver(es => { for (const e of es) { const st=e.target._stage; st.style.transform=`scale(${e.contentRect.width/st._W})`; } });
+
+  function buildStage(id, W, H){
+    const sw=document.getElementById(id); sw.style.setProperty('--ar', W+' / '+H);
+    const st=document.createElement('div'); st.className='stage'+(W<600?' narrow':''); st._W=W; st.style.width=W+'px'; st.style.height=H+'px';
+    st.innerHTML=`<div class="wall"></div><div class="menubar">${MENUBAR}</div>`;
+    sw.appendChild(st); sw._stage=st; ro.observe(sw); return st;
+  }
+
+  class Island {
+    constructor(stage, onState){
+      this.onState=onState;
+      const el=this.el=document.createElement('div'); el.className='island'; el.dataset.state='rest';
+      el.innerHTML=`${THEME.behind||''}<div class="shadow"></div>
+        <svg class="isl-svg back" viewBox="-700 -120 1400 520"><g class="fx-back" mask="url(#topfade)">${THEME.back||''}</g><path class="body" data-p="fill"/></svg>
+        ${THEME.under||''}
+        <div class="content"><div class="drawer">
+          <div class="shot"><img src="assets/01-home.png" alt="SparkV Home drawer: Midnight City by M83 playing, Dictate and Capture to Tray buttons, camera Mirror" draggable="false"></div>
+          <div class="chips"><span><i style="--c:#7d6bff"></i>Focus · 42 min</span><span><i style="--c:#ff4f6d"></i>Clipboard · 12</span><span><i style="--c:#4cd964"></i>Translate On</span><span><i style="--c:#F01822"></i>2 agents running</span></div>
+        </div></div>
+        <svg class="isl-svg front" viewBox="-700 -120 1400 520"><g class="fx-front" mask="url(#topfade)">${THEME.front||''}</g></svg>
+        ${THEME.over||''}`;
+      stage.appendChild(el);
+      this.content=el.querySelector('.content'); this.shadow=el.querySelector('.shadow');
+      this.pathEls=[...el.querySelectorAll('[data-p]')];
+      this.g={...GEO.rest}; this.v={w:0,h:0,rb:0,s:0}; this.target=GEO.rest; this.state='rest';
+      THEME.init && THEME.init(this);
+      this.apply();
+    }
+    q(s){ return this.el.querySelector(s); }
+    apply(){
+      const P=paths(this.g);
+      for (const p of this.pathEls) p.setAttribute('d', P[p.dataset.p]);
+      const box=`left:${-P.w/2}px;width:${P.w}px;height:${P.h}px;border-radius:0 0 ${P.r}px ${P.r}px`;
+      this.content.style.cssText=box; this.shadow.style.cssText=box;
+      const s=this.el.style; s.setProperty('--w',P.w); s.setProperty('--h',P.h); s.setProperty('--s',P.s);
+      THEME.geo && THEME.geo(this, P);
+    }
+    set(state, instant){
+      if (state===this.state && !instant) return;
+      const prev=this.state; this.state=state;
+      this.el.classList.toggle('is-hover', state!=='rest');
+      this.el.classList.toggle('is-open', state==='open');
+      this.el.dataset.state=state;
+      this.target = state==='open' ? GEO.open : GEO.rest;
+      this.cfg = state==='open' ? {resp:.42, damp:.76} : {resp:.34, damp:1};
+      THEME.state && THEME.state(this, state, prev);
+      this.onState && this.onState(state);
+      if (instant || isRM()) { cancelAnimationFrame(this.raf); this.raf=null; this.g={...this.target}; this.v={w:0,h:0,rb:0,s:0}; this.apply(); return; }
+      if (!this.raf) { this.last=performance.now(); this.raf=requestAnimationFrame(t=>this.step(t)); }
+    }
+    step(t){
+      const dt=Math.min(.1,Math.max(0,(t-this.last)/1000)); this.last=t; const n=Math.max(2,Math.ceil(dt/.004));
+      const om=2*Math.PI/this.cfg.resp, k=om*om, c=2*this.cfg.damp*om; let moving=false;
+      for (const key in this.g){
+        for (let i=0;i<n;i++){ const h=dt/n; const a=k*(this.target[key]-this.g[key])-c*this.v[key]; this.v[key]+=a*h; this.g[key]+=this.v[key]*h; }
+        if (Math.abs(this.target[key]-this.g[key])>.04 || Math.abs(this.v[key])>.04) moving=true;
+      }
+      if (!moving){ this.g={...this.target}; this.v={w:0,h:0,rb:0,s:0}; }
+      this.apply();
+      this.raf = moving ? requestAnimationFrame(tt=>this.step(tt)) : null;
+    }
+  }
+
+  function addCursor(stage, x, y){ const c=document.createElement('div'); c.className='cursor'; c.innerHTML=CURSOR; c.style.transform=`translate(${x}px,${y}px)`; stage.appendChild(c); return c; }
+
+  // ---- static frames ----
+  const sRest=buildStage('f-rest',420,162); new Island(sRest).set('rest',true);
+  const sHover=buildStage('f-hover',420,162); new Island(sHover).set('hover',true); addCursor(sHover,210+46,21);
+  const sOpen=buildStage('f-open',780,300); new Island(sOpen).set('open',true); addCursor(sOpen,390+150,74);
+
+  // ---- live frame ----
+  const narrowLive=document.getElementById('f-live').clientWidth<760; const LW=narrowLive?660:1100, LH=narrowLive?300:380;
+  const sLive=buildStage('f-live',LW,LH);
+  const pills=[...document.querySelectorAll('.pills span')];
+  const live=new Island(sLive, st => pills.forEach(p=>p.classList.toggle('on', p.dataset.s===st)));
+  const hit=live.content; hit.style.pointerEvents='auto';
+  let openT=null, token=0;
+  const fake=addCursor(sLive, LW/2+320, 300); fake.style.opacity=0;
+  function hoverIn(){ if (live.state==='rest') live.set('hover'); clearTimeout(openT); openT=setTimeout(()=>live.set('open'),350); }
+  function hoverOut(){ clearTimeout(openT); live.set('rest'); }
+  function cancelScript(){ token++; fake.style.opacity=0; }
+  hit.addEventListener('pointerenter', e=>{ if (e.pointerType==='touch') return; cancelScript(); hoverIn(); });
+  hit.addEventListener('pointerleave', e=>{ if (e.pointerType==='touch') return; if (fake.style.opacity==='1') return; hoverOut(); });
+  hit.addEventListener('click', ()=>{ cancelScript(); if (live.state==='open') hoverOut(); else { clearTimeout(openT); live.set('open'); } });
+
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  function moveFake(x,y,ms){ fake.style.transition = isRM() ? 'opacity .2s' : `transform ${ms}ms cubic-bezier(.4,0,.15,1), opacity .2s`; fake.style.transform=`translate(${x}px,${y}px)`; }
+  async function replay(){
+    const my=++token; clearTimeout(openT); live.set('rest',true);
+    fake.style.transition='none'; fake.style.transform=`translate(${LW/2+330}px,300px)`; fake.style.opacity=1;
+    await wait(60); if (my!==token) return;
+    moveFake(LW/2+44,20,1000); await wait(1000); if (my!==token) return;
+    hoverIn(); await wait(350+2900); if (my!==token) return;
+    moveFake(LW/2+150,96,700); await wait(1100); if (my!==token) return;
+    moveFake(LW/2+400,320,800); await wait(260); if (my!==token) return;
+    hoverOut(); await wait(900); if (my!==token) return;
+    fake.style.opacity=0;
+  }
+  document.getElementById('replay').addEventListener('click', replay);
+  setTimeout(replay, 900);
+
+  // ---- accessibility simulation ----
+  const tRM=document.getElementById('t-rm'), tRT=document.getElementById('t-rt');
+  tRM.checked=isRM();
+  tRM.addEventListener('change',()=>root.classList.toggle('rm',tRM.checked));
+  tRT.addEventListener('change',()=>root.classList.toggle('rt',tRT.checked));
+  mq.addEventListener('change',e=>{ root.classList.toggle('rm',e.matches); tRM.checked=e.matches; });
+})();
+</script>
+</body>
+</html>

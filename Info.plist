@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>SparkV</string>
+	<key>CFBundleExecutable</key>
+	<string>SparkV</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.sparkv.app</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>SparkV</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>SparkV reads the current track from Music and Spotify and sends play, pause and skip commands to them. When you choose Save to Spaces, it reads the open page from Safari, Chrome, Arc, Edge or Brave, or the selected message in Mail. The Job Agent reads the address and title of the job page you capture with fn + Control. During Focus, it reads the address of the front browser tab to spot sites you chose to block. During a Mode, SparkV opens your chosen music in its own Safari window (or plays a playlist in Music) and closes only that window when the mode ends, and switches between light and dark appearance through System Events.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>SparkV shows your AirPods and headphones' battery when they connect.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>SparkV shows your next meeting under the notch with a one-click Join button.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>SparkV adds the meeting tasks you tick to Reminders. Nothing is added unless you click Add.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>SparkV listens to what your Mac plays while Ambient Light is on, so the notch can glow with your music. The sound is analyzed on this Mac and never recorded.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SparkV uses your FaceTime HD camera for the private mirror preview, to warn you when you sit too close to the screen (Screen Distance, if you turn it on) and, if you set it up, to recognize your face and unlock your Mac. Video is processed on-device and never leaves your Mac.</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>SparkV saves your screen recordings to the Desktop and moves a download there when you sort it there.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>SparkV moves a download into your Documents folder when you sort it there.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>SparkV shows download progress under the notch and helps you sort finished downloads. Files only move when you choose a folder or turn on an auto-sort rule.</string>
+	<key>NSFileProviderDomainUsageDescription</key>
+	<string>SparkV keeps a SparkV folder in iCloud Drive up to date so you can read your meetings and notes on your iPhone.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SparkV listens while you dictate, ask Clicky, record a meeting or narrate a screen recording, and turns your speech into text on this Mac.</string>
+	<key>NSPrefersDisplaySafeAreaCompatibilityMode</key>
+	<false/>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SparkV transcribes dictation, Clicky questions and meetings with on-device speech recognition. Audio is never sent off your Mac.</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>com.apple.package</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>SparkV Space</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.sparkv.space</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>sparkvspace</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>

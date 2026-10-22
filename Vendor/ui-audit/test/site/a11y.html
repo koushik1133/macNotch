@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>A11y</title>
+<style>body{font-family:sans-serif;margin:20px} .low{color:#bbb;background:#fff} button.icon{width:14px;height:14px;padding:0;border:0;background:#333} *:focus{outline:none}
+.clip{width:90px;height:20px;overflow:hidden;white-space:nowrap;border:1px solid #ccc} .stack{position:relative;height:40px} .stack span{position:absolute;top:0;left:0;font-size:18px}
+.fake{cursor:pointer;color:blue;text-decoration:underline}</style></head><body>
+<h1>Accessibility issues</h1>
+<p class="low">This low contrast text is hard to read for many people with low vision.</p>
+<button class="icon" id="iconbtn"></button>
+<a href="/" id="tiny" style="font-size:8px;display:inline-block;width:10px;height:10px;overflow:hidden">x</a>
+<div class="clip" id="cliptext">This sentence is far too long for the box</div>
+<div class="stack"><span id="ov1">Overlapping headline</span><span id="ov2">Another label here</span></div>
+<div class="fake" id="fakelink" onclick="location.href='/'">Fake link div</div>
+<input type="text" id="noname">
+<a href="/" tabindex="3">Positive tabindex link</a>
+<label for="trap">Search</label><input id="trap" type="search" onkeydown="if(event.key==='Tab')event.preventDefault()">
+</body></html>

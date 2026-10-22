@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%2309090A%22/%3E%3Cpath d=%22M16 5l2.6 8.4L27 16l-8.4 2.6L16 27l-2.6-8.4L5 16l8.4-2.6z%22 fill=%22%23F01822%22/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notch themes · SparkV</title>
+<meta name="description" content="Twelve hover themes for the SparkV notch island, each shown resting and hovered.">
+<style>
+:root{
+  color-scheme:dark;
+  --ink:#09090A; --card:#111113; --card2:#16161a; --paper:#F7F7F5; --mute:rgba(247,247,245,.62); --faint:rgba(247,247,245,.38);
+  --line:rgba(247,247,245,.10); --line2:rgba(247,247,245,.22); --red:#F01822; --redsoft:rgba(240,24,34,.14);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ink);color:var(--paper);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+.wrap{max-width:1360px;margin:0 auto;padding:0 32px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:650;letter-spacing:-.01em}
+.brand svg{width:18px;height:18px}
+.brand small{font-weight:450;color:var(--faint);margin-left:4px}
+.top nav{display:flex;gap:6px;flex-wrap:wrap}
+.top nav a{font-size:13px;text-decoration:none;color:var(--mute);padding:6px 12px;border:1px solid var(--line);border-radius:999px}
+.top nav a:hover{color:var(--paper);border-color:var(--line2)}
+
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:end;padding:72px 0 48px}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--red);margin:0 0 18px}
+h1{font-size:clamp(44px,7vw,88px);line-height:.95;letter-spacing:-.045em;margin:0;font-weight:700}
+.hero p{color:var(--mute);font-size:17px;margin:0 0 14px;max-width:56ch}
+.hero p b{color:var(--paper);font-weight:600}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.chip{display:inline-flex;align-items:center;gap:7px;font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:7px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--paper);background:rgba(9,9,10,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--faint);display:block}
+.chip.hov{border-color:rgba(240,24,34,.6)}
+.chip.hov i{background:var(--red);box-shadow:0 0 8px var(--red)}
+
+.group{padding:28px 0 8px;border-top:1px solid var(--line);margin-top:24px}
+.ghead{display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.ghead h2{margin:0;font-size:22px;letter-spacing:-.02em;font-weight:650}
+.ghead h2 span{font:500 12px/1 var(--mono);color:var(--faint);letter-spacing:.12em;margin-left:12px;vertical-align:middle}
+.ghead p{margin:0;color:var(--mute);max-width:62ch;font-size:14px}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.card{container-type:inline-size;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:14px;transition:border-color .2s}
+.card:hover{border-color:var(--line2)}
+.chead{display:flex;align-items:flex-start;gap:14px}
+.num{flex:none;font:700 28px/1 var(--mono);letter-spacing:-.04em;color:var(--red);min-width:50px;padding-top:2px}
+.chead h3{margin:0;font-size:20px;letter-spacing:-.02em;font-weight:650}
+.chead .say{font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:6px}
+.chead p{margin:8px 0 0;color:var(--mute);font-size:14px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@container (max-width:470px){.pair{grid-template-columns:1fr}}
+figure{margin:0}
+.shot{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;aspect-ratio:2.62/1}
+.shot img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 0;transform:scale(1.16);transform-origin:50% 0}
+.shot .chip{position:absolute;left:8px;bottom:8px;padding:6px 9px;font-size:10px}
+.hovfig .shot{border-color:rgba(240,24,34,.45);box-shadow:0 0 0 1px rgba(240,24,34,.15),0 10px 30px -12px rgba(240,24,34,.35)}
+figcaption{font-size:12.5px;color:var(--faint);margin-top:7px;line-height:1.45}
+.cfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:auto;padding-top:4px}
+.open{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-weight:600;font-size:14px;padding:9px 15px;border-radius:999px;background:var(--paper);color:var(--ink);transition:background .2s,color .2s}
+.open:hover{background:var(--red);color:var(--paper)}
+.open:focus-visible,.alt:focus-visible,.top nav a:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+.alt{font-size:12.5px;color:var(--mute);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}
+.alt:hover{color:var(--paper)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font:500 11px/1 var(--mono);color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:6px 9px}
+
+.note{margin:44px 0 0;padding:22px 24px;border:1px solid var(--line);border-radius:18px;color:var(--mute);font-size:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.note b{display:block;color:var(--paper);font-weight:600;margin-bottom:4px}
+footer{padding:36px 0 56px;color:var(--faint);font-size:13px}
+footer a{color:var(--mute)}
+
+@media (max-width:1060px){.grid{grid-template-columns:1fr}.hero{grid-template-columns:1fr;gap:20px;padding-top:52px}.note{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .top nav{display:none}
+  .card{padding:14px;border-radius:18px}
+  .num{font-size:22px;min-width:38px}
+  .hero{padding:40px 0 28px}
+  .hero p{font-size:15.5px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="https://www.sparkv.si"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3l3 10 10 3-10 3-3 10-3-10-10-3 10-3z" fill="#F01822"/></svg>SparkV <small>Notch themes</small></a>
+    <nav aria-label="Theme groups"><a href="#glass">1–4 Glass</a><a href="#red">5–8 Signal red</a><a href="#light">9–12 Motion &amp; light</a></nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Hover highlight · 12 options</p>
+      <h1>Notch themes</h1>
+    </div>
+    <div>
+      <p>Each card shows the same island twice: <b>Resting</b> (pointer elsewhere, pure black, the exact size of the camera notch) and <b>Hovered</b> (pointer on the notch, highlight fully on). Open a demo to see it move, open into the drawer, and close.</p>
+      <p>Pick one by number, for example <b>“theme 4”</b>.</p>
+      <div class="legend"><span class="chip"><i></i>Resting</span><span class="chip hov"><i></i>Hovered</span></div>
+    </div>
+  </section>
+
+  <!-- GROUP 1 -->
+  <section class="group" id="glass">
+    <div class="ghead"><h2>Glass <span>THEMES 1–4</span></h2><p>The bubble and glass looks: a clear rim that bends and lights the wallpaper around the notch.</p></div>
+    <div class="grid">
+      <article class="card">
+        <div class="chead"><div class="num">01</div><div><h3>Liquid Glass Bubble</h3><div class="say">Say “theme 1”</div><p>The notch swells slightly with a spring and grows a soap-bubble rim: a slowly turning rainbow sheen, bright shoulder highlights and bent wallpaper at the edge.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/liquid-glass-bubble-rest.png" alt="Liquid Glass Bubble, resting: plain black notch" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/liquid-glass-bubble-hover.png" alt="Liquid Glass Bubble, hovered: iridescent bubble rim around the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>236 × 44 pt with a 9 pt bubble rim.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="liquid-glass-bubble.html">Open full demo →</a><a class="alt" href="liquid-glass-bubble.html#full">Force glass on</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">02</div><div><h3>Frosted Halo</h3><div class="say">Say “theme 2”</div><p>A 15 pt ring of frosted glass blooms around the notch: blurred wallpaper, a light white fill, fine grain and one soft pulse of light as the hover starts.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/frosted-halo-rest.png" alt="Frosted Halo, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/frosted-halo-hover.png" alt="Frosted Halo, hovered: frosted ring around the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>Frosted ring, thin white edge.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="frosted-halo.html">Open full demo →</a><a class="alt" href="frosted-halo.html#full">Force glass on</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">03</div><div><h3>Dewdrop</h3><div class="say">Say “theme 3”</div><p>A single water drop rides the notch rim and follows the pointer. It magnifies the wallpaper upside down, and the wet rim is brightest next to it. The quietest glass option.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/dewdrop-rest.png" alt="Dewdrop, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/dewdrop-hover.png" alt="Dewdrop, hovered: a glass drop on the bottom rim of the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>Drop sits under the pointer on the rim.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="dewdrop.html">Open full demo →</a><a class="alt" href="dewdrop.html#full">Force glass on</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">04</div><div><h3>Glass Pill</h3><div class="say">Say “theme 4”</div><p>The macOS 26 Liquid Glass look. Bottom corners round into a pill inside an 11 pt clear glass shell that bends the wallpaper, catches light on two edges and casts a soft shadow.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/glass-pill-rest.png" alt="Glass Pill, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/glass-pill-hover.png" alt="Glass Pill, hovered: thick clear glass shell around a pill-shaped notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>238 × 42 pt pill, 11 pt shell.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="glass-pill.html">Open full demo →</a><a class="alt" href="glass-pill.html#full">Force glass on</a></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- GROUP 2 -->
+  <section class="group" id="red">
+    <div class="ghead"><h2>Signal red <span>THEMES 5–8</span></h2><p>Brand-first borders in SparkV red #F01822: a line, a sweep, a pulse or a neon tube along the notch edge.</p></div>
+    <div class="grid">
+      <article class="card">
+        <div class="chead"><div class="num">05</div><div><h3>Red Rim</h3><div class="say">Say “theme 5”</div><p>A thin signal-red rim draws itself from the bottom centre up both sides into the menu bar, with a soft red glow and a white-hot point at the bottom.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/sparkv-red-rim-rest.png" alt="Red Rim, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/sparkv-red-rim-hover.png" alt="Red Rim, hovered: red glowing outline on the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>1.6 pt red rim, drawn in 460 ms.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="sparkv-red-rim.html">Open full demo →</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">06</div><div><h3>Conic Sweep</h3><div class="say">Say “theme 6”</div><p>A red-to-white gradient border spins around the outline, with a white highlight passing about every 2.8 s over a blurred halo.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/conic-sweep-rest.png" alt="Conic Sweep, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/conic-sweep-hover.png" alt="Conic Sweep, hovered: red and white gradient border around the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>2 pt spinning gradient border.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="conic-sweep.html">Open full demo →</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">07</div><div><h3>Breathing Pulse</h3><div class="say">Say “theme 7”</div><p>A heartbeat every 2.4 s: a red ring, then a white ring, spread outward from the edge while a glow swells behind the notch.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/breathing-pulse-rest.png" alt="Breathing Pulse, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/breathing-pulse-hover.png" alt="Breathing Pulse, hovered: red rings spreading from the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>Captured mid-beat.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="breathing-pulse.html">Open full demo →</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">08</div><div><h3>Neon Tube</h3><div class="say">Say “theme 8”</div><p>A red neon tube with a pink-white core flickers on like a real sign, then hums and throws red light onto the wall below. The boldest of the set.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/neon-tube-rest.png" alt="Neon Tube, resting: faint unlit tube line" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>Unlit tube, a faint line.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/neon-tube-hover.png" alt="Neon Tube, hovered: bright red neon outline with glow on the wall" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>Lit after three quick flickers.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="neon-tube.html">Open full demo →</a></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- GROUP 3 -->
+  <section class="group" id="light">
+    <div class="ghead"><h2>Motion &amp; light <span>THEMES 9–12</span></h2><p>Effects that react to the pointer or add colour, plus one calm option for people who want almost nothing.</p></div>
+    <div class="grid">
+      <article class="card">
+        <div class="chead"><div class="num">09</div><div><h3>Magnetic Ripple</h3><div class="say">Say “theme 9”</div><p>Glass rings with a red/cyan fringe spread from the pointer and bend the wallpaper and menu bar as they pass. The rim glows brightest under the pointer.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/magnetic-ripple-rest.png" alt="Magnetic Ripple, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/magnetic-ripple-hover.png" alt="Magnetic Ripple, hovered: a glass ring spreading from the pointer" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>One ring mid-spread. Best seen live.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="magnetic-ripple.html">Open full demo →</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">10</div><div><h3>Aurora</h3><div class="say">Say “theme 10”</div><p>A blurred, slowly turning glow in red, magenta and deep blue behind the island edge, with a thin rim of moving colour.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/aurora-rest.png" alt="Aurora, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/aurora-hover.png" alt="Aurora, hovered: red, magenta and blue glow behind the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>Aurora glow and 1 pt colour rim.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="aurora.html">Open full demo →</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">11</div><div><h3>Particle Spark</h3><div class="say">Say “theme 11”</div><p>Sixteen red sparks burst from the pointer and race around the outline both ways, with white-hot heads, short trails and falling embers.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/particle-spark-rest.png" alt="Particle Spark, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/particle-spark-hover.png" alt="Particle Spark, hovered: red sparks running along the notch outline" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>Sparks riding the outline.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="particle-spark.html">Open full demo →</a></div>
+      </article>
+
+      <article class="card">
+        <div class="chead"><div class="num">12</div><div><h3>Minimal Hairline</h3><div class="say">Say “theme 12”</div><p>The calm option: a 1 px white hairline fades in and a soft shadow lifts the island. One 200 ms fade, nothing running per frame.</p></div></div>
+        <div class="pair">
+          <figure><div class="shot"><img src="previews/minimal-hairline-rest.png" alt="Minimal Hairline, resting" loading="lazy"><span class="chip"><i></i>Resting</span></div><figcaption>220 × 38 pt, pure black.</figcaption></figure>
+          <figure class="hovfig"><div class="shot"><img src="previews/minimal-hairline-hover.png" alt="Minimal Hairline, hovered: thin white line around the notch" loading="lazy"><span class="chip hov"><i></i>Hovered</span></div><figcaption>1 px hairline, soft shadow.</figcaption></figure>
+        </div>
+        <div class="cfoot"><a class="open" href="minimal-hairline.html">Open full demo →</a></div>
+      </article>
+    </div>
+  </section>
+
+  <div class="note">
+    <div><b>In every demo</b>Three frozen frames (Resting, Hovered, Open), then a live frame: point at the notch, it opens after 350 ms and closes when you leave. Replay runs it for you.</div>
+    <div><b>Glass themes 1–4</b>If Reduce Transparency is on in your Mac's settings, these start in the plain grey fallback. Use “Force glass on” or the toggle in the live frame.</div>
+    <div><b>Accessibility</b>Every theme respects Reduce Motion and Reduce Transparency, and each page explains how SparkV will build it natively.</div>
+  </div>
+
+  <footer>SparkV · <a href="https://www.sparkv.si">sparkv.si</a> · Previews are screenshots of each demo's own Resting and Hovered frames.</footer>
+</div>
+</body>
+</html>

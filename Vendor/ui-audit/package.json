@@ -1,0 +1,17 @@
+{
+  "name": "notchisland-ui-audit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SparkV UI / frontend audit runner (Playwright + axe-core). Audits the user's own website.",
+  "type": "module",
+  "main": "audit.mjs",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "audit": "node audit.mjs"
+  },
+  "dependencies": {
+    "axe-core": "4.14.0",
+    "playwright-core": "1.64.1"
+  }
+}

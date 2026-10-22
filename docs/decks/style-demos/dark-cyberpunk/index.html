@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SparkV Cyberpunk Deck</title>
+<meta name="description" content="Style demo: six 16:9 SparkV sample slides in a dark cyberpunk look (pure black, neon red #FF1E2D, HUD labels).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* 60: void */
+  --void: #000000;
+  /* 30: neutrals (surfaces, hairlines, text) */
+  --panel: #0A0A0C;
+  --panel-2: #111114;
+  --line: #26262B;
+  --line-2: #3A3A41;
+  --text: #F2F2F4;
+  --text-2: #A1A1AA;
+  --text-3: #6B6B74;
+  /* 10: neon accent */
+  --neon: #FF1E2D;
+  --neon-deep: #8A0F18;
+  --neon-glow: rgba(255, 30, 45, 0.45);
+  --aberr: rgba(0, 229, 255, 0.28); /* shadow-only chromatic offset, never a fill */
+
+  --f-display: "Chakra Petch", "Rajdhani", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* 12-col grid on the 1600x900 frame */
+  --m: 80px;   /* side margin */
+  --g: 24px;   /* gutter */
+  --step: 122px; /* column 98 + gutter 24 */
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #050505; color-scheme: dark; }
+body {
+  background: #050505; color: var(--text);
+  font-family: var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  padding: 40px 16px 80px;
+}
+.page-head { max-width: 1600px; margin: 0 auto 28px; display: grid; gap: 8px; }
+.page-head .tag { font: 500 12px/1 var(--f-mono); letter-spacing: .16em; color: var(--neon); text-transform: uppercase; }
+.page-head h1 { font: 600 clamp(24px, 3.2vw, 40px)/1.1 var(--f-display); letter-spacing: .01em; }
+.page-head p { color: var(--text-2); font-size: 15px; line-height: 1.5; max-width: 70ch; }
+.deck { max-width: 1600px; margin: 0 auto; display: grid; gap: 36px; }
+.slot-label { font: 500 11px/1 var(--f-mono); letter-spacing: .16em; color: var(--text-3); text-transform: uppercase; margin-bottom: 10px; }
+.wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid #141417; }
+
+/* ---------- slide frame ---------- */
+.slide {
+  position: absolute; left: 0; top: 0; width: 1600px; height: 900px;
+  transform-origin: 0 0; overflow: hidden;
+  background-color: var(--void);
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.slide::before { /* ambient red bloom */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(900px 520px at var(--gx, 85%) var(--gy, 10%), rgba(255,30,45,.13), transparent 70%);
+}
+.slide::after { /* scanlines */
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 20;
+  background: repeating-linear-gradient(to bottom, rgba(255,255,255,.028) 0 1px, transparent 1px 3px);
+}
+.brackets {
+  position: absolute; inset: 24px; pointer-events: none; z-index: 21;
+  --c: var(--neon); --l: 28px; --w: 2px;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / var(--l) var(--w) no-repeat,
+    linear-gradient(var(--c), var(--c)) top left / var(--w) var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / var(--l) var(--w) no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / var(--w) var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) var(--w) no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / var(--w) var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) var(--w) no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / var(--w) var(--l) no-repeat;
+  opacity: .9;
+}
+
+/* grid block: --c start col (0-11), --s span, --y top px, --h height px */
+.b {
+  position: absolute; z-index: 2;
+  left: calc(var(--m) + var(--c, 0) * var(--step));
+  width: calc(var(--s, 12) * var(--step) - var(--g));
+  top: calc(var(--y) * 1px); height: calc(var(--h) * 1px);
+}
+
+/* ---------- HUD chrome ---------- */
+.hud { font: 500 13px/16px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
+.hud b { color: var(--neon); font-weight: 500; }
+.hud .r { float: right; }
+.hud .dot { display: inline-block; width: 6px; height: 6px; background: var(--neon); box-shadow: 0 0 8px var(--neon); margin-right: 10px; vertical-align: 2px; }
+
+.kicker { font: 500 15px/20px var(--f-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--neon); white-space: nowrap; }
+.kicker span { color: var(--text-3); }
+.h1 {
+  font: 700 60px/76px var(--f-display); letter-spacing: .005em; color: var(--text); white-space: nowrap;
+  text-shadow: -2px 0 rgba(255,30,45,.75), 2px 0 var(--aberr), 0 0 28px rgba(255,30,45,.35);
+}
+.lead { font: 400 22px/31px var(--f-body); color: var(--text-2); }
+.lead strong { color: var(--text); font-weight: 500; }
+
+/* glitch rule: hairline + offset neon segments */
+.glitch {
+  background:
+    linear-gradient(var(--neon), var(--neon)) 0 1px / 96px 2px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) 108px 1px / 12px 2px no-repeat,
+    linear-gradient(rgba(255,30,45,.55), rgba(255,30,45,.55)) 132px 0 / 220px 1px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) 368px 3px / 40px 1px no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 2px / 100% 1px no-repeat;
+  filter: drop-shadow(0 0 6px var(--neon-glow));
+}
+
+.panel { background: rgba(10,10,12,.92); border: 1px solid var(--line); }
+.panel.tick::before {
+  content: ""; position: absolute; left: -1px; top: -1px; width: 14px; height: 14px;
+  border-left: 2px solid var(--neon); border-top: 2px solid var(--neon);
+}
+.label { font: 500 13px/16px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.mono { font-family: var(--f-mono); }
+.neon { color: var(--neon); }
+
+/* ---------- slide 1 ---------- */
+.s1 { --gx: 50%; --gy: 0%; }
+.keyvis { display: flex; justify-content: center; }
+.keyvis img { width: 100%; height: 100%; object-fit: contain; object-position: top; filter: drop-shadow(0 18px 50px rgba(255,30,45,.32)) drop-shadow(0 0 1px rgba(255,30,45,.9)); }
+.cap-c { text-align: center; }
+.wordmark {
+  font: 700 128px/164px var(--f-display); letter-spacing: .06em; color: var(--text); white-space: nowrap;
+  text-shadow: -4px 0 rgba(255,30,45,.85), 4px 0 var(--aberr), 0 0 48px rgba(255,30,45,.5);
+}
+.tagline { font: 600 40px/52px var(--f-display); color: var(--text); white-space: nowrap; }
+.tagline em { font-style: normal; color: var(--neon); text-shadow: 0 0 18px var(--neon-glow); }
+.cta-line { font: 500 15px/20px var(--f-mono); letter-spacing: .14em; color: var(--text-2); text-transform: uppercase; white-space: nowrap; }
+.cta-line b { color: var(--neon); font-weight: 700; }
+.readout { position: absolute; padding: 24px 28px; display: grid; grid-template-rows: 16px repeat(5, 1fr); row-gap: 0; }
+.ro-row { border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 16px; }
+.ro-row:first-of-type { border-top: 0; }
+.ro-v { font: 600 34px/44px var(--f-display); color: var(--text); text-align: right; white-space: nowrap; }
+.ro-v.neon { color: var(--neon); text-shadow: 0 0 18px var(--neon-glow); }
+.ro-k { display: grid; gap: 4px; }
+.ro-k .note { font: 400 14px/18px var(--f-body); color: var(--text-2); }
+
+/* ---------- slide 2 ---------- */
+.s2 { --gx: 10%; --gy: 70%; }
+.bigstat { font: 700 128px/164px var(--f-display); color: var(--neon); white-space: nowrap;
+  text-shadow: -3px 0 rgba(255,30,45,.6), 3px 0 var(--aberr), 0 0 44px rgba(255,30,45,.55); }
+.stack-v { display: grid; align-content: start; gap: 0; }
+.pain { border-top: 1px solid var(--line); padding: 16px 0 0; display: grid; grid-template-columns: 56px 1fr; column-gap: 8px; }
+.pain .idx { font: 500 13px/24px var(--f-mono); color: var(--neon); letter-spacing: .1em; }
+.pain p { font: 400 18px/26px var(--f-body); color: var(--text-2); }
+.pain p strong { color: var(--text); font-weight: 600; }
+.proc { position: absolute; display: grid; grid-template-rows: 44px repeat(5, 1fr) 56px; }
+.proc .row { display: grid; grid-template-columns: 64px 200px 1fr 220px; align-items: center; padding: 0 24px; border-top: 1px solid var(--line); }
+.proc .row.head { border-top: 0; background: var(--panel-2); }
+.proc .row .c-id { font: 500 14px var(--f-mono); color: var(--text-3); }
+.proc .row .c-cat { font: 600 20px var(--f-display); color: var(--text); letter-spacing: .02em; }
+.proc .row .c-ex { font: 400 17px var(--f-body); color: var(--text-2); }
+.proc .row .c-pr { font: 500 16px var(--f-mono); color: var(--text); text-align: right; }
+.proc .row .c-pr.rec { color: var(--neon); }
+.proc .sum { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-top: 1px solid var(--neon-deep); background: linear-gradient(90deg, rgba(255,30,45,.12), transparent 70%); }
+
+/* ---------- slide 3 ---------- */
+.s3 { --gx: 25%; --gy: 55%; }
+.mac { position: absolute; }
+.lid { position: absolute; left: 34px; top: 20px; width: 640px; height: 400px; border-radius: 22px 22px 6px 6px; background: #121215; border: 1px solid #2c2c32; box-shadow: 0 0 0 1px #000 inset, 0 30px 80px rgba(255,30,45,.18); }
+.screen { position: absolute; left: 12px; top: 12px; right: 12px; bottom: 16px; border-radius: 12px 12px 2px 2px; overflow: hidden;
+  background:
+    radial-gradient(520px 300px at 50% 115%, rgba(255,30,45,.32), transparent 70%),
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px) 0 0 / 24px 24px,
+    #07070a; }
+.menubar { position: absolute; left: 0; right: 0; top: 0; height: 22px; background: rgba(0,0,0,.55); display: flex; justify-content: space-between; align-items: center; padding: 0 14px; font: 500 10px var(--f-body); color: rgba(255,255,255,.55); }
+.menubar .l, .menubar .rr { display: flex; gap: 14px; }
+.notch { position: absolute; left: 50%; top: 0; width: 118px; height: 22px; transform: translateX(-50%); background: #000; border-radius: 0 0 10px 10px; z-index: 3; }
+.notch::after { content: ""; position: absolute; left: 50%; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: #0d0f1a; box-shadow: inset 0 0 0 1px #1c2030; transform: translateX(-50%); }
+.drawer { position: absolute; left: 50%; top: 0; width: 520px; transform: translateX(-50%); z-index: 2; filter: drop-shadow(0 10px 30px rgba(0,0,0,.8)) drop-shadow(0 0 1px rgba(255,30,45,.7)); }
+.screen .hint { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; font: 500 11px var(--f-mono); letter-spacing: .2em; color: rgba(255,255,255,.35); text-transform: uppercase; }
+.base { position: absolute; left: 0; top: 420px; width: 708px; height: 14px; border-radius: 0 0 14px 14px; background: linear-gradient(#2a2a30, #121215); border: 1px solid #2c2c32; border-top: 0; }
+.base::after { content: ""; position: absolute; left: 50%; top: 0; width: 120px; height: 5px; transform: translateX(-50%); background: #0b0b0d; border-radius: 0 0 6px 6px; }
+.feat { position: absolute; padding: 22px 24px; display: grid; grid-template-rows: 28px 34px 46px 1fr; row-gap: 8px; }
+.feat .status { align-self: end; }
+.chip { justify-self: start; font: 500 14px/26px var(--f-mono); letter-spacing: .08em; color: var(--text); border: 1px solid var(--line-2); padding: 0 10px; background: var(--panel-2); white-space: nowrap; }
+.feat h3 { font: 600 26px/34px var(--f-display); color: var(--text); white-space: nowrap; }
+.feat p { font: 400 16px/23px var(--f-body); color: var(--text-2); }
+.status { justify-self: start; font: 500 11px/22px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; padding: 0 8px; white-space: nowrap; }
+.status.ok { color: #000; background: var(--neon); box-shadow: 0 0 14px var(--neon-glow); }
+.status.live { color: var(--text-2); border: 1px solid var(--line-2); }
+
+/* ---------- slide 4 ---------- */
+.s4 { --gx: 90%; --gy: 85%; }
+.kpi { position: absolute; padding: 20px 24px; display: grid; grid-template-rows: 16px 1fr 18px; }
+.kpi .v { font: 700 48px/60px var(--f-display); color: var(--text); align-self: center; white-space: nowrap; }
+.kpi .v.neon { color: var(--neon); text-shadow: -2px 0 rgba(255,30,45,.5), 2px 0 var(--aberr), 0 0 30px rgba(255,30,45,.5); }
+.kpi .n { font: 400 14px/18px var(--f-body); color: var(--text-2); white-space: nowrap; }
+.chart { position: absolute; padding: 22px 24px; display: grid; grid-template-rows: 16px 20px 44px 44px 28px 1fr; row-gap: 12px; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 104px; align-items: center; column-gap: 16px; }
+.bar-row .nm { font: 600 18px var(--f-display); color: var(--text); white-space: nowrap; }
+.bar-row .val { font: 700 20px var(--f-mono); color: var(--text); text-align: right; }
+.track { height: 28px; background: repeating-linear-gradient(90deg, #141418 0 2px, transparent 2px 8px); border: 1px solid var(--line); display: flex; }
+.seg { height: 100%; border-right: 2px solid #000; }
+.seg:last-child { border-right: 0; }
+.bar-neon { height: 100%; background: var(--neon); box-shadow: 0 0 16px var(--neon-glow); }
+.axis { display: grid; grid-template-columns: 150px 1fr 104px; column-gap: 16px; }
+.axis .ticks { display: flex; justify-content: space-between; font: 400 12px var(--f-mono); color: var(--text-3); }
+.legend { display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 12px; align-content: end; }
+.lg { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 4px; }
+.lg .sw { width: 22px; height: 8px; }
+.lg .t { font: 600 15px/18px var(--f-display); color: var(--text); white-space: nowrap; }
+.lg .p { font: 500 13px/16px var(--f-mono); color: var(--text-2); white-space: nowrap; }
+.econ { position: absolute; padding: 22px 24px; display: grid; grid-template-rows: 16px repeat(6, 1fr); }
+.ec { display: grid; grid-template-columns: 1fr auto; align-items: center; border-top: 1px solid var(--line); column-gap: 12px; }
+.ec:nth-child(2) { border-top: 0; }
+.ec .k { font: 400 16px/20px var(--f-body); color: var(--text-2); }
+.ec .k small { display: block; font: 500 11px/14px var(--f-mono); letter-spacing: .1em; color: var(--text-3); text-transform: uppercase; }
+.ec .v { font: 600 22px var(--f-mono); color: var(--text); white-space: nowrap; }
+.ec.total { border-top: 1px solid var(--neon-deep); }
+.ec.total .v { color: var(--neon); text-shadow: 0 0 14px var(--neon-glow); font-size: 26px; }
+.src { font: 400 12px/16px var(--f-mono); color: var(--text-3); letter-spacing: .02em; white-space: nowrap; overflow: hidden; }
+
+/* ---------- slide 5 ---------- */
+.s5 { --gx: 15%; --gy: 50%; }
+.sv { position: absolute; padding: 26px 28px; display: grid; grid-template-rows: 16px 50px 22px 1fr 22px; row-gap: 10px;
+  border: 1px solid var(--neon); box-shadow: 0 0 0 1px rgba(255,30,45,.25), 0 0 40px rgba(255,30,45,.18), inset 0 0 60px rgba(255,30,45,.06); background: rgba(12,4,6,.92); }
+.sv .name { font: 700 40px/50px var(--f-display); color: var(--text); white-space: nowrap; }
+.sv .price { font: 500 16px/22px var(--f-mono); color: var(--neon); white-space: nowrap; }
+.cov { display: grid; grid-template-rows: repeat(7, 1fr); border-top: 1px solid var(--line); }
+.cov div { display: grid; grid-template-columns: 84px 1fr; align-items: center; border-bottom: 1px solid #18181c; }
+.cov .tg { font: 500 12px var(--f-mono); letter-spacing: .12em; color: var(--neon); }
+.cov .tx { font: 400 17px/22px var(--f-body); color: var(--text); white-space: nowrap; }
+.sv .foot { font: 500 12px/22px var(--f-mono); letter-spacing: .14em; color: var(--text-2); text-transform: uppercase; white-space: nowrap; }
+.cmp { position: absolute; display: grid; grid-template-rows: 44px repeat(5, 1fr); }
+.cmp .row { display: grid; grid-template-columns: 168px 176px 176px 1fr; align-items: center; border-top: 1px solid var(--line); padding: 0 20px; column-gap: 16px; }
+.cmp .row.head { border-top: 0; background: var(--panel-2); }
+.cmp .p { font: 600 21px/26px var(--f-display); color: var(--text); white-space: nowrap; }
+.cmp .w { font: 400 16px/21px var(--f-body); color: var(--text-2); }
+.cmp .pr { font: 500 15px/20px var(--f-mono); color: var(--text); }
+.cmp .ov { font: 400 16px/21px var(--f-body); color: var(--text); padding-left: 14px; border-left: 2px solid var(--neon); }
+.note { font: 400 14px/20px var(--f-body); color: var(--text-3); }
+
+/* ---------- slide 6 ---------- */
+.s6 { --gx: 50%; --gy: 45%; }
+.tier { position: absolute; padding: 22px 28px; display: grid; grid-template-rows: 16px 70px 22px 22px 1fr 32px; row-gap: 6px; }
+.tier .tn { display: flex; justify-content: space-between; }
+.tier .pr { display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
+.tier .pr .big { font: 700 56px/70px var(--f-display); color: var(--text); }
+.tier .pr .per { font: 500 15px var(--f-mono); color: var(--text-2); }
+.tier .inr { font: 600 18px/22px var(--f-mono); color: var(--text); white-space: nowrap; }
+.tier .sub { font: 400 14px/22px var(--f-body); color: var(--text-3); white-space: nowrap; }
+.tier ul { list-style: none; border-top: 1px solid var(--line); padding-top: 14px; display: grid; align-content: start; row-gap: 6px; }
+.tier li { font: 400 16px/22px var(--f-body); color: var(--text-2); padding-left: 20px; position: relative; white-space: nowrap; }
+.tier li::before { content: ""; position: absolute; left: 0; top: 8px; width: 8px; height: 6px; border-left: 2px solid var(--text-3); border-bottom: 2px solid var(--text-3); transform: rotate(-45deg); }
+.tier .meta { font: 500 11px/16px var(--f-mono); letter-spacing: .12em; color: var(--text-3); text-transform: uppercase; align-self: end; border-top: 1px solid var(--line); padding-top: 12px; }
+.tier.pro { border-color: var(--neon); background: rgba(14,4,6,.94); box-shadow: 0 0 0 1px rgba(255,30,45,.25), 0 0 48px rgba(255,30,45,.22); }
+.tier.pro .pr .big { text-shadow: -2px 0 rgba(255,30,45,.75), 2px 0 var(--aberr), 0 0 30px rgba(255,30,45,.45); }
+.tier.pro li { color: var(--text); }
+.tier.pro li::before { border-color: var(--neon); }
+.tier.pro .meta { color: var(--text-2); }
+.badge { font: 700 11px/16px var(--f-mono); letter-spacing: .14em; color: #000; background: var(--neon); padding: 0 8px; box-shadow: 0 0 14px var(--neon-glow); }
+.btn { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--neon); color: #000; font: 700 16px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; box-shadow: 0 0 30px var(--neon-glow); text-decoration: none; }
+.cta-mid { display: flex; align-items: center; font: 400 17px/24px var(--f-body); color: var(--text-2); }
+.cta-mid strong { color: var(--text); font-weight: 600; margin-right: 6px; }
+.cta-r { display: flex; align-items: center; justify-content: flex-end; }
+
+@media (max-width: 640px) { body { padding-top: 24px; } .deck { gap: 24px; } }
+#check { white-space: pre-wrap; font: 12px var(--f-mono); color: #9f9; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <div class="tag">SparkV deck // style demo 03 // dark cyberpunk</div>
+  <h1>Dark Cyberpunk: six sample slides</h1>
+  <p>Pure black, one neon red, monospaced HUD labels and a strict 12-column grid. Each slide is a fixed 1600 x 900 frame scaled to the window. Product images are real SparkV offscreen renders; prices and facts come from the SparkV Feature Guide and Business Plan.</p>
+</header>
+
+<main class="deck">
+
+<!-- ===================== 01 TITLE ===================== -->
+<section>
+<div class="slot-label">01 / title + key visual</div>
+<div class="wrap"><div class="slide s1">
+  <div class="brackets"></div>
+  <div class="b hud" style="--c:0;--s:2;--y:40;--h:16"><span class="dot"></span>SPARKV<b>//</b>OS</div>
+  <div class="b hud" style="--c:10;--s:2;--y:40;--h:16;text-align:right">[ 01 / 06 ]</div>
+  <div class="b keyvis" style="--c:2;--s:8;--y:0;--h:196"><img src="img/01-home.png" alt="SparkV drawer, Home tab: media player with scrubber, volume knob, Dictate and Capture to Tray capsules, camera mirror"></div>
+  <div class="b hud cap-c" style="--c:2;--s:8;--y:216;--h:16"><b>&#9662;</b> live render &middot; drawer / home &middot; 01-home.png</div>
+
+  <div class="b kicker" style="--c:0;--s:8;--y:296;--h:20">[ 0x01 ] <span>// mac app &middot; macOS 15+ &middot; apple silicon</span></div>
+  <div class="b wordmark" style="--c:0;--s:8;--y:328;--h:164">SPARKV</div>
+  <div class="b tagline" style="--c:0;--s:8;--y:496;--h:52">Your notch, now an <em>AI command center.</em></div>
+  <div class="b lead" style="--c:0;--s:8;--y:560;--h:62">Dictation, meetings, screen help and 20 more tools. <strong>Private by default, pay once.</strong></div>
+  <div class="b glitch" style="--c:0;--s:8;--y:648;--h:4"></div>
+  <div class="b cta-line" style="--c:0;--s:8;--y:680;--h:20"><b>&#9656;</b> 14-day pro trial &middot; no card &middot; www.sparkv.si</div>
+
+  <div class="b panel tick readout" style="--c:8;--s:4;--y:296;--h:500">
+    <div class="label">sys.readout <b class="neon">&#9679;</b> verified build</div>
+    <div class="ro-row"><div class="ro-k"><span class="label">ai cost to us</span><span class="note">On-device: Apple Intelligence, Vision, Speech</span></div><div class="ro-v neon">$0</div></div>
+    <div class="ro-row"><div class="ro-k"><span class="label">agents hub</span><span class="note">Cells in the 8 x 3 launcher grid</span></div><div class="ro-v">22</div></div>
+    <div class="ro-row"><div class="ro-k"><span class="label">drawer pages</span><span class="note">Rendered in the real layout view</span></div><div class="ro-v">21</div></div>
+    <div class="ro-row"><div class="ro-k"><span class="label">ui audit self-test</span><span class="note">Runner checks passing</span></div><div class="ro-v">48/48</div></div>
+    <div class="ro-row"><div class="ro-k"><span class="label">pro license</span><span class="note">One-time, 2 Macs per person</span></div><div class="ro-v">$39</div></div>
+  </div>
+
+  <div class="b hud" style="--c:0;--s:6;--y:844;--h:16">www.sparkv.si</div>
+  <div class="b hud" style="--c:6;--s:6;--y:844;--h:16;text-align:right">on-device ai <b>&middot;</b> developer id + notarized build planned</div>
+</div></div>
+</section>
+
+<!-- ===================== 02 PROBLEM ===================== -->
+<section>
+<div class="slot-label">02 / problem statement</div>
+<div class="wrap"><div class="slide s2">
+  <div class="brackets"></div>
+  <div class="b hud" style="--c:0;--s:4;--y:40;--h:16"><span class="dot"></span>SPARKV<b>//</b>problem</div>
+  <div class="b hud" style="--c:8;--s:4;--y:40;--h:16;text-align:right">[ 02 / 06 ]</div>
+  <div class="b kicker" style="--c:0;--s:8;--y:104;--h:20">[ 0x02 ] <span>// problem</span></div>
+  <div class="b h1" style="--c:0;--s:12;--y:132;--h:76">Five apps. Five bills.</div>
+  <div class="b lead" style="--c:0;--s:8;--y:216;--h:62">The notch sits idle while Mac power users pay separately for a notch hub, a clipboard manager, a dictation app, a meeting recorder and a screenshot tool.</div>
+  <div class="b glitch" style="--c:0;--s:12;--y:290;--h:4"></div>
+
+  <div class="b stack-v" style="--c:0;--s:5;--y:320;--h:476">
+    <div class="label">cost of the separate stack</div>
+    <div class="bigstat" style="margin-top:8px">$300+</div>
+    <p class="lead" style="font-size:18px;line-height:26px;margin:8px 0 20px">a year, per buyer, to pay for those five tools separately.</p>
+    <div class="pain"><span class="idx">E-01</span><p><strong>Pure notch apps stop at media and a tray.</strong> They sell for <span style="white-space:nowrap">$14&ndash;25</span> one-time.</p></div>
+    <div class="pain" style="margin-top:16px"><span class="idx">E-02</span><p><strong>The AI tools bill every month.</strong> Dictation $15/mo, meeting notes $14 per user per month.</p></div>
+  </div>
+
+  <div class="b panel tick proc" style="--c:5;--s:7;--y:320;--h:476">
+    <div class="row head"><span class="label">pid</span><span class="label">job</span><span class="label">typical app</span><span class="label" style="text-align:right">price model</span></div>
+    <div class="row"><span class="c-id">0x01</span><span class="c-cat">Notch hub</span><span class="c-ex">NotchNook</span><span class="c-pr">$25 one-time</span></div>
+    <div class="row"><span class="c-id">0x02</span><span class="c-cat">Clipboard</span><span class="c-ex">Paste</span><span class="c-pr rec">$29.99 / yr</span></div>
+    <div class="row"><span class="c-id">0x03</span><span class="c-cat">Dictation</span><span class="c-ex">Wispr Flow</span><span class="c-pr rec">$15 / mo</span></div>
+    <div class="row"><span class="c-id">0x04</span><span class="c-cat">Meeting notes</span><span class="c-ex">Granola</span><span class="c-pr rec">$14 / user / mo</span></div>
+    <div class="row"><span class="c-id">0x05</span><span class="c-cat">Screenshots</span><span class="c-ex">CleanShot X</span><span class="c-pr">$29 + $19 / yr</span></div>
+    <div class="sum"><span class="label" style="color:var(--text)">5 apps &middot; 5 licenses &middot; <b class="neon">3 recurring bills</b></span><span class="label">red = recurring</span></div>
+  </div>
+
+  <div class="b hud" style="--c:0;--s:8;--y:844;--h:16">src: sparkv business plan &sect;3 &middot; list prices, oct 2026</div>
+  <div class="b hud" style="--c:8;--s:4;--y:844;--h:16;text-align:right">www.sparkv.si</div>
+</div></div>
+</section>
+
+<!-- ===================== 03 FEATURE ===================== -->
+<section>
+<div class="slot-label">03 / feature showcase + notch mockup</div>
+<div class="wrap"><div class="slide s3">
+  <div class="brackets"></div>
+  <div class="b hud" style="--c:0;--s:4;--y:40;--h:16"><span class="dot"></span>SPARKV<b>//</b>feature</div>
+  <div class="b hud" style="--c:8;--s:4;--y:40;--h:16;text-align:right">[ 03 / 06 ]</div>
+  <div class="b kicker" style="--c:0;--s:8;--y:104;--h:20">[ 0x03 ] <span>// feature &middot; agents hub</span></div>
+  <div class="b h1" style="--c:0;--s:12;--y:132;--h:76">22 tools. One hover.</div>
+  <div class="b lead" style="--c:0;--s:8;--y:216;--h:62">Hover the notch and the drawer slides out. The Agents hub launches every agent: search, capture, reply, translate, audit.</div>
+  <div class="b glitch" style="--c:0;--s:12;--y:290;--h:4"></div>
+
+  <div class="b mac" style="--c:0;--s:6;--y:320;--h:456">
+    <div class="lid"><div class="screen">
+      <div class="menubar"><span class="l"><span>&#63743;</span></span><span class="rr"><span>Wed 22 Oct</span><span>10:42</span></span></div>
+      <div class="notch"></div>
+      <img class="drawer" src="img/10-agents-hub.png" alt="SparkV Agents hub: 22 tiles in an 8 by 3 grid hanging from the notch">
+      <div class="hint">hover &#9650; notch</div>
+    </div></div>
+    <div class="base"></div>
+  </div>
+
+  <div class="b panel tick feat" style="--c:6;--s:3;--y:320;--h:216">
+    <span class="chip">&#8963;&#8997;R</span><h3>Reply Drafter</h3>
+    <p>Reads the thread and drafts in your tone. You press Send.</p>
+    <span class="status live">needs live check</span>
+  </div>
+  <div class="b panel tick feat" style="--c:9;--s:3;--y:320;--h:216">
+    <span class="chip">hold fn</span><h3>Dictation</h3>
+    <p>Speak, release: cleaned-up text lands at the cursor.</p>
+    <span class="status live">needs live check</span>
+  </div>
+  <div class="b panel tick feat" style="--c:6;--s:3;--y:552;--h:216">
+    <span class="chip">&#8997;Space</span><h3>Universal Search</h3>
+    <p>Spaces, meetings, clipboard, Tray. Sample query: 21 hits.</p>
+    <span class="status ok">verified headless</span>
+  </div>
+  <div class="b panel tick feat" style="--c:9;--s:3;--y:552;--h:216">
+    <span class="chip">hub &#9656; ui audit</span><h3>UI Audit</h3>
+    <p>Tests your own site. Real run: 6 pages, 69 findings.</p>
+    <span class="status ok">verified end to end</span>
+  </div>
+  <div class="b hud" style="--c:6;--s:6;--y:784;--h:16">src: screenshots/10-agents-hub.png &middot; offscreen render, sample data</div>
+
+  <div class="b hud" style="--c:0;--s:8;--y:844;--h:16">status labels from the sparkv feature guide, oct 22 2026</div>
+  <div class="b hud" style="--c:8;--s:4;--y:844;--h:16;text-align:right">www.sparkv.si</div>
+</div></div>
+</section>
+
+<!-- ===================== 04 METRICS ===================== -->
+<section>
+<div class="slot-label">04 / metrics dashboard</div>
+<div class="wrap"><div class="slide s4">
+  <div class="brackets"></div>
+  <div class="b hud" style="--c:0;--s:4;--y:40;--h:16"><span class="dot"></span>SPARKV<b>//</b>telemetry</div>
+  <div class="b hud" style="--c:8;--s:4;--y:40;--h:16;text-align:right">[ 04 / 06 ]</div>
+  <div class="b kicker" style="--c:0;--s:8;--y:104;--h:20">[ 0x04 ] <span>// metrics &middot; cost of ownership</span></div>
+  <div class="b h1" style="--c:0;--s:12;--y:132;--h:76">$395.99 vs $39.</div>
+  <div class="b lead" style="--c:0;--s:8;--y:216;--h:62">Year-one list price of five single-purpose apps, against one SparkV Pro license that keeps working forever.</div>
+  <div class="b glitch" style="--c:0;--s:12;--y:290;--h:4"></div>
+
+  <div class="b panel tick kpi" style="--c:0;--s:3;--y:320;--h:136"><span class="label">5-app stack &middot; year 1</span><span class="v">$395.99</span><span class="n">NotchNook, Paste, Wispr, Granola, CleanShot</span></div>
+  <div class="b panel tick kpi" style="--c:3;--s:3;--y:320;--h:136"><span class="label">sparkv pro &middot; one-time</span><span class="v neon">$39</span><span class="n">&#8377;1,499 &middot; launch week $29 / &#8377;999</span></div>
+  <div class="b panel tick kpi" style="--c:6;--s:3;--y:320;--h:136"><span class="label">lower year-1 cost</span><span class="v">90%</span><span class="n">1 &minus; 39 / 395.99 = 0.902</span></div>
+  <div class="b panel tick kpi" style="--c:9;--s:3;--y:320;--h:136"><span class="label">ai cost per user</span><span class="v">$0</span><span class="n">All AI runs on the Mac</span></div>
+
+  <div class="b panel tick chart" style="--c:0;--s:7;--y:480;--h:316">
+    <span class="label">year-one cost &middot; usd &middot; single user &middot; scale $0&ndash;400</span>
+    <div class="axis"><span></span><span class="ticks"><span>$0</span><span>$100</span><span>$200</span><span>$300</span><span>$400</span></span><span></span></div>
+    <div class="bar-row"><span class="nm">5-app stack</span>
+      <div class="track"><div class="seg" style="width:42%;background:#8A8A93"></div><div class="seg" style="width:36%;background:#6B6B74"></div><div class="seg" style="width:7.4975%;background:#4E4E56"></div><div class="seg" style="width:7.25%;background:#3A3A41"></div><div class="seg" style="width:6.25%;background:#2C2C32"></div></div>
+      <span class="val">$395.99</span></div>
+    <div class="bar-row"><span class="nm neon">SparkV Pro</span>
+      <div class="track"><div class="bar-neon" style="width:9.75%"></div></div>
+      <span class="val neon">$39.00</span></div>
+    <span class="label" style="align-self:end">stack breakdown</span>
+    <div class="legend">
+      <div class="lg"><span class="sw" style="background:#8A8A93"></span><span class="t">Granola</span><span class="p">$168.00</span></div>
+      <div class="lg"><span class="sw" style="background:#6B6B74"></span><span class="t">Wispr Flow</span><span class="p">$144.00</span></div>
+      <div class="lg"><span class="sw" style="background:#4E4E56"></span><span class="t">Paste</span><span class="p">$29.99</span></div>
+      <div class="lg"><span class="sw" style="background:#3A3A41"></span><span class="t">CleanShot X</span><span class="p">$29.00</span></div>
+      <div class="lg"><span class="sw" style="background:#2C2C32;outline:1px solid #3A3A41"></span><span class="t">NotchNook</span><span class="p">$25.00</span></div>
+    </div>
+  </div>
+
+  <div class="b panel tick econ" style="--c:7;--s:5;--y:480;--h:316">
+    <span class="label">unit economics &middot; per pro sale</span>
+    <div class="ec"><span class="k">Gross price</span><span class="v">$39.00</span></div>
+    <div class="ec"><span class="k">Merchant of record fee<small>lemon squeezy &middot; 5% + $0.50</small></span><span class="v">&minus;$2.45</span></div>
+    <div class="ec"><span class="k">AI and server cost<small>on-device &middot; groq uses buyer's key</small></span><span class="v">$0.00</span></div>
+    <div class="ec total"><span class="k" style="color:var(--text)">Net per sale</span><span class="v">&asymp; $36.55</span></div>
+    <div class="ec"><span class="k">Fixed: Apple Developer Program</span><span class="v">$99 / yr</span></div>
+    <div class="ec"><span class="k">Year two: stack vs SparkV<small>sparkv renewal optional, $19</small></span><span class="v">$360.99 / $0</span></div>
+  </div>
+
+  <div class="b src" style="--c:0;--s:12;--y:808;--h:16">Src: SparkV Business Plan &sect;3, &sect;4, &sect;9 (Oct 2026). Granola $14 x 12; Wispr Flow $144/yr; Paste $29.99/yr; CleanShot X $29 incl. 1 yr updates; NotchNook $25. Excl. tax.</div>
+  <div class="b hud" style="--c:0;--s:8;--y:844;--h:16">figures are list prices, not sparkv revenue</div>
+  <div class="b hud" style="--c:8;--s:4;--y:844;--h:16;text-align:right">www.sparkv.si</div>
+</div></div>
+</section>
+
+<!-- ===================== 05 COMPARISON ===================== -->
+<section>
+<div class="slot-label">05 / two-column comparison</div>
+<div class="wrap"><div class="slide s5">
+  <div class="brackets"></div>
+  <div class="b hud" style="--c:0;--s:4;--y:40;--h:16"><span class="dot"></span>SPARKV<b>//</b>compare</div>
+  <div class="b hud" style="--c:8;--s:4;--y:40;--h:16;text-align:right">[ 05 / 06 ]</div>
+  <div class="b kicker" style="--c:0;--s:8;--y:104;--h:20">[ 0x05 ] <span>// comparison</span></div>
+  <div class="b h1" style="--c:0;--s:12;--y:132;--h:76">SparkV vs the stack.</div>
+  <div class="b lead" style="--c:0;--s:8;--y:216;--h:62">Where SparkV overlaps each category leader, and what each one charges. Each rival goes deeper in its own lane.</div>
+  <div class="b glitch" style="--c:0;--s:12;--y:290;--h:4"></div>
+
+  <div class="b sv" style="--c:0;--s:5;--y:320;--h:476">
+    <span class="label">one app &middot; one license</span>
+    <span class="name">SparkV Pro</span>
+    <span class="price">$39 one-time &middot; &#8377;1,499 &middot; 2 Macs</span>
+    <div class="cov">
+      <div><span class="tg">NOTCH</span><span class="tx">Media, HUD, Tray, live activities</span></div>
+      <div><span class="tg">VOICE</span><span class="tx">Dictation: hold fn, AI formatting</span></div>
+      <div><span class="tg">MEET</span><span class="tx">Recorder, summaries, Live Translation</span></div>
+      <div><span class="tg">FIND</span><span class="tx">Universal Search &#8997;Space, Spaces</span></div>
+      <div><span class="tg">CLIP</span><span class="tx">Clipboard history and Paste Stack</span></div>
+      <div><span class="tg">SCREEN</span><span class="tx">Ask Screen, Copy Text, recording</span></div>
+      <div><span class="tg">DEV</span><span class="tx">UI Audit, Browser Flows, Flow Canvas</span></div>
+    </div>
+    <span class="foot">ai on-device &middot; $0 ai cost &middot; 14-day trial</span>
+  </div>
+
+  <div class="b panel tick cmp" style="--c:5;--s:7;--y:320;--h:428">
+    <div class="row head"><span class="label">product</span><span class="label">what it is</span><span class="label">price</span><span class="label">sparkv overlap</span></div>
+    <div class="row"><span class="p">NotchNook</span><span class="w">Notch hub: media, tray</span><span class="pr">$25 one-time or $3/mo</span><span class="ov">Home media, Tray, AirDrop, live activities</span></div>
+    <div class="row"><span class="p">Alcove</span><span class="w">Dynamic Island for the Mac</span><span class="pr">~$13.99 one-time</span><span class="ov">Volume, battery, AirPods, compact wings</span></div>
+    <div class="row"><span class="p">Raycast Pro</span><span class="w">Launcher with AI</span><span class="pr">$8&ndash;10 / mo</span><span class="ov">Universal Search, Prompt Refiner</span></div>
+    <div class="row"><span class="p">Wispr Flow</span><span class="w">AI dictation</span><span class="pr">$15 / mo</span><span class="ov">Hold-fn dictation, AI formatting</span></div>
+    <div class="row"><span class="p">Granola</span><span class="w">AI meeting notes</span><span class="pr">$14 / user / mo</span><span class="ov">Meeting notes, live answers, translation</span></div>
+  </div>
+  <div class="b note" style="--c:5;--s:7;--y:764;--h:32">Overlap, not parity. Rival prices from SparkV Business Plan &sect;3; check each vendor's page before quoting publicly.</div>
+
+  <div class="b hud" style="--c:0;--s:8;--y:844;--h:16">sparkv: one-time pricing is possible because ai runs on-device</div>
+  <div class="b hud" style="--c:8;--s:4;--y:844;--h:16;text-align:right">www.sparkv.si</div>
+</div></div>
+</section>
+
+<!-- ===================== 06 PRICING ===================== -->
+<section>
+<div class="slot-label">06 / pricing + cta</div>
+<div class="wrap"><div class="slide s6">
+  <div class="brackets"></div>
+  <div class="b hud" style="--c:0;--s:4;--y:40;--h:16"><span class="dot"></span>SPARKV<b>//</b>pricing</div>
+  <div class="b hud" style="--c:8;--s:4;--y:40;--h:16;text-align:right">[ 06 / 06 ]</div>
+  <div class="b kicker" style="--c:0;--s:8;--y:104;--h:20">[ 0x06 ] <span>// pricing &middot; usd + inr</span></div>
+  <div class="b h1" style="--c:0;--s:12;--y:132;--h:76">Pay once. Keep it.</div>
+  <div class="b lead" style="--c:0;--s:8;--y:216;--h:62">Free for notch basics. Pro is one-time and keeps working forever. Team adds invoices, seats and priority support.</div>
+  <div class="b glitch" style="--c:0;--s:12;--y:290;--h:4"></div>
+
+  <div class="b panel tier" style="--c:0;--s:4;--y:320;--h:412">
+    <div class="tn"><span class="label">tier 0 &middot; free</span></div>
+    <div class="pr"><span class="big">$0</span><span class="per">forever</span></div>
+    <div class="inr">&#8377;0</div>
+    <div class="sub">Notch basics on 1 Mac</div>
+    <ul><li>Media, HUD, battery, notification mirror</li><li>Tray (5 items), 2 Shortcut capsules</li><li>Timer, Pomodoro and Today</li><li>World Clock and System Gauges</li><li>Clipboard (last 25), Copy Text</li><li>Dictation without AI formatting</li></ul>
+    <div class="meta">1 mac &middot; no card &middot; no time limit</div>
+  </div>
+  <div class="b panel tier pro" style="--c:4;--s:4;--y:320;--h:412">
+    <div class="tn"><span class="label neon">tier 1 &middot; pro</span><span class="badge">LAUNCH $29 &middot; &#8377;999</span></div>
+    <div class="pr"><span class="big">$39</span><span class="per">one-time</span></div>
+    <div class="inr">&#8377;1,499 <span class="sub" style="font-family:var(--f-body)">&nbsp;one-time</span></div>
+    <div class="sub">Everything, 12 months of updates included</div>
+    <ul><li>Everything in Free, unlimited</li><li>Clicky, Ask Screen, Reply Drafter</li><li>Dictation with AI formatting</li><li>Meetings and Live Translation</li><li>Spaces, Search, Converter, Focus</li><li>UI Audit, Browser Flows, Flow Canvas</li></ul>
+    <div class="meta">2 macs &middot; renewal optional $19 / &#8377;799 a year</div>
+  </div>
+  <div class="b panel tier" style="--c:8;--s:4;--y:320;--h:412">
+    <div class="tn"><span class="label">tier 2 &middot; team</span></div>
+    <div class="pr"><span class="big">$8</span><span class="per">/ seat / mo</span></div>
+    <div class="inr">&#8377;499 <span class="sub" style="font-family:var(--f-body)">&nbsp;/ seat / mo, billed yearly</span></div>
+    <div class="sub">$96 per seat per year, minimum 3 seats</div>
+    <ul><li>Everything in Pro, per seat</li><li>One invoice (PO or bank transfer)</li><li>Seat management in the customer portal</li><li>Shared Spaces packages</li><li>Priority email support, 1 business day</li><li>Deployment .pkg for MDM</li></ul>
+    <div class="meta">30-day pilot &middot; up to 5 seats</div>
+  </div>
+
+  <a class="b btn" href="https://www.sparkv.si" style="--c:0;--s:4;--y:748;--h:48"><span>Start 14-day Pro trial</span><span>&#9656;</span></a>
+  <div class="b cta-mid" style="--c:4;--s:4;--y:748;--h:48"><span><strong>No card.</strong>Falls back to Free when it ends, never locks.</span></div>
+  <div class="b cta-r hud" style="--c:8;--s:4;--y:748;--h:48"><span>students <b>50% off</b> &middot; 30-day refunds</span></div>
+
+  <div class="b hud" style="--c:0;--s:8;--y:844;--h:16">planned checkout: lemon squeezy, merchant of record</div>
+  <div class="b hud" style="--c:8;--s:4;--y:844;--h:16;text-align:right">www.sparkv.si</div>
+</div></div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var wraps = [].slice.call(document.querySelectorAll('.wrap'));
+  function fit() {
+    wraps.forEach(function (w) {
+      var s = w.clientWidth / 1600;
+      w.firstElementChild.style.transform = 'scale(' + s + ')';
+    });
+  }
+  fit();
+  if ('ResizeObserver' in window) { new ResizeObserver(fit).observe(document.body); }
+  else { window.addEventListener('resize', fit); }
+
+  // Layout self-check: open index.html#check
+  if (location.hash !== '#check') return;
+  function run() {
+    var out = [];
+    document.querySelectorAll('.slide').forEach(function (sl, i) {
+      var bs = [].slice.call(sl.querySelectorAll(':scope > .b'));
+      var r = bs.map(function (b) { return { el: b, x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight }; });
+      r.forEach(function (a) {
+        if (a.x < 0 || a.y < 0 || a.x + a.w > 1600 || a.y + a.h > 900) out.push('S' + (i + 1) + ' out of frame: ' + a.el.className + ' ' + a.el.textContent.trim().slice(0, 30));
+        var el = a.el;
+        if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) out.push('S' + (i + 1) + ' overflow ' + el.scrollWidth + 'x' + el.scrollHeight + ' > ' + el.clientWidth + 'x' + el.clientHeight + ': ' + el.className + ' "' + el.textContent.trim().replace(/\s+/g, ' ').slice(0, 40) + '"');
+        el.querySelectorAll('*').forEach(function (c) {
+          if (c.tagName === 'IMG') return;
+          if (c.scrollWidth > c.clientWidth + 1 && getComputedStyle(c).display !== 'inline' && c.clientWidth > 0) out.push('S' + (i + 1) + ' child overflow-x ' + c.scrollWidth + '>' + c.clientWidth + ': ' + c.className + ' "' + c.textContent.trim().replace(/\s+/g, ' ').slice(0, 40) + '"');
+          if (c.scrollHeight > c.clientHeight + 1 && getComputedStyle(c).display !== 'inline' && c.clientHeight > 0) out.push('S' + (i + 1) + ' child overflow-y ' + c.scrollHeight + '>' + c.clientHeight + ': ' + c.className + ' "' + c.textContent.trim().replace(/\s+/g, ' ').slice(0, 40) + '"');
+        });
+      });
+      for (var p = 0; p < r.length; p++) for (var q = p + 1; q < r.length; q++) {
+        var A = r[p], B = r[q];
+        if (A.x < B.x + B.w && B.x < A.x + A.w && A.y < B.y + B.h && B.y < A.y + A.h)
+          out.push('S' + (i + 1) + ' overlap: "' + A.el.textContent.trim().slice(0, 24) + '" x "' + B.el.textContent.trim().slice(0, 24) + '"');
+      }
+    });
+    var imgs = [].slice.call(document.images).filter(function (im) { return !im.complete || !im.naturalWidth; }).map(function (im) { return 'broken img ' + im.getAttribute('src'); });
+    var pre = document.createElement('pre'); pre.id = 'check';
+    pre.textContent = 'CHECK ' + JSON.stringify({ vw: window.innerWidth, sw: document.documentElement.scrollWidth, fonts: document.fonts.status, issues: out.concat(imgs) }, null, 1);
+    document.body.appendChild(pre);
+  }
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () { setTimeout(run, 300); });
+})();
+</script>
+</body>
+</html>

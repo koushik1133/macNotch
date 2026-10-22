@@ -1,0 +1,22 @@
+# Build output
+build/
+*.app
+*.dmg
+# macOS / editor clutter
+.DS_Store
+._*
+*.swp
+# Local Claude settings
+.claude/
+# Face Unlock is not published
+Vendor/glance/
+# iCloud duplicate copies ("Foo 2.swift")
+* [0-9].*
+# Secrets
+*.p12
+*.pem
+*.key
+.env*
+
+# Third-party packages (restore with npm install in Vendor/ui-audit and Vendor/browser-recorder)
+node_modules/

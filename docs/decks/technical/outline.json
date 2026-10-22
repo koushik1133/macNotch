@@ -1,0 +1,1396 @@
+{
+  "deck": "SparkV Technical Deck",
+  "version": "phase2-blueprint-1",
+  "date": "2026-10-22",
+  "audience": "Developers and technical partners",
+  "goal": "Credibility",
+  "blueprint": "BLUEPRINT.md",
+  "canvas": {
+    "width_px": 3840,
+    "height_px": 2160,
+    "width_in": 13.333,
+    "height_in": 7.5,
+    "px_per_pt": 4,
+    "margins_px": {
+      "left": 192,
+      "right": 192,
+      "top": 160,
+      "bottom": 144
+    },
+    "grid_columns": 12,
+    "gutter_px": 64
+  },
+  "image_root": "../../screenshots",
+  "placement_units": "fractions of slide width/height, origin top-left; negative or >1 values bleed off the slide",
+  "frames": {
+    "notch": "NotchFrame: generic laptop lid top edge, notch-colour bezel 28 px, render top-aligned to inner bezel, desktop gradient #2A2E43→#171925→#0F1119",
+    "window": "WindowFrame: 1 px line border, 24 px radius, large shadow",
+    "full_bleed": "Image fills the slide area given; text sits on a bg scrim"
+  },
+  "type_scale_px": {
+    "display": 240,
+    "h1": 128,
+    "subtitle": 56,
+    "body": 48,
+    "tile_number": 144,
+    "tile_label": 36,
+    "mono": 40,
+    "caption": 28
+  },
+  "styles": {
+    "sparkv_red_black": {
+      "bg": "#09090A",
+      "bg_deep": "#050506",
+      "surface": "#111113",
+      "surface_2": "#17171A",
+      "line": "rgba(255,255,255,.10)",
+      "text": "#FFFFFF",
+      "text_muted": "#A0A0A3",
+      "text_faint": "#808088",
+      "accent": "#F01822",
+      "accent_text": "#F8262F",
+      "accent_soft": "#FF8A90",
+      "glow": "rgba(240,24,34,.16)",
+      "ok": "#57D791",
+      "fonts": {
+        "display": "SF Pro Display",
+        "body": "SF Pro Text",
+        "mono": "SF Mono"
+      }
+    },
+    "apple_minimal": {
+      "bg": "#F5F5F7",
+      "bg_deep": "#E8E8ED",
+      "surface": "#FFFFFF",
+      "surface_2": "#FFFFFF",
+      "line": "#D2D2D7",
+      "text": "#1D1D1F",
+      "text_muted": "#6E6E73",
+      "text_faint": "#86868B",
+      "accent": "#F01822",
+      "accent_text": "#F01822",
+      "accent_soft": "#AEAEB2",
+      "glow": null,
+      "shadow": "0 40px 80px rgba(0,0,0,.18)",
+      "ok": "#248A3D",
+      "fonts": {
+        "display": "SF Pro Display",
+        "body": "SF Pro Text",
+        "mono": "SF Mono"
+      }
+    },
+    "dark_cyberpunk": {
+      "bg": "#000000",
+      "bg_deep": "#000000",
+      "surface": "#0A0A0C",
+      "surface_2": "#111114",
+      "line": "#26262B",
+      "text": "#F2F2F4",
+      "text_muted": "#A1A1AA",
+      "text_faint": "#6B6B74",
+      "accent": "#FF1E2D",
+      "accent_text": "#FF1E2D",
+      "accent_soft": "#8A0F18",
+      "glow": "rgba(255,30,45,.45)",
+      "aberration": "rgba(0,229,255,.28)",
+      "ok": "#57D791",
+      "fonts": {
+        "display": "Chakra Petch",
+        "body": "Inter",
+        "mono": "JetBrains Mono"
+      }
+    }
+  },
+  "severity_colors": {
+    "critical": "#E5484D",
+    "high": "#F59E0B",
+    "medium": "#EAB308",
+    "low": "#3B82F6"
+  },
+  "recording_crops_nframe": {
+    "A": [
+      0,
+      0,
+      3840,
+      2160
+    ],
+    "B": [
+      1080,
+      0,
+      1680,
+      472
+    ],
+    "C": [
+      1000,
+      0,
+      1840,
+      690
+    ],
+    "D": [
+      1440,
+      0,
+      960,
+      270
+    ],
+    "G": [
+      400,
+      100,
+      3040,
+      1710
+    ],
+    "H": [
+      480,
+      120,
+      2880,
+      1620
+    ]
+  },
+  "placeholders": [
+    {
+      "slide": 13,
+      "text": "Pro units [TBD], Team seats [TBD], year-one revenue [TBD]"
+    },
+    {
+      "slide": 14,
+      "text": "Notched Apple-silicon MacBooks on macOS 15+ [TBD: sourced estimate]; SparkV users [TBD: monthly active users]"
+    },
+    {
+      "slide": 15,
+      "text": "[TBD: launch kickoff date]"
+    },
+    {
+      "slide": 16,
+      "text": "Partnership tracks [TBD]; contact email [TBD]"
+    }
+  ],
+  "slides": [
+    {
+      "number": 1,
+      "id": "title",
+      "layout": "key_visual_header",
+      "header": "SparkV",
+      "subtitle": "The MacBook notch, rebuilt as an on-device AI runtime",
+      "body": [
+        "Native Swift · AppKit + SwiftUI · macOS 15+ · Apple silicon",
+        "Technical briefing for developers and partners · October 2026",
+        "sparkv.si"
+      ],
+      "notes": "SparkV turns the MacBook notch into a control surface: hover the notch and a drawer slides out with media, a file tray, your day, converters, knowledge Spaces and a hub of more than twenty agents. This talk is about how it's built: the window, the activity engine, the on-device AI stack, the privacy model, the developer agents and how we build and ship. Every picture you'll see is a real render from the current source code, not a mock-up. Where something still needs a live check, I'll say so.",
+      "images": [
+        {
+          "file": "01-home.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.42,
+            "y": 0.0,
+            "w": 0.48,
+            "h": 0.3
+          },
+          "max_scale": 1.5,
+          "recording": "R1",
+          "recording_crop": "B",
+          "note": "Hero; island touches the top edge, centred at x=0.667"
+        }
+      ],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 2,
+      "id": "codebase",
+      "layout": "metrics_dashboard",
+      "header": "The codebase at a glance",
+      "subtitle": "Counted from Sources/ on 22 October 2026",
+      "body": [
+        "109,247 · lines of Swift",
+        "250 · source files",
+        "22 · Labs feature modules",
+        "21 · drawer pages",
+        "10 · files on FoundationModels",
+        "$0 · AI cost per user"
+      ],
+      "tiles": [
+        {
+          "value": "109,247",
+          "label": "lines of Swift"
+        },
+        {
+          "value": "250",
+          "label": "source files"
+        },
+        {
+          "value": "22",
+          "label": "Labs feature modules"
+        },
+        {
+          "value": "21",
+          "label": "drawer pages"
+        },
+        {
+          "value": "10",
+          "label": "files on FoundationModels"
+        },
+        {
+          "value": "$0",
+          "label": "AI cost per user",
+          "accent": true
+        }
+      ],
+      "footnote": "Excludes vendored GlanceKit, the Node runners and the Now Playing adapter.",
+      "notes": "About 109 thousand lines of Swift: 29 thousand in the core (window, activities, media, dictation, meetings, Clicky) and 80 thousand in 22 Labs modules. AI cost per user is zero because inference runs on the buyer's Mac; a cloud model is only used with the buyer's own key. Line counts are a size signal, not a quality claim; the quality evidence is on the testing slide.",
+      "images": [],
+      "chart": {
+        "type": "bar_horizontal",
+        "title": "Swift lines per Labs module",
+        "categories": [
+          "Spaces",
+          "FlowCanvas",
+          "Modes",
+          "JobAgent",
+          "Clipboard",
+          "Focus",
+          "ReplyDrafter",
+          "UniversalSearch",
+          "Converter",
+          "Downloads",
+          "ScreenRegion",
+          "PromptRefiner",
+          "BrowserRecorder",
+          "Widgets",
+          "FileDropActions",
+          "LiveTranslation",
+          "UIAudit",
+          "ScreenDistance",
+          "Onboarding",
+          "QuickCapture",
+          "ScreenRecorder",
+          "Media"
+        ],
+        "series": [
+          {
+            "name": "Swift lines",
+            "values": [
+              9644,
+              6919,
+              5652,
+              5300,
+              5244,
+              4192,
+              4140,
+              3674,
+              3571,
+              3481,
+              3459,
+              3112,
+              2859,
+              2829,
+              2815,
+              2374,
+              2192,
+              2187,
+              1987,
+              1741,
+              1448,
+              986
+            ]
+          }
+        ],
+        "highlight": [
+          "FlowCanvas",
+          "BrowserRecorder",
+          "UIAudit"
+        ],
+        "source": "wc -l Sources/Labs/<module>/*.swift, 22 Oct 2026"
+      },
+      "table": null
+    },
+    {
+      "number": 3,
+      "id": "architecture",
+      "layout": "feature_showcase",
+      "header": "One panel, thirty-one feature objects",
+      "subtitle": "How a non-activating NSPanel becomes a command center",
+      "body": [
+        "NotchPanel: borderless, non-activating, .statusBar level, on every Space",
+        "Click-through at rest; becomes key only when a control needs it",
+        "NotchWindowController owns the controllers and one shared ActivityCenter",
+        "Features live in Sources/Labs/<Feature>/ with DESIGN.md and INTEGRATION.md"
+      ],
+      "diagram": {
+        "nodes": [
+          {
+            "id": "panel",
+            "label": "NotchPanel",
+            "detail": "NSPanel · .borderless + .nonactivatingPanel · level .statusBar · canJoinAllSpaces + fullScreenAuxiliary · ignoresMouseEvents at rest",
+            "accent": true
+          },
+          {
+            "id": "host",
+            "label": "NotchHostingView",
+            "detail": "acceptsFirstMouse"
+          },
+          {
+            "id": "layout",
+            "label": "NotchNookLayoutView",
+            "detail": "header icons · 21 drawer pages (NotchState.Tab)"
+          },
+          {
+            "id": "hub",
+            "label": "AgentsHubView",
+            "detail": "22 tiles, 8x3"
+          },
+          {
+            "id": "wc",
+            "label": "NotchWindowController",
+            "detail": "owns 31 feature objects"
+          },
+          {
+            "id": "ac",
+            "label": "ActivityCenter",
+            "detail": "shared live-activity queue"
+          },
+          {
+            "id": "core",
+            "label": "Core controllers",
+            "detail": "MediaEngine, DictationController, ClickyController, HUDController, TimerController, MeetingsController, MeetingAssistant"
+          },
+          {
+            "id": "labs",
+            "label": "Labs modules (22)",
+            "detail": "Converter, Spaces, UIAudit, BrowserRecorder, FlowCanvas, Clipboard, ..."
+          },
+          {
+            "id": "contract",
+            "label": "Labs contract",
+            "detail": "DESIGN.md → INTEGRATION.md → cp line in build.sh → lead wires shared files"
+          }
+        ],
+        "edges": [
+          [
+            "panel",
+            "host"
+          ],
+          [
+            "host",
+            "layout"
+          ],
+          [
+            "layout",
+            "hub"
+          ],
+          [
+            "wc",
+            "panel"
+          ],
+          [
+            "wc",
+            "ac"
+          ],
+          [
+            "wc",
+            "core"
+          ],
+          [
+            "wc",
+            "labs"
+          ],
+          [
+            "labs",
+            "contract"
+          ]
+        ]
+      },
+      "notes": "The whole app is one borderless, non-activating panel at status-bar level. It joins every Space, including full-screen apps, never steals focus, and lets clicks fall through while the island is closed. AppKit normally pushes windows below the menu bar, so the panel overrides constrainFrameRect to sit at the absolute top edge. The window controller owns 31 long-lived feature objects plus the shared ActivityCenter. New features are built in isolation in a Labs folder: a DESIGN.md with the research and decisions, an INTEGRATION.md with exact wiring steps, then one copy line in build.sh. Only the lead touches the four shared files, which is what let us build features in parallel without merge fights.",
+      "images": [
+        {
+          "file": "10-agents-hub.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.6,
+            "y": 0.0,
+            "w": 0.36,
+            "h": 0.2
+          },
+          "max_scale": 1.2,
+          "recording": "R2",
+          "recording_crop": "C"
+        }
+      ],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 4,
+      "id": "live-activities",
+      "layout": "feature_showcase",
+      "header": "Live activities with Dynamic Island rules",
+      "subtitle": "A priority queue that never covers your work",
+      "body": [
+        "Compact wings grow sideways inside the menu bar, 30–112 pt per side",
+        "Alerts of 8 s or less queue by priority; time runs only on screen",
+        "Preempted alerts resume; anything waiting 12 s is dropped",
+        "Persistent activities peek for 4 s, then rest in the wings"
+      ],
+      "status": "Bands render from source; key interception, banners and Bluetooth need a live check.",
+      "notes": "The closed island follows Dynamic Island rules. Compact activities grow sideways inside the menu-bar height, so nothing below the menu bar is covered. Short alerts go into a priority queue whose clock only runs while they're visible, so a notification can't eat the charging alert. Volume and brightness are live feedback: newest wins and they're never replayed. Long-running things like a timer, a meeting or a recording peek in the band for four seconds and then tuck into the wings. All of this is one ActivityCenter, and every feature posts a LiveActivity with a priority, an optional compact form and a tab to open on hover. Honest status: the bands render from source, but key interception, banners and AirPods need the running app to confirm.",
+      "images": [
+        {
+          "file": "46-compact-wings.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.52,
+            "y": 0.1,
+            "w": 0.33,
+            "h": 0.12
+          },
+          "max_scale": 1.0,
+          "recording": "R3",
+          "recording_crop": "D",
+          "note": "label: wings · persistent"
+        },
+        {
+          "file": "42-volume-hud.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.52,
+            "y": 0.24,
+            "w": 0.33,
+            "h": 0.12
+          },
+          "max_scale": 1.0,
+          "recording": "R3",
+          "recording_crop": "B",
+          "note": "label: volume · live"
+        },
+        {
+          "file": "43-battery.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.52,
+            "y": 0.38,
+            "w": 0.33,
+            "h": 0.12
+          },
+          "max_scale": 1.0,
+          "recording": "R3",
+          "recording_crop": "B",
+          "note": "label: battery · alert"
+        },
+        {
+          "file": "44-airpods.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.52,
+            "y": 0.52,
+            "w": 0.33,
+            "h": 0.12
+          },
+          "max_scale": 1.0,
+          "recording": "R3",
+          "recording_crop": "B",
+          "note": "label: AirPods · alert"
+        },
+        {
+          "file": "45-notification.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.52,
+            "y": 0.66,
+            "w": 0.33,
+            "h": 0.12
+          },
+          "max_scale": 1.0,
+          "recording": "R3",
+          "recording_crop": "B",
+          "note": "label: notification · alert"
+        },
+        {
+          "file": "47-screen-recording.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.52,
+            "y": 0.8,
+            "w": 0.33,
+            "h": 0.12
+          },
+          "max_scale": 1.0,
+          "recording": "R3",
+          "recording_crop": "B",
+          "note": "label: recording · persistent"
+        }
+      ],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 5,
+      "id": "ai-stack",
+      "layout": "metrics_dashboard",
+      "header": "The on-device AI stack",
+      "subtitle": "Apple frameworks first; the network is opt-in",
+      "body": [
+        "FoundationModels · dictation cleanup, summaries, replies, prompts, plans",
+        "Vision · OCR everywhere, face landmarks for Screen Distance",
+        "Speech · SpeechAnalyzer on macOS 26+, SFSpeechRecognizer fallback",
+        "Translation · TranslationSession cached per language pair",
+        "ScreenCaptureKit · stills for Ask Screen, SCStream audio for meetings",
+        "NaturalLanguage · language ID and entities for Spaces"
+      ],
+      "tiles": [
+        {
+          "value": "FoundationModels",
+          "label": "dictation cleanup, summaries, replies, prompts, plans",
+          "accent": true
+        },
+        {
+          "value": "Vision",
+          "label": "OCR everywhere, face landmarks for Screen Distance"
+        },
+        {
+          "value": "Speech",
+          "label": "SpeechAnalyzer on macOS 26+, SFSpeechRecognizer fallback"
+        },
+        {
+          "value": "Translation",
+          "label": "TranslationSession cached per language pair"
+        },
+        {
+          "value": "ScreenCaptureKit",
+          "label": "stills for Ask Screen, SCStream audio for meetings"
+        },
+        {
+          "value": "NaturalLanguage",
+          "label": "language ID and entities for Spaces"
+        }
+      ],
+      "notes": "Ten files use the on-device Apple Intelligence model through FoundationModels: Tray AI, Clicky, dictation formatting, meeting summaries and answers, Reply Drafter, Prompt Refiner, Live Translation's fallback, Ask Screen, Flow Canvas and Downloads. One constraint shaped the code: we build with the Command Line Tools only, and the @Generable macro plugin isn't part of them, so guided generation uses DynamicGenerationSchema built at runtime. The model has a 4096-token context, so meeting transcripts are chunked. Speech uses the new SpeechAnalyzer and SpeechTranscriber on macOS 26 and falls back to SFSpeechRecognizer. ScreenCaptureKit gives us stills with SparkV's own windows excluded, and an SCStream with capturesAudio for meeting audio, which is why no bot has to join a call.",
+      "images": [],
+      "chart": {
+        "type": "column",
+        "title": "Source files importing each framework",
+        "categories": [
+          "ApplicationServices",
+          "AVFoundation",
+          "FoundationModels",
+          "Vision",
+          "PDFKit",
+          "ScreenCaptureKit",
+          "NaturalLanguage",
+          "Speech",
+          "Translation"
+        ],
+        "series": [
+          {
+            "name": "Files",
+            "values": [
+              14,
+              13,
+              10,
+              9,
+              6,
+              5,
+              5,
+              4,
+              3
+            ]
+          }
+        ],
+        "highlight": [
+          "FoundationModels",
+          "Vision",
+          "ScreenCaptureKit",
+          "NaturalLanguage",
+          "Speech",
+          "Translation"
+        ],
+        "source": "grep -l \"^import <Framework>$\" over Sources/, 22 Oct 2026"
+      },
+      "table": null
+    },
+    {
+      "number": 6,
+      "id": "ai-in-the-loop",
+      "layout": "feature_showcase",
+      "header": "AI in the loop",
+      "subtitle": "Speech in, structured text out, on the Mac",
+      "body": [
+        "Dictation: hold fn → on-device transcript → cleanup → typed at the cursor",
+        "Meetings: mic plus system audio, no bot joins, guided JSON summaries",
+        "Translation order: Apple Translation → on-device model → Groq if allowed",
+        "Warm translation: 0.33–0.8 s per caption"
+      ],
+      "status": "Audio capture and the fn key need a live check; views render from saved data.",
+      "notes": "Three pipelines share one pattern: capture on device, recognise on device, structure with the on-device model. Dictation formats text with a prewarmed LanguageModelSession so the cleanup is fast when you release fn. Meetings record your mic and the meeting's audio through ScreenCaptureKit, transcribe on device and produce minutes, decisions and your tasks as guided JSON. Live Translation tries Apple Translation first, falls back to the on-device model when a language pair isn't downloaded, and uses Groq only if the user turned on that specific toggle. Cold sessions take two to three seconds; warm ones under a second per caption, which is why sessions are cached per pair.",
+      "images": [
+        {
+          "file": "37-meeting-live-answers.png",
+          "frame": "window",
+          "placement": {
+            "x": 0.44,
+            "y": 0.22,
+            "w": 0.48,
+            "h": 0.6
+          },
+          "max_scale": 1.2,
+          "recording": "R5",
+          "recording_crop": "H",
+          "note": "collage base"
+        },
+        {
+          "file": "50-dictation.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.5,
+            "y": 0.04,
+            "w": 0.36,
+            "h": 0.1
+          },
+          "max_scale": 1.0,
+          "recording": "R4",
+          "recording_crop": "B"
+        },
+        {
+          "file": "38-live-translation.png",
+          "frame": "window",
+          "placement": {
+            "x": 0.66,
+            "y": 0.66,
+            "w": 0.3,
+            "h": 0.18
+          },
+          "max_scale": 1.0,
+          "recording": "R5",
+          "note": "caption panel overlapping lower right"
+        }
+      ],
+      "chart": {
+        "type": "range_bar",
+        "title": "Apple Translation latency, measured on macOS 27 (seconds)",
+        "categories": [
+          "Cold session (es→en)",
+          "Warm session, per caption"
+        ],
+        "series": [
+          {
+            "name": "low",
+            "values": [
+              1.8,
+              0.33
+            ]
+          },
+          {
+            "name": "high",
+            "values": [
+              2.8,
+              0.8
+            ]
+          }
+        ],
+        "highlight": [
+          "Warm session, per caption"
+        ],
+        "source": "Sources/Labs/LiveTranslation/DESIGN.md, measured on the development Mac"
+      },
+      "table": null
+    },
+    {
+      "number": 7,
+      "id": "privacy",
+      "layout": "minimal_body",
+      "header": "Private by default",
+      "subtitle": "Nothing leaves the Mac unless the user brings a key",
+      "body": [
+        "On device: speech, camera, screenshots, clipboard, Spaces, meeting audio",
+        "Groq: per-feature toggle, off by default, the buyer's own key",
+        "While a toggle is off, the keychain is never read",
+        "Clipboard history starts off; concealed and transient copies are skipped",
+        "12 permissions, each asked only when the user clicks Allow"
+      ],
+      "notes": "The privacy model is simple to state and easy to audit. Speech, camera, screen captures, clipboard, Spaces and meeting audio stay on the Mac. Groq is the only cloud path, and it's opt-in per feature: Clicky, Tray AI, meetings, Live Translation, Flow Canvas and UI Audit summaries each have their own switch, default off, using the buyer's own key. When a switch is off the code doesn't even read the keychain item. Clipboard history is off until you turn it on, and it honours the pasteboard conventions password managers use to mark concealed or transient copies. Setup asks for nothing up front: each of the 12 permissions is requested only when you click Allow, and every feature works in a reduced way without it. License checks, when they ship, will send the key, an anonymous device ID and the app version to Lemon Squeezy, and nothing else. There are no analytics.",
+      "images": [
+        {
+          "file": "41-onboarding-permissions.png",
+          "frame": "window",
+          "placement": {
+            "x": 0.66,
+            "y": 0.24,
+            "w": 0.28,
+            "h": 0.56
+          },
+          "max_scale": 1.0,
+          "recording": "R6",
+          "recording_crop": "H"
+        }
+      ],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 8,
+      "id": "ui-audit",
+      "layout": "feature_showcase",
+      "header": "UI Audit: a QA agent for your own site",
+      "subtitle": "Playwright and axe-core, started from the notch",
+      "body": [
+        "Swift spawns node audit.mjs: JSON lines out; pause, resume, stop in",
+        "Crawl, forms, axe-core WCAG 2.2 AA, 1440/390 px layout, Tab order",
+        "Origin allow-list; writes blocked off test hosts; risky clicks skipped",
+        "P copies a fix prompt for Claude Code, Cursor or Copilot"
+      ],
+      "metric_strip": [
+        "6 pages",
+        "69 findings",
+        "51,666-char fix prompt",
+        "self-test 48/48"
+      ],
+      "notes": "UI Audit audits websites you own. The Swift controller writes a run config, starts a Node runner with Playwright and axe-core, and talks to it over JSON lines: plan, page, step and finding events come out; pause, resume and stop go in. If the app dies, stdin closes and the runner stops, so you never leak a crawler. The runner crawls, checks layout at 1440 and 390 pixels, walks the Tab order, runs axe-core for WCAG 2.2 A and AA, and fills forms with type-correct test data. The safety model is strict: navigation outside the allowed origins is aborted, every non-GET request is blocked unless the host is local or test or you opt in for this run, and anything that looks like pay, delete or log out is never clicked. The numbers are from a real end-to-end run against our planted-issue test site: 69 findings, an on-device summary, and a 51,666-character fix prompt. The runner's own self-test passes 48 of 48, including the checks that it never hit the logout or delete URLs. It needs Node 20 and Playwright's Chromium on the machine today.",
+      "images": [
+        {
+          "file": "22-ui-audit-window.png",
+          "frame": "window",
+          "placement": {
+            "x": 0.36,
+            "y": 0.2,
+            "w": 0.675,
+            "h": 0.8
+          },
+          "max_scale": 1.2,
+          "recording": "R7",
+          "recording_crop": "G",
+          "note": "anchored bottom-right, bleeds 96 px off the right edge"
+        },
+        {
+          "file": "21-ui-audit.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.38,
+            "y": 0.06,
+            "w": 0.32,
+            "h": 0.075
+          },
+          "max_scale": 1.0,
+          "note": "small, 'starts here' connector to the window"
+        }
+      ],
+      "chart": {
+        "type": "bar_vertical",
+        "title": "Findings by severity, planted-issue test site",
+        "categories": [
+          "Critical",
+          "High",
+          "Medium",
+          "Low"
+        ],
+        "series": [
+          {
+            "name": "Findings",
+            "values": [
+              3,
+              15,
+              34,
+              17
+            ]
+          }
+        ],
+        "colors": [
+          "#E5484D",
+          "#F59E0B",
+          "#EAB308",
+          "#3B82F6"
+        ],
+        "source": "Feature Guide §25 end-to-end run (6 pages, 69 findings); medium/low split from the run's status badges in 22-ui-audit-window.png"
+      },
+      "table": null
+    },
+    {
+      "number": 9,
+      "id": "browser-flows",
+      "layout": "feature_showcase",
+      "header": "Browser Flows: record once, replay with data",
+      "subtitle": "Self-healing selectors; secrets are never stored",
+      "body": [
+        "Each step stores ranked selectors and an element fingerprint",
+        "Healing accepts a match of 0.6 or more that clearly beats the runner-up",
+        "Passwords become {{password}}, asked at replay, sent over stdin",
+        "CSV loop: one replay per row, up to 500 rows"
+      ],
+      "status": "Self-test not yet clean under load: one replay timed out, one CSV loop hung. Fix before launch.",
+      "notes": "Browser Flows records a browser task once and replays it. Each recorded step keeps an ordered list of selectors, in the spirit of Selenium IDE's targets list, plus a fingerprint of the element: tag, role, accessible name, text, attributes and ancestor path. When every selector fails, the runner scores all elements against the fingerprint and accepts the best one only if it scores at least 0.6 and clearly beats the runner-up, then writes the healed selector first. Password, card, CVV, OTP and SSN fields are never read: they become variables and are passed over stdin at replay, never on the command line. Flows that mention purchase, payment or delete need an explicit confirmation. Honest status: the recorder self-test isn't clean yet; under heavy load one replay timed out and a CSV loop hung. That's on the roadmap before launch.",
+      "images": [
+        {
+          "file": "26-browser-flows-window.png",
+          "frame": "window",
+          "placement": {
+            "x": -0.025,
+            "y": 0.2,
+            "w": 0.65,
+            "h": 0.8
+          },
+          "max_scale": 1.2,
+          "recording": "R8",
+          "recording_crop": "H",
+          "note": "anchored bottom-left; callout on step 4 'masked' chip: never saved"
+        },
+        {
+          "file": "25-browser-flows.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.3,
+            "y": 0.06,
+            "w": 0.32,
+            "h": 0.075
+          },
+          "max_scale": 1.0
+        }
+      ],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 10,
+      "id": "flow-canvas",
+      "layout": "feature_showcase",
+      "header": "Flow Canvas: workflows as a graph",
+      "subtitle": "Sources in, actions chained, run on this Mac",
+      "body": [
+        "Drop links, PDFs, screenshots and notes as source cards",
+        "Chain extract, compare, summarize, report and chat-with-sources",
+        "\"Suggest steps\" plans the chain from one sentence",
+        "Export to Markdown, PDF, CSV, Tray, Notes or a Space"
+      ],
+      "notes": "Flow Canvas is a whiteboard for AI workflows. Source cards hold links, PDFs, screenshots or notes; action cards extract fields, compare, summarize or write a report; edges carry data between them, and Run all executes the graph. You can also describe the goal in one sentence and Suggest steps builds the chain. It ships with four templates, including the competitor pricing comparison you see here. The engine indicator top right says 'On this Mac': FoundationModels, Vision OCR and Apple Translation do the work. Groq is a separate opt-in for this feature only. Canvases are plain versioned JSON in Application Support, and dropped files are copied into the canvas's assets folder; originals are never moved.",
+      "images": [
+        {
+          "file": "35-flow-canvas.png",
+          "frame": "full_bleed",
+          "placement": {
+            "x": 0.04,
+            "y": 0.0,
+            "w": 0.96,
+            "h": 1.0
+          },
+          "max_scale": 1.4,
+          "recording": "R9",
+          "recording_crop": "A",
+          "note": "left 40% under a bg scrim carrying the text"
+        }
+      ],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 11,
+      "id": "engineering",
+      "layout": "metrics_dashboard",
+      "header": "Engineering practices",
+      "subtitle": "A small toolchain and strict habits",
+      "body": [
+        "CLT-only · one zsh build script, no Xcode project required",
+        "No macro plugins · no @State, #Preview, @Entry, @Generable",
+        "Temp-dir builds · iCloud can't modify files mid-compile",
+        "Stable signing · permission grants survive every rebuild",
+        "Hardened Runtime · explicit camera, mic, calendar, Apple Events entitlements",
+        "Real-source harnesses · Swift 5 and 6, private pasteboards"
+      ],
+      "tiles": [
+        {
+          "value": "CLT-only",
+          "label": "one zsh build script, no Xcode project required"
+        },
+        {
+          "value": "No macro plugins",
+          "label": "no @State, #Preview, @Entry, @Generable"
+        },
+        {
+          "value": "Temp-dir builds",
+          "label": "iCloud can't modify files mid-compile"
+        },
+        {
+          "value": "Stable signing",
+          "label": "permission grants survive every rebuild",
+          "accent": true
+        },
+        {
+          "value": "Hardened Runtime",
+          "label": "explicit camera, mic, calendar, Apple Events entitlements"
+        },
+        {
+          "value": "Real-source harnesses",
+          "label": "Swift 5 and 6, private pasteboards"
+        }
+      ],
+      "notes": "We build with the Command Line Tools only. build.sh copies sources into a temp folder, compiles GlanceKit as a static library with its own concurrency settings, compiles the app, builds the Now Playing adapter framework with clang, signs nested code first and then the app with the Hardened Runtime. The temp folder exists because the project lives on iCloud Desktop, which touches files mid-build and adds Finder attributes codesign rejects. No Xcode means no macro plugins, so the code avoids @State, #Preview, @Entry and @Generable. A stable self-signed identity, 'NotchIsland Developer', gives every build the same designated requirement, so Accessibility and Screen Recording grants survive rebuilds. Tests are harnesses that compile the real app sources, for example the clipboard harness runs against private named pasteboards, never the general one, in both Swift 5 and Swift 6 modes. The log scale is there because the widget harness sweeps time zones and has far more checks than the others; don't read it as a coverage ranking.",
+      "images": [],
+      "chart": {
+        "type": "bar_horizontal",
+        "scale": "log10",
+        "title": "Harness checks passing on 22 Oct 2026",
+        "categories": [
+          "Widgets",
+          "Clipboard + paste stack",
+          "Copy Text OCR + screen recorder",
+          "UI Audit runner self-test",
+          "Browser Flows recorder self-test"
+        ],
+        "series": [
+          {
+            "name": "Passing checks",
+            "values": [
+              29283,
+              195,
+              63,
+              48,
+              null
+            ]
+          }
+        ],
+        "value_labels": [
+          "29,283 · 0 fail",
+          "195 · 0 fail",
+          "63 · 0 fail",
+          "48/48",
+          "not clean"
+        ],
+        "placeholder_style": {
+          "Browser Flows recorder self-test": "hatched, label 'not clean'"
+        },
+        "source": "Feature Guide, Verification summary"
+      },
+      "table": null
+    },
+    {
+      "number": 12,
+      "id": "distribution",
+      "layout": "two_column_comparison",
+      "header": "Shipping outside the Mac App Store",
+      "subtitle": "What the sandbox blocks, and the release pipeline we're adding",
+      "columns": [
+        {
+          "title": "Why not the App Store",
+          "items": [
+            "Accessibility APIs don't work in the App Sandbox",
+            "Event taps and CGEvent.post for fn, media keys and paste",
+            "Private DisplayServices and MediaRemote (via /usr/bin/perl)",
+            "Spawning Node, Playwright and /usr/bin/shortcuts"
+          ]
+        },
+        {
+          "title": "Developer ID pipeline (planned)",
+          "numbered": true,
+          "items": [
+            "Developer ID Application cert replaces the local identity",
+            "Sign nested code with --options runtime --timestamp",
+            "notarytool submit --wait, then stapler staple",
+            "Sparkle 2 updates with an EdDSA-signed appcast",
+            "Lemon Squeezy License API: activate, validate, deactivate"
+          ]
+        }
+      ],
+      "body": [
+        "Why not the App Store: Accessibility, event taps, private frameworks, child processes",
+        "Developer ID pipeline: cert, sign with timestamp, notarize, staple, Sparkle 2, License API"
+      ],
+      "notes": "SparkV can't be sandboxed. Apple's DTS says Accessibility APIs aren't compatible with the App Sandbox, and we also need event taps for the fn key, posted key events for paste, private DisplayServices for the HUD, the MediaRemote adapter for Now Playing, and child processes for Node and Shortcuts. NotchNook stays off the App Store for the same MediaRemote reason. So we ship direct: a Developer ID certificate replaces today's local identity, every nested binary is signed with the Hardened Runtime and a secure timestamp, the DMG is notarized and stapled, and Sparkle 2 delivers updates from a signed appcast. Since Sequoia, an un-notarized app can't be opened with right-click Open, so notarization isn't optional for a paid product. The local identity stays for development builds. Sources for the sandbox constraints are in the business plan, section 5.",
+      "images": [],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 13,
+      "id": "pricing",
+      "layout": "pricing_table",
+      "header": "Pricing built on zero AI cost",
+      "subtitle": "One-time Pro, because inference runs on the buyer's Mac",
+      "body": [
+        "Free $0 · Pro $39 one-time (launch $29) · Team $8 per seat per month, billed yearly"
+      ],
+      "table": {
+        "columns": [
+          "",
+          "Free",
+          "Pro (recommended)",
+          "Team"
+        ],
+        "highlight_column": "Pro (recommended)",
+        "rows": [
+          [
+            "Price",
+            "$0",
+            "$39 one-time · launch $29",
+            "$8 per seat per month, billed yearly"
+          ],
+          [
+            "India",
+            "₹0",
+            "₹1,499 · launch ₹999",
+            "₹499 per seat per month"
+          ],
+          [
+            "Updates",
+            "—",
+            "12 months included, optional $19/yr renewal",
+            "included"
+          ],
+          [
+            "Notch core",
+            "Media, HUD, battery, tray, timer, Today",
+            "Everything",
+            "Everything"
+          ],
+          [
+            "AI assistants",
+            "Dictation without AI formatting",
+            "Dictation with AI, Clicky, Ask Screen, Reply Drafter, Prompt Refiner, Tray AI, Job Agent",
+            "Everything"
+          ],
+          [
+            "Developer tools",
+            "—",
+            "UI Audit, Browser Flows, Flow Canvas",
+            "Everything"
+          ],
+          [
+            "Extras",
+            "—",
+            "14-day trial, no card · 2 Macs",
+            "Invoice, seat management, MDM .pkg · min 3 seats"
+          ]
+        ],
+        "source": "Business Plan §6a"
+      },
+      "footnote": "Per-pack pricing ($9–$19 per pack, 'Everything' = Pro) is designed but not launched (Business Plan §6b).",
+      "revenue_scenario": {
+        "formula": "Pro units × $36.55 + Team seats × $90.22",
+        "pro_units": "[TBD]",
+        "team_seats": "[TBD]",
+        "year_one_revenue": "[TBD]",
+        "rule": "Render as a table with bracketed placeholders; do not draw a chart until real values exist."
+      },
+      "notes": "For partners, the business model matters because it's shaped by the architecture. We pay nothing per user for AI, so we can charge once instead of monthly. Pro is $39 one-time with a $29 launch price, 1,499 rupees in India. Team is $8 per seat per month billed yearly. Developer tools sit in Pro. After merchant-of-record fees we keep about $36.55 of a $39 sale. We don't have sales yet, so there's no revenue chart with numbers; the scenario row stays a placeholder until we do.",
+      "images": [],
+      "chart": {
+        "type": "bar_horizontal",
+        "title": "Net per sale after merchant-of-record fees (USD)",
+        "categories": [
+          "Pro, student (50% off)",
+          "Pro, launch",
+          "Pro",
+          "Team, per seat-year"
+        ],
+        "series": [
+          {
+            "name": "List price",
+            "values": [
+              19.5,
+              29.0,
+              39.0,
+              96.0
+            ]
+          },
+          {
+            "name": "Net to SparkV",
+            "values": [
+              18.03,
+              27.05,
+              36.55,
+              90.22
+            ]
+          }
+        ],
+        "data_table": [
+          {
+            "item": "Pro, student (50% off)",
+            "list": 19.5,
+            "fee": 1.48,
+            "net": 18.03
+          },
+          {
+            "item": "Pro, launch",
+            "list": 29.0,
+            "fee": 1.95,
+            "net": 27.05
+          },
+          {
+            "item": "Pro",
+            "list": 39.0,
+            "fee": 2.45,
+            "net": 36.55
+          },
+          {
+            "item": "Team, per seat-year",
+            "list": 96.0,
+            "fee": 5.78,
+            "net": 90.22,
+            "fee_note": "5% + $0.50 + 0.5% subscription surcharge"
+          }
+        ],
+        "highlight": [
+          "Pro"
+        ],
+        "source": "Derived from Business Plan §4 Lemon Squeezy fees (5% + 50¢; +0.5% on subscriptions). Excludes ~1.5% non-US surcharge and payout fees."
+      }
+    },
+    {
+      "number": 14,
+      "id": "market-competitors",
+      "layout": "two_column_comparison",
+      "header": "One app, not a six-app stack",
+      "subtitle": "Comparable tools, and the platform SparkV runs on",
+      "body": [
+        "Comparable-tool stack, year one: $491.99 · SparkV Pro: $39 one-time",
+        "Apple active devices: 2.5B (Jan 2026)",
+        "Mac active base: 100M+ (Apple, Oct 2018)",
+        "Notched Apple-silicon MacBooks on macOS 15+: [TBD: sourced estimate]",
+        "SparkV users: [TBD: monthly active users]"
+      ],
+      "columns": [
+        {
+          "title": "First-year cost of comparable tools",
+          "chart_ref": "chart"
+        },
+        {
+          "title": "Apple's active installed base",
+          "chart_ref": "chart_2",
+          "stat_lines": [
+            "Mac active base: 100M+ (Apple, October 2018; latest Mac-only figure)",
+            "Notched Apple-silicon MacBooks on macOS 15+: [TBD: sourced estimate]",
+            "SparkV waitlist / users: [TBD: monthly active users]"
+          ]
+        }
+      ],
+      "notes": "A buyer who wants what SparkV does would otherwise assemble a stack: a notch app, a clipboard manager, dictation, meeting notes, a launcher with AI and a screenshot tool. Year one of that stack is about $490; SparkV Pro is $39. That's a category comparison, not a claim that every feature matches. On the right, platform context: Apple reports 2.5 billion active devices across all products. Apple hasn't published a Mac-only figure since 'over 100 million' in 2018, so the number we actually need, notched MacBooks on macOS 15 or later, is marked to be sourced. We have no user numbers to show yet.",
+      "images": [],
+      "chart": {
+        "type": "bar_horizontal",
+        "title": "First-year cost of comparable tools (USD)",
+        "categories": [
+          "Granola Business",
+          "Wispr Flow Pro",
+          "Raycast Pro",
+          "Paste",
+          "CleanShot X",
+          "NotchNook",
+          "SparkV Pro"
+        ],
+        "series": [
+          {
+            "name": "First-year cost",
+            "values": [
+              168.0,
+              144.0,
+              96.0,
+              29.99,
+              29.0,
+              25.0,
+              39.0
+            ]
+          }
+        ],
+        "data_table": [
+          {
+            "product": "Granola Business",
+            "category": "Meeting notes",
+            "cost": 168.0,
+            "basis": "$14/user/mo x 12",
+            "source": "https://granola.ai/blog/granola-pricing-plans-features-roi"
+          },
+          {
+            "product": "Wispr Flow Pro",
+            "category": "Dictation",
+            "cost": 144.0,
+            "basis": "$144/yr",
+            "source": "https://www.getvoibe.com/resources/wispr-flow-pricing/"
+          },
+          {
+            "product": "Raycast Pro",
+            "category": "Launcher + AI",
+            "cost": 96.0,
+            "basis": "$8/mo billed yearly",
+            "source": "https://www.raycast.com/blog/changing-how-raycast-ai-is-priced"
+          },
+          {
+            "product": "Paste",
+            "category": "Clipboard",
+            "cost": 29.99,
+            "basis": "$29.99/yr",
+            "source": "https://apps.apple.com/app/id967805235"
+          },
+          {
+            "product": "CleanShot X",
+            "category": "Screenshots",
+            "cost": 29.0,
+            "basis": "one-time, 1 yr updates",
+            "source": "https://toolradar.com/tools/cleanshot/pricing"
+          },
+          {
+            "product": "NotchNook",
+            "category": "Notch hub",
+            "cost": 25.0,
+            "basis": "one-time",
+            "source": "https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny"
+          },
+          {
+            "product": "SparkV Pro",
+            "category": "All of the above categories",
+            "cost": 39.0,
+            "basis": "one-time (launch $29)",
+            "source": "Business Plan §6a"
+          }
+        ],
+        "stack_total": 491.99,
+        "highlight": [
+          "SparkV Pro"
+        ],
+        "footnote": "Overlap is by category, not feature parity. Prices are third-party listings (Business Plan §3); check vendor pages before quoting publicly.",
+        "source": "Business Plan §3 and §6a"
+      },
+      "chart_2": {
+        "type": "column",
+        "title": "Active Apple devices (billions, all products)",
+        "categories": [
+          "Jan 2024",
+          "Jan 2025",
+          "Jan 2026"
+        ],
+        "series": [
+          {
+            "name": "Active devices (B)",
+            "values": [
+              2.2,
+              2.35,
+              2.5
+            ]
+          }
+        ],
+        "data_table": [
+          {
+            "date": "Jan 2024",
+            "value_billions": 2.2,
+            "source": "https://supportplan.com/apple-has-more-than-2-35-billion-active-devices-up-550-million-since-2022",
+            "note": "prior-year figure cited on Apple's FQ1 2025 call"
+          },
+          {
+            "date": "Jan 2025",
+            "value_billions": 2.35,
+            "source": "https://supportplan.com/apple-has-more-than-2-35-billion-active-devices-up-550-million-since-2022"
+          },
+          {
+            "date": "Jan 2026",
+            "value_billions": 2.5,
+            "source": "https://9to5mac.com/2026/01/29/apple-reveals-it-has-2-5-billion-active-devices-around-the-world/"
+          }
+        ],
+        "extra_stats": [
+          {
+            "label": "Mac active base",
+            "value": "100M+",
+            "date": "Oct 2018",
+            "source": "https://forums.appleinsider.com/discussion/208001"
+          },
+          {
+            "label": "Notched Apple-silicon MacBooks on macOS 15+",
+            "value": "[TBD: sourced estimate]"
+          },
+          {
+            "label": "SparkV users",
+            "value": "[TBD: monthly active users]"
+          }
+        ],
+        "source": "Apple earnings calls via 9to5Mac and supportplan.com; AppleInsider"
+      },
+      "table": null
+    },
+    {
+      "number": 15,
+      "id": "roadmap",
+      "layout": "timeline",
+      "header": "Roadmap",
+      "subtitle": "From a local build to a notarized 1.0 in 30 days",
+      "body": [
+        "Days 1–3 · Developer ID cert, Lemon Squeezy products, domain",
+        "Days 4–7 · Face Unlock out of the sold build; acknowledgements; legal pages",
+        "Days 8–12 · Licensing, trial and gating; Sparkle; notarized DMG",
+        "Days 13–15 · Clean-Mac test: Gatekeeper, onboarding, trial, key, update",
+        "Days 16–25 · Landing page, demo video, private beta of 30–50 users",
+        "Days 26–27 · Ship 1.0, launch price on, Product Hunt",
+        "Days 28–30 · 1.0.1 through Sparkle, Show HN, affiliates"
+      ],
+      "timeline": {
+        "start": "[TBD: launch kickoff date]",
+        "milestones": [
+          {
+            "days": "1–3",
+            "label": "Developer ID cert, Lemon Squeezy products, domain"
+          },
+          {
+            "days": "4–7",
+            "label": "Face Unlock out of the sold build (ArcFace is non-commercial); acknowledgements; legal pages",
+            "blocker": true
+          },
+          {
+            "days": "8–12",
+            "label": "Licensing, trial and gating in Labs/Licensing; Sparkle; notarized DMG"
+          },
+          {
+            "days": "13–15",
+            "label": "Clean-Mac test: Gatekeeper, onboarding, trial, key, 1.0 → 1.0.1 update"
+          },
+          {
+            "days": "16–25",
+            "label": "Landing page, demo video, private beta of 30–50 users"
+          },
+          {
+            "days": "26–27",
+            "label": "Ship 1.0, launch price on, Product Hunt",
+            "accent": true
+          },
+          {
+            "days": "28–30",
+            "label": "1.0.1 through Sparkle, Show HN, affiliates"
+          }
+        ],
+        "after_launch": [
+          "Fix the Browser Flows self-test",
+          "Decide: bundle a signed Node (+40–100 MB) or require it",
+          "Feature packs",
+          "Setapp (month 3+)",
+          "Spaces live sync (not built; today Spaces share as .sparkvspace packages)"
+        ]
+      },
+      "notes": "The launch plan is thirty days. The engineering-heavy parts are days 8 to 15: licensing with Lemon Squeezy's License API, Keychain-stored trial dates, a 14-day offline grace window, gating at the window controller so locked features never even instantiate, Sparkle, and a notarized DMG, then a clean-Mac test on a fresh user account. Two known blockers are explicit: Face Unlock comes out of the commercial build because of the ArcFace licence, and UI Audit and Browser Flows currently need Node on the buyer's Mac. After 1.0 the first engineering item is making the Browser Flows self-test pass reliably. Shared Spaces today is a file package; live sync doesn't exist and we don't advertise it.",
+      "images": [],
+      "chart": null,
+      "table": null
+    },
+    {
+      "number": 16,
+      "id": "cta",
+      "layout": "cta",
+      "header": "Build on the notch with us",
+      "subtitle": "Early access for developers and technical partners",
+      "body": [
+        "Beta: run UI Audit and Browser Flows against your own staging sites",
+        "Partners: [TBD: partnership tracks]",
+        "sparkv.si · [TBD: contact email]"
+      ],
+      "notes": "If you build websites, the fastest way to judge SparkV is to point UI Audit at your own staging site and read the fix prompt it produces. We're looking for beta testers for the developer tools and for partners; the specific partnership tracks and the contact address are being finalised. Questions.",
+      "images": [
+        {
+          "file": "51-clicky-answer.png",
+          "frame": "notch",
+          "placement": {
+            "x": 0.29,
+            "y": 0.0,
+            "w": 0.42,
+            "h": 0.13
+          },
+          "max_scale": 1.3,
+          "recording": "R1",
+          "note": "island touches the slide top, centred"
+        }
+      ],
+      "chart": null,
+      "table": null
+    }
+  ]
+}

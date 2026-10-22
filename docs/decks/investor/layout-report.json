@@ -1,0 +1,21 @@
+{
+ "problems": [],
+ "pptx": {
+  "slides": 24,
+  "expected": 24,
+  "missing_notes": [],
+  "charts": {
+   "02": 1,
+   "08": 1,
+   "13": 1,
+   "14": 1,
+   "21": 1
+  },
+  "hidden": [
+   "A1",
+   "A2",
+   "A3"
+  ],
+  "problems": []
+ }
+}

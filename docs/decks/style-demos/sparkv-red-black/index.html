@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SparkV Red/Black Deck</title>
+<meta name="description" content="Style demo: six 16:9 SparkV slides in the sparkv.si red/black system.">
+<style>
+/* ===== Tokens (mirrors STYLE.md) ===== */
+:root{
+  --ink-950:#09090A;      /* 60% base: slide background */
+  --ink-990:#050506;      /* page around the slides */
+  --surface:#111113;      /* raised panels */
+  --surface-2:#17171A;
+  --paper:#F7F7F5;        /* 30%: off-white text */
+  --white:#FFFFFF;        /* display headlines */
+  --grey-1:#A0A0A3;       /* lead text (white 62% on ink) */
+  --grey-2:#9A9AA1;       /* body / muted */
+  --grey-3:#808088;       /* dim labels */
+  --grey-4:#4E4E4F;       /* headline accent word (white 28% on ink) */
+  --bar-grey:#3A3A3F;     /* neutral data marks */
+  --line:rgba(255,255,255,.10);   /* hairline rules */
+  --line-2:rgba(255,255,255,.15); /* chip borders */
+  --chip:rgba(255,255,255,.05);
+  --red:#F01822;          /* 10%: signal red */
+  --red-pressed:#D7131D;
+  --red-text:#F8262F;
+  --red-soft:#FF8A90;
+  --glow:rgba(240,24,34,.16);
+  --sans:ui-sans-serif,system-ui,-apple-system,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ink-990);color:var(--paper);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5}
+img{display:block}
+
+/* ===== Page chrome (outside the slides) ===== */
+.page{max-width:1600px;margin:0 auto;padding:40px 24px 80px}
+.page-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:36px}
+.page-head h1{font-size:clamp(28px,4vw,48px);font-weight:520;letter-spacing:-.05em;line-height:1;color:var(--white)}
+.page-head p{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--grey-3)}
+.slide-label{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--grey-3);margin:0 0 12px}
+.slide-label b{color:var(--paper);font-weight:400}
+.frame{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--line);border-radius:10px;margin-bottom:56px;background:var(--ink-950)}
+@media (max-width:640px){.page{padding:24px 16px 56px}.frame{border-radius:6px;margin-bottom:36px}}
+
+/* ===== Slide canvas: fixed 1600x900, scaled by JS ===== */
+.slide{position:absolute;top:0;left:0;width:1600px;height:900px;transform-origin:0 0;transform:scale(var(--s,.5));background:var(--ink-950);overflow:hidden;color:var(--paper)}
+.glow{position:absolute;border-radius:50%;background:radial-gradient(circle,var(--glow),rgba(0,0,0,0) 66%);pointer-events:none}
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:122px 122px;background-position:80px 0;-webkit-mask-image:radial-gradient(ellipse 70% 70% at 30% 30%,#000 20%,transparent 75%);mask-image:radial-gradient(ellipse 70% 70% at 30% 30%,#000 20%,transparent 75%);pointer-events:none}
+.s-head{position:absolute;top:56px;left:80px;right:80px;height:24px;display:flex;justify-content:space-between;align-items:center}
+.s-foot{position:absolute;left:80px;right:80px;bottom:40px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--grey-3)}
+.content{position:absolute;left:80px;right:80px;top:120px;bottom:90px;display:grid;grid-template-columns:repeat(12,1fr);column-gap:24px}
+
+/* Wordmark */
+.wordmark{font-family:var(--sans);font-size:15px;font-weight:600;letter-spacing:.42em;color:var(--paper)}
+.wordmark i{font-style:normal;color:var(--red)}
+
+/* Eyebrow: red dash + mono caps */
+.eyebrow{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52)}
+.eyebrow::before{content:"";width:24px;height:1px;background:var(--red);flex:none}
+.pageno{font-family:var(--mono);font-size:15px;letter-spacing:.16em;color:rgba(255,255,255,.36)}
+
+/* Type */
+.display{font-size:132px;font-weight:520;letter-spacing:-.05em;word-spacing:.05em;line-height:.92;color:var(--white)}
+.h1{font-size:76px;font-weight:520;letter-spacing:-.045em;word-spacing:.05em;line-height:.98;color:var(--white)}
+.h3{font-size:28px;font-weight:450;letter-spacing:-.035em;line-height:1.2;color:var(--paper)}
+.dim{color:var(--grey-4)}
+.lead{font-size:22px;line-height:1.55;color:var(--grey-1);letter-spacing:-.01em}
+.body{font-size:17px;line-height:1.5;color:var(--grey-2)}
+.mono{font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--grey-3)}
+.num{font-family:var(--mono);font-size:13px;letter-spacing:.08em;color:var(--grey-2)}
+.audience{border-left:1px solid var(--red);padding-left:16px;font-size:17px;line-height:1.55;color:rgba(255,255,255,.72)}
+
+/* Buttons and chips */
+.btn{display:inline-flex;align-items:center;gap:12px;height:56px;padding:0 22px;border-radius:12px;font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--white);border:1px solid transparent;text-decoration:none;white-space:nowrap}
+.btn-red{background:var(--red);box-shadow:0 12px 35px rgba(240,24,34,.22)}
+.btn-red:active{background:var(--red-pressed)}
+.btn-ghost{background:var(--chip);border-color:var(--line-2);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.chip{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:99px;border:1px solid var(--line-2);background:var(--chip);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-2);white-space:nowrap}
+.chip-red{border-color:rgba(240,24,34,.45);color:var(--red-soft);background:rgba(240,24,34,.08)}
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:112px;height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line-2);background:var(--chip);font-family:var(--sans);font-size:17px;font-weight:500;color:var(--paper);letter-spacing:.02em;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex:none}
+
+/* ===== MacBook notch mockup ===== */
+.mac{position:relative;background:#000;border:1px solid rgba(255,255,255,.14);border-bottom:0;border-radius:28px 28px 0 0;padding:12px 12px 0}
+.screen{position:relative;overflow:hidden;border-radius:16px 16px 0 0;background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(240,24,34,.18),rgba(0,0,0,0) 70%),linear-gradient(180deg,#141416 0%,#0B0B0D 100%)}
+.screen::before{content:"";position:absolute;top:0;left:0;right:0;height:26px;background:rgba(255,255,255,.06);border-bottom:1px solid var(--line)}
+.screen::after{content:"";position:absolute;left:0;right:0;bottom:0;height:28%;background:linear-gradient(180deg,rgba(9,9,10,0),var(--ink-950));pointer-events:none}
+.drawer{position:absolute;top:0;left:50%;transform:translateX(-50%);height:auto;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;z-index:1}
+.cam{position:absolute;top:7px;left:50%;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#0d0d10;box-shadow:inset 0 0 0 2px #1b1b20;z-index:2}
+/* masks trace the real drawer edge in each render (2x pixel coordinates) */
+.m-home{-webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 282' preserveAspectRatio='none'><path d='M53 0H1171Q1152 0 1152 19V185A44 44 0 0 1 1108 229H116A44 44 0 0 1 72 185V19Q72 0 53 0Z'/></svg>");mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 282' preserveAspectRatio='none'><path d='M53 0H1171Q1152 0 1152 19V185A44 44 0 0 1 1108 229H116A44 44 0 0 1 72 185V19Q72 0 53 0Z'/></svg>")}
+.m-hub{-webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 456' preserveAspectRatio='none'><path d='M63 0H1161Q1152 0 1152 9V359A44 44 0 0 1 1108 403H116A44 44 0 0 1 72 359V9Q72 0 63 0Z'/></svg>");mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 456' preserveAspectRatio='none'><path d='M63 0H1161Q1152 0 1152 9V359A44 44 0 0 1 1108 403H116A44 44 0 0 1 72 359V9Q72 0 63 0Z'/></svg>")}
+.m-dict{-webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 180' preserveAspectRatio='none'><path d='M212 0H1012V74A36 36 0 0 1 976 110H248A36 36 0 0 1 212 74Z'/></svg>");mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 180' preserveAspectRatio='none'><path d='M212 0H1012V74A36 36 0 0 1 976 110H248A36 36 0 0 1 212 74Z'/></svg>")}
+.m-clicky{-webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 220' preserveAspectRatio='none'><path d='M208 0H1016Q1012 0 1012 4V126A36 36 0 0 1 976 162H248A36 36 0 0 1 212 126V4Q212 0 208 0Z'/></svg>");mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1224 220' preserveAspectRatio='none'><path d='M208 0H1016Q1012 0 1012 4V126A36 36 0 0 1 976 162H248A36 36 0 0 1 212 126V4Q212 0 208 0Z'/></svg>")}
+
+/* ===== Slide-specific layout ===== */
+/* 1: title */
+.s1 .content{grid-template-rows:auto 1fr}
+.s1 .headline{grid-column:1 / 13;margin-top:20px}
+.s1 .left{grid-column:1 / 6;align-self:end;display:flex;flex-direction:column;gap:24px}
+.s1 .right{grid-column:6 / 13;align-self:end;display:flex;flex-direction:column;gap:12px}
+.s1 .ctas{display:flex;gap:12px;margin-top:8px}
+.s1 .screen{height:236px}
+
+/* 2: problem */
+.s2 .content{grid-template-rows:auto 1fr auto}
+.s2 .title{grid-column:1 / 9;margin-top:12px}
+.s2 .intro{grid-column:9 / 13;align-self:end;margin-top:12px}
+.s2 .card{grid-column:span 2;border-top:1px solid var(--line);padding-top:22px;display:flex;flex-direction:column;align-self:start;margin-top:56px;min-height:252px}
+.s2 .card .h3{margin-top:28px;font-size:24px}
+.s2 .card .prod{margin-top:6px;font-size:16px;color:var(--grey-2)}
+.s2 .card .price{margin-top:auto;font-size:52px;font-weight:520;letter-spacing:-.04em;line-height:1;color:var(--paper)}
+.s2 .card .cad{margin-top:10px}
+.s2 .card.total{border-top-color:var(--red)}
+.s2 .card.total .price{color:var(--white)}
+.s2 .pain{grid-column:span 4;border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:10px}
+.s2 .pain .mono{display:flex;align-items:center;gap:10px;color:var(--paper)}
+
+/* 3: feature showcase */
+.s3 .content{grid-template-rows:auto auto 1fr}
+.s3 .title{grid-column:1 / 6;grid-row:1;margin-top:12px}
+.s3 .intro{grid-column:1 / 6;grid-row:2;margin-top:24px}
+.s3 .keys{grid-column:1 / 6;grid-row:3;align-self:end;display:flex;flex-direction:column}
+.s3 .krow{display:grid;grid-template-columns:136px 1fr;column-gap:20px;padding:14px 0;border-top:1px solid var(--line)}
+.s3 .krow .k{grid-row:1 / 4}
+.s3 .krow .h3{font-size:20px;letter-spacing:-.02em}
+.s3 .krow .body{font-size:15px;margin-top:2px}
+.s3 .krow .mono{font-size:11px;margin-top:6px}
+.s3 .visual{grid-column:6 / 13;grid-row:1 / 4;display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.s3 .bands{margin-top:auto!important}
+.s3 .screen.main{height:396px}
+.s3 .bands{display:grid;grid-template-columns:1fr 1fr;column-gap:24px;margin-top:20px}
+.s3 .band .mac{border-radius:20px 20px 0 0;padding:8px 8px 0}
+.s3 .band .screen{height:92px;border-radius:12px 12px 0 0}
+.s3 .band .screen::before{height:18px}
+.s3 .band .cam{top:4px}
+.s3 .band .mono{margin-top:10px;font-size:11px}
+
+/* 4: metrics */
+.s4 .content{grid-template-rows:auto auto 1fr}
+.s4 .title{grid-column:1 / 9;margin-top:12px}
+.s4 .intro{grid-column:9 / 13;align-self:end}
+.s4 .kpi{grid-column:span 3;border-top:1px solid var(--line);padding-top:18px;margin-top:44px;display:flex;flex-direction:column}
+.s4 .kpi .big{font-size:84px;font-weight:520;letter-spacing:-.045em;line-height:1;margin-top:18px;color:var(--white)}
+.s4 .kpi .big.red{color:var(--red-text)}
+.s4 .kpi .body{margin-top:12px;font-size:15px}
+.s4 .chart{grid-column:1 / 9;align-self:start;margin-top:56px;border-top:1px solid var(--line);padding-top:18px}
+.s4 .chart-head{display:flex;justify-content:space-between;margin-bottom:14px}
+.s4 .bar-row{display:grid;grid-template-columns:200px 1fr;column-gap:20px;align-items:center;height:34px}
+.s4 .bar-row .name{font-size:16px;color:var(--paper);white-space:nowrap}
+.s4 .bar-row .name small{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--grey-3);margin-left:8px}
+.s4 .track{display:flex;align-items:center;gap:12px;height:100%}
+.s4 .bar{height:14px;background:var(--bar-grey);border-radius:0 4px 4px 0}
+.s4 .bar.total{background:var(--paper)}
+.s4 .bar.spark{background:var(--red)}
+.s4 .val{font-size:16px;font-variant-numeric:tabular-nums;color:var(--paper)}
+.s4 .sep{border-top:1px solid var(--line);margin:8px 0}
+.s4 .side{grid-column:9 / 13;align-self:start;margin-top:56px;border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:18px}
+.s4 .side .pair{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}
+.s4 .side .v{font-size:48px;font-weight:520;letter-spacing:-.04em;line-height:1;margin-top:8px}
+.s4 .side .body{font-size:14px;margin-top:8px}
+
+/* 5: comparison */
+.s5 .content{grid-template-rows:auto auto 1fr auto}
+.s5 .title{grid-column:1 / 9;margin-top:12px}
+.s5 .intro{grid-column:9 / 13;align-self:end}
+.s5 .colhead{grid-row:2;margin-top:44px;padding-bottom:14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.s5 .colhead.l{grid-column:1 / 7}
+.s5 .colhead.r{grid-column:7 / 13}
+.s5 .rows{grid-column:1 / 13;grid-row:3;display:grid;grid-template-columns:repeat(12,1fr);column-gap:24px;grid-auto-rows:1fr}
+.s5 .cell{padding:14px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;column-gap:16px;align-content:center}
+.s5 .cell.l{grid-column:1 / 7}
+.s5 .cell.r{grid-column:7 / 13}
+.s5 .cell .h3{font-size:22px;letter-spacing:-.025em}
+.s5 .cell .body{font-size:15px;grid-column:1 / 2;margin-top:2px}
+.s5 .cell .price{grid-row:1 / 3;grid-column:2;align-self:center;font-family:var(--mono);font-size:14px;color:var(--paper);text-align:right;white-space:nowrap}
+.s5 .cell .status{grid-row:1 / 3;grid-column:2;align-self:center}
+.s5 .note{grid-column:1 / 13;grid-row:4;margin-top:16px}
+
+/* 6: pricing */
+.s6 .content{grid-template-rows:auto 1fr auto}
+.s6 .title{grid-column:1 / 8;margin-top:12px}
+.s6 .intro{grid-column:8 / 13;align-self:end}
+.s6 .plan{grid-column:span 4;margin-top:40px;border:1px solid var(--line);border-radius:18px;padding:26px 28px;display:flex;flex-direction:column;position:relative;overflow:hidden;background:rgba(255,255,255,.015)}
+.s6 .plan.pro{border-color:rgba(240,24,34,.55);background:radial-gradient(circle at 95% 6%,rgba(240,24,34,.18),rgba(0,0,0,0) 40%),rgba(255,255,255,.02)}
+.s6 .plan-top{display:flex;justify-content:space-between;align-items:center;height:30px}
+.s6 .plan .price{display:flex;align-items:baseline;gap:12px;margin-top:22px}
+.s6 .plan .price b{font-size:76px;font-weight:520;letter-spacing:-.045em;line-height:1;color:var(--white)}
+.s6 .plan .price span{font-size:16px;color:var(--grey-2)}
+.s6 .plan .inr{margin-top:12px;font-size:13px}
+.s6 .plan ul{list-style:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:9px}
+.s6 .plan li{font-size:15px;line-height:1.4;color:var(--grey-2);padding-left:18px;position:relative}
+.s6 .plan li::before{content:"";position:absolute;left:0;top:9px;width:8px;height:1px;background:var(--grey-3)}
+.s6 .plan.pro li::before{background:var(--red)}
+.s6 .plan li b{color:var(--paper);font-weight:500}
+.s6 .cta{grid-column:1 / 13;margin-top:24px;display:flex;align-items:center;gap:16px}
+.s6 .cta .mono{margin-left:auto}
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="page-head">
+    <h1>SparkV red/black: deck style demo</h1>
+    <p>6 sample slides · 1600×900 canvas · 16:9 · tokens in STYLE.md</p>
+  </header>
+
+  <!-- ============ 01 TITLE ============ -->
+  <div class="slide-label"><span><b>01</b> Title / key visual</span><span>60 · 30 · 10</span></div>
+  <section class="frame" aria-label="Slide 1: title">
+    <div class="slide s1">
+      <div class="grid-bg"></div>
+      <div class="glow" style="left:-260px;top:-360px;width:1300px;height:1300px"></div>
+      <div class="s-head"><span class="wordmark">SPARK<i>V</i></span><span class="pageno">01 / 06</span></div>
+      <div class="content">
+        <div class="headline">
+          <p class="eyebrow" style="margin-bottom:28px">SparkV / macOS × on-device AI × notch</p>
+          <h2 class="display">Your notch, now an<br>AI command <span class="dim">center.</span></h2>
+        </div>
+        <div class="left">
+          <p class="lead">Dictation, meetings, screen help and 20 more tools in a drawer that slides out of the MacBook notch. Private by default, pay once.</p>
+          <p class="audience">For founders, writers, agencies and developers on Apple silicon Macs running macOS 15 or later.</p>
+          <div class="ctas">
+            <span class="btn btn-red">Start the 14-day trial <span aria-hidden="true">↗</span></span>
+            <span class="btn btn-ghost">See pricing <span aria-hidden="true">⌄</span></span>
+          </div>
+        </div>
+        <div class="right">
+          <div class="mac"><div class="screen">
+            <img class="drawer m-home" src="01-home.png" alt="SparkV Home drawer: media player with scrubber, volume knob, Dictate and Capture capsules, camera mirror" style="width:740px">
+            <span class="cam"></span>
+          </div></div>
+          <p class="mono">Real render · Home drawer · media, volume knob, Shortcut capsules, mirror</p>
+        </div>
+      </div>
+      <div class="s-foot"><span>SparkV · Your notch, now an AI command center</span><span>sparkv.si</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 02 PROBLEM ============ -->
+  <div class="slide-label"><span><b>02</b> Problem statement</span><span>Prices: SparkV Business Plan §3</span></div>
+  <section class="frame" aria-label="Slide 2: problem">
+    <div class="slide s2">
+      <div class="glow" style="right:-420px;top:-420px;width:1000px;height:1000px;opacity:.7"></div>
+      <div class="s-head"><span class="eyebrow">02 / The problem</span><span class="pageno">02 / 06</span></div>
+      <div class="content">
+        <h2 class="h1 title">Five apps, five bills,<br><span class="dim">one idle notch.</span></h2>
+        <p class="lead intro" style="font-size:19px">A Mac power user buys a notch app, a clipboard manager, a dictation app, a meeting recorder and a screenshot tool separately. Three of the five bill every month or year.</p>
+
+        <div class="card"><span class="num">01</span><p class="h3">Notch hub</p><p class="prod">NotchNook</p><p class="price">$25</p><p class="mono cad">One-time</p></div>
+        <div class="card"><span class="num">02</span><p class="h3">Clipboard</p><p class="prod">Paste</p><p class="price">$29.99</p><p class="mono cad">Per year</p></div>
+        <div class="card"><span class="num">03</span><p class="h3">Dictation</p><p class="prod">Wispr Flow</p><p class="price">$144</p><p class="mono cad">Per year · $15/mo</p></div>
+        <div class="card"><span class="num">04</span><p class="h3">Meeting notes</p><p class="prod">Granola</p><p class="price">$168</p><p class="mono cad">Per year · $14/user/mo</p></div>
+        <div class="card"><span class="num">05</span><p class="h3">Screenshots</p><p class="prod">CleanShot X</p><p class="price">$29</p><p class="mono cad">One-time · +$19/yr</p></div>
+        <div class="card total"><span class="num">Σ</span><p class="h3">The stack</p><p class="prod">Year one, all five</p><p class="price">$395.99</p><p class="mono cad" style="color:var(--red-soft)">Before tax</p></div>
+
+        <div class="pain"><p class="mono"><span class="dot"></span>Subscription creep</p><p class="body">AI tools bill monthly: Wispr Flow $15/mo, Granola $14/user/mo, Raycast Pro $8–10/mo.</p></div>
+        <div class="pain"><p class="mono"><span class="dot" style="background:var(--grey-3)"></span>Five of everything</p><p class="body">Five vendors, five licences, five update cycles, five sets of hotkeys and permissions.</p></div>
+        <div class="pain"><p class="mono"><span class="dot" style="background:var(--grey-3)"></span>Idle hardware</p><p class="body">The notch on 14- and 16-inch MacBook Pros holds the camera and nothing else.</p></div>
+      </div>
+      <div class="s-foot"><span>Third-party price listings, 22 Oct 2026 · verify before quoting</span><span>sparkv.si</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 03 FEATURE SHOWCASE ============ -->
+  <div class="slide-label"><span><b>03</b> Feature showcase</span><span>Screenshots: real offscreen renders</span></div>
+  <section class="frame" aria-label="Slide 3: feature showcase">
+    <div class="slide s3">
+      <div class="glow" style="left:620px;top:-520px;width:1100px;height:1100px"></div>
+      <div class="s-head"><span class="eyebrow">03 / The product</span><span class="pageno">03 / 06</span></div>
+      <div class="content">
+        <h2 class="h1 title">20+ agents,<br><span class="dim">one hover away.</span></h2>
+        <p class="lead intro" style="font-size:19px">Hover the notch and a black drawer slides out: media, Tray, Today, Converter, Spaces and a hub of 22 tiles. Closed, it shows live activities beside the camera.</p>
+        <div class="keys">
+          <div class="krow"><span class="key k">hold fn</span><p class="h3">Dictation</p><p class="body">Speak, release; clean text is typed at the cursor.</p><p class="mono">Needs a live check · mic + fn key</p></div>
+          <div class="krow"><span class="key k">hold ⌃⌥</span><p class="h3">Clicky</p><p class="body">Ask about any app out loud; it answers and points.</p><p class="mono">Needs a live check · screen capture</p></div>
+          <div class="krow"><span class="key k">⌥ Space</span><p class="h3">Universal Search</p><p class="body">Spaces, meetings, notes, clipboard and Tray in one box.</p><p class="mono">Verified headless · 21 results for “launch”</p></div>
+          <div class="krow" style="border-bottom:1px solid var(--line)"><span class="key k">⌘⇧V</span><p class="h3">Clipboard stack</p><p class="body">History at the text cursor; ⌘1–9 pastes an item.</p><p class="mono">Logic verified · 195 checks pass</p></div>
+        </div>
+        <div class="visual">
+          <div class="mac"><div class="screen main">
+            <img class="drawer m-hub" src="10-agents-hub.png" alt="SparkV Agents hub: 22 tiles in an 8 by 3 grid including Search, Focus, Modes, Capture, Copy Text, Reply, Ask Screen, Prompt, Clipboard, Record, Translate, UI Audit, Jobs, Browser, Canvas" style="width:790px">
+            <span class="cam"></span>
+          </div></div>
+          <p class="mono">Real render · Agents hub · 22 tiles, every action wired in AgentsHubView</p>
+          <div class="bands">
+            <div class="band">
+              <div class="mac"><div class="screen"><img class="drawer m-dict" src="50-dictation.png" alt="Dictation band under the notch showing live transcribed text" style="width:560px"><span class="cam"></span></div></div>
+              <p class="mono">Live activity · dictation band</p>
+            </div>
+            <div class="band">
+              <div class="mac"><div class="screen"><img class="drawer m-clicky" src="51-clicky-answer.png" alt="Clicky answer under the notch: Click File, then Export, and pick PDF in the Format menu" style="width:560px"><span class="cam"></span></div></div>
+              <p class="mono">Live activity · Clicky answer</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="s-foot"><span>Status labels from the SparkV Feature Guide, 22 Oct 2026</span><span>sparkv.si</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 04 METRICS ============ -->
+  <div class="slide-label"><span><b>04</b> Metrics dashboard</span><span>Cost of five apps vs SparkV</span></div>
+  <section class="frame" aria-label="Slide 4: metrics">
+    <div class="slide s4">
+      <div class="glow" style="left:-380px;top:-460px;width:1000px;height:1000px;opacity:.8"></div>
+      <div class="s-head"><span class="eyebrow">04 / The math</span><span class="pageno">04 / 06</span></div>
+      <div class="content">
+        <h2 class="h1 title">$39 once vs. $396 <span class="dim">in year one.</span></h2>
+        <p class="lead intro" style="font-size:19px">AI runs on-device (Apple Intelligence, Vision, Speech), so SparkV can charge once instead of monthly.</p>
+
+        <div class="kpi"><p class="mono">Five-app stack · year one</p><p class="big">$395.99</p><p class="body">NotchNook, Paste, Wispr Flow, Granola and CleanShot X, bought separately.</p></div>
+        <div class="kpi"><p class="mono">SparkV Pro · one-time</p><p class="big red">$39</p><p class="body">₹1,499. Launch week $29 (₹999). 12 months of updates included.</p></div>
+        <div class="kpi"><p class="mono">AI cost to us · per user</p><p class="big">$0</p><p class="body">On-device by default. Groq is optional and uses the buyer’s own key.</p></div>
+        <div class="kpi"><p class="mono">Kept per $39 sale</p><p class="big">$36.55</p><p class="body">After Lemon Squeezy’s 5% + 50¢ (about $36 with the international fee).</p></div>
+
+        <div class="chart" role="img" aria-label="Year-one cost in US dollars: five-app total 395.99, Granola 168, Wispr Flow 144, Paste 29.99, CleanShot X 29, NotchNook 25, SparkV Pro 39">
+          <div class="chart-head"><p class="mono">Year-one cost, USD</p><p class="mono">Scale 0–$480</p></div>
+          <div class="bar-row" title="Five-app stack: $395.99"><span class="name">Five-app stack <small>Σ</small></span><span class="track"><span class="bar total" style="width:82.5%"></span><span class="val">$395.99</span></span></div>
+          <div class="bar-row" title="Granola: $168 a year"><span class="name">Granola <small>$14/mo</small></span><span class="track"><span class="bar" style="width:35%"></span><span class="val">$168</span></span></div>
+          <div class="bar-row" title="Wispr Flow: $144 a year"><span class="name">Wispr Flow <small>$144/yr</small></span><span class="track"><span class="bar" style="width:30%"></span><span class="val">$144</span></span></div>
+          <div class="bar-row" title="Paste: $29.99 a year"><span class="name">Paste <small>$29.99/yr</small></span><span class="track"><span class="bar" style="width:6.25%"></span><span class="val">$29.99</span></span></div>
+          <div class="bar-row" title="CleanShot X: $29 one-time"><span class="name">CleanShot X <small>once</small></span><span class="track"><span class="bar" style="width:6.04%"></span><span class="val">$29</span></span></div>
+          <div class="bar-row" title="NotchNook: $25 one-time"><span class="name">NotchNook <small>once</small></span><span class="track"><span class="bar" style="width:5.21%"></span><span class="val">$25</span></span></div>
+          <div class="sep"></div>
+          <div class="bar-row" title="SparkV Pro: $39 one-time"><span class="name" style="color:var(--white);font-weight:600">SparkV Pro <small>once</small></span><span class="track"><span class="bar spark" style="width:8.13%"></span><span class="val">$39</span></span></div>
+        </div>
+
+        <div class="side">
+          <p class="mono">Year two onward</p>
+          <div class="pair">
+            <div><p class="mono" style="font-size:11px">Five-app stack</p><p class="v" style="color:var(--paper)">$341.99</p><p class="body">Paste, Wispr Flow and Granola renew. CleanShot updates +$19 optional.</p></div>
+            <div><p class="mono" style="font-size:11px">SparkV Pro</p><p class="v" style="color:var(--red-text)">$0</p><p class="body">App keeps working forever. Updates renewal $19/yr is optional.</p></div>
+          </div>
+          <p class="mono" style="font-size:11px;line-height:1.6;color:var(--grey-3)">Single user, list prices from third-party listings, 22 Oct 2026. Granola = Business plan × 12. Wispr Flow = annual plan.</p>
+        </div>
+      </div>
+      <div class="s-foot"><span>Source: SparkV Business Plan §3, §4, §9</span><span>sparkv.si</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 05 COMPARISON ============ -->
+  <div class="slide-label"><span><b>05</b> Two-column comparison</span><span>Closest SparkV feature per product</span></div>
+  <section class="frame" aria-label="Slide 5: comparison">
+    <div class="slide s5">
+      <div class="glow" style="left:820px;top:-520px;width:1000px;height:1000px;opacity:.75"></div>
+      <div class="s-head"><span class="eyebrow">05 / The field</span><span class="pageno">05 / 06</span></div>
+      <div class="content">
+        <h2 class="h1 title">Five apps, <span class="dim">or one drawer.</span></h2>
+        <p class="lead intro" style="font-size:19px">Each row pairs a single-purpose app with the SparkV feature that covers the same job.</p>
+
+        <div class="colhead l"><span class="mono" style="color:var(--paper)">Single-purpose apps</span><span class="mono">Price</span></div>
+        <div class="colhead r"><span class="eyebrow" style="font-size:13px;color:var(--paper)">SparkV Pro · $39 once</span><span class="mono">Status</span></div>
+
+        <div class="rows">
+          <div class="cell l"><p class="h3">NotchNook</p><p class="body">Notch hub: media and a file tray</p><p class="price">$25 once<br><span style="color:var(--grey-3)">or $3/mo</span></p></div>
+          <div class="cell r"><p class="h3">Home drawer + Tray</p><p class="body">Media with scrubber and bookmarks, Tray with AirDrop and Tray AI</p><span class="chip status">Live check</span></div>
+
+          <div class="cell l"><p class="h3">Alcove</p><p class="body">Dynamic Island for the Mac</p><p class="price">~$13.99 once</p></div>
+          <div class="cell r"><p class="h3">Live activities</p><p class="body">Volume, battery, AirPods, notifications, meetings, recordings</p><span class="chip status">Live check</span></div>
+
+          <div class="cell l"><p class="h3">Raycast Pro</p><p class="body">Launcher with AI</p><p class="price">$8/mo yearly<br><span style="color:var(--grey-3)">$10 monthly</span></p></div>
+          <div class="cell r"><p class="h3">Universal Search + Agents hub</p><p class="body">⌥Space across your items, answers with citations, 22 agent tiles</p><span class="chip status" style="color:var(--paper)">Verified</span></div>
+
+          <div class="cell l"><p class="h3">Wispr Flow</p><p class="body">AI dictation</p><p class="price">$15/mo<br><span style="color:var(--grey-3)">$144/yr</span></p></div>
+          <div class="cell r"><p class="h3">Dictation + Flow</p><p class="body">Hold fn, AI formatting, custom Words, searchable history</p><span class="chip status">Live check</span></div>
+
+          <div class="cell l"><p class="h3">Granola</p><p class="body">AI meeting notes</p><p class="price">$14/user/mo</p></div>
+          <div class="cell r"><p class="h3">Meetings + Live Translation</p><p class="body">No bot joins: transcripts, minutes, tasks, live answers, captions</p><span class="chip status">Live check</span></div>
+        </div>
+
+        <p class="mono note" style="font-size:11px;line-height:1.6">Feature parity is not claimed: rows pair the closest SparkV feature. “Live check” = renders and is wired, but mic, camera or permissions must be confirmed in the running app.</p>
+      </div>
+      <div class="s-foot"><span>Source: SparkV Business Plan §3 · Feature Guide status labels</span><span>sparkv.si</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 06 PRICING ============ -->
+  <div class="slide-label"><span><b>06</b> Pricing + CTA</span><span>Recommended plans, Business Plan §6a</span></div>
+  <section class="frame" aria-label="Slide 6: pricing">
+    <div class="slide s6">
+      <div class="glow" style="left:380px;top:-560px;width:1100px;height:1100px;opacity:.8"></div>
+      <div class="s-head"><span class="eyebrow">06 / Pricing</span><span class="pageno">06 / 06</span></div>
+      <div class="content">
+        <h2 class="h1 title">Pay once. <span class="dim">Keep it.</span></h2>
+        <p class="lead intro" style="font-size:19px">14-day full Pro trial, no card. When it ends, SparkV falls back to Free and never locks.</p>
+
+        <div class="plan">
+          <div class="plan-top"><span class="mono" style="color:var(--paper)">Free</span></div>
+          <div class="price"><b>$0</b><span>forever</span></div>
+          <p class="mono inr">₹0 · 1 Mac</p>
+          <ul>
+            <li><b>Notch core:</b> media, HUD, battery, notifications, Tray (5), Timer, Today</li>
+            <li>World Clock and System Gauges</li>
+            <li>Clipboard history (last 25), Copy Text OCR</li>
+            <li>Dictation without AI formatting</li>
+          </ul>
+        </div>
+        <div class="plan pro">
+          <div class="plan-top"><span class="mono" style="color:var(--paper)">Pro</span><span class="chip chip-red">Launch week $29 · ₹999</span></div>
+          <div class="price"><b>$39</b><span>one-time</span></div>
+          <p class="mono inr" style="color:var(--paper)">₹1,499 · 2 Macs per person</p>
+          <ul>
+            <li><b>Everything in Free,</b> plus every widget</li>
+            <li>AI: Dictation formatting, Clicky, Ask Screen, Reply Drafter</li>
+            <li>Meetings, Live Translation, Spaces, Converter, Search</li>
+            <li>UI Audit, Browser Flows, Flow Canvas</li>
+            <li>12 months of updates, then $19/yr (₹799) optional</li>
+          </ul>
+        </div>
+        <div class="plan">
+          <div class="plan-top"><span class="mono" style="color:var(--paper)">Team</span><span class="chip">Min. 3 seats</span></div>
+          <div class="price"><b>$8</b><span>per seat / month</span></div>
+          <p class="mono inr">₹499 · billed yearly ($96/seat)</p>
+          <ul>
+            <li><b>Everything in Pro</b></li>
+            <li>One invoice: PO or bank transfer</li>
+            <li>Shared Spaces packages, MDM .pkg</li>
+            <li>Priority email support, 1 business day</li>
+            <li>30-day pilot for up to 5 seats</li>
+          </ul>
+        </div>
+
+        <div class="cta">
+          <span class="btn btn-red">Start the 14-day Pro trial <span aria-hidden="true">↗</span></span>
+          <span class="chip">50% off for students &amp; teachers</span>
+          <span class="chip">30-day refunds</span>
+          <span class="mono">sparkv.si · checkout by Lemon Squeezy</span>
+        </div>
+      </div>
+      <div class="s-foot"><span>Planned pricing · not yet on sale</span><span>sparkv.si</span></div>
+    </div>
+  </section>
+</main>
+<script>
+(function(){
+  var frames=[].slice.call(document.querySelectorAll('.frame'));
+  function fit(){frames.forEach(function(f){var s=f.querySelector('.slide');s.style.setProperty('--s',(f.clientWidth/1600).toFixed(5));});}
+  fit();
+  if('ResizeObserver' in window){var ro=new ResizeObserver(fit);frames.forEach(function(f){ro.observe(f);});}
+  else window.addEventListener('resize',fit);
+})();
+</script>
+</body>
+</html>

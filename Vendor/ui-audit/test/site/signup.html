@@ -1,0 +1,23 @@
+<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign up</title>
+<style>body{font-family:sans-serif;margin:20px} label{display:block;margin-top:10px} .err{color:#c00;font-size:12px}</style></head><body>
+<main><h1>Create account</h1>
+<form id="signup" action="/api/signup" method="post">
+  <label for="fullname">Full name *</label><input id="fullname" name="fullname" type="text">
+  <label for="email">Email *</label><input id="email" name="email" type="text" placeholder="you@example.com">
+  <label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" placeholder="Enter your email address">
+  <label for="pin">PIN code</label><input id="pin" name="pincode" type="text" pattern="[1-9][0-9]{5}" placeholder="e.g. 0123" required>
+  <label for="dob">Date of birth</label><input id="dob" name="dob" type="date" min="1920-01-01" max="2008-12-31" required>
+  <label for="age">Age</label><input id="age" name="age" type="number" min="18" max="120" step="1">
+  <label for="ref">Referral code</label><input id="ref" name="referral" type="text" pattern="[A-Z]{3}-[0-9]{4}">
+  <input name="city" type="text" placeholder="City">
+  <label for="plan">Plan</label><select id="plan" name="plan" required><option value="">Select a plan</option><option value="basic">Basic</option><option value="pro">Pro</option></select>
+  <label for="avatar">Avatar</label><input id="avatar" name="avatar" type="file" accept="image/*">
+  <label for="bio">About you</label><textarea id="bio" name="bio" maxlength="200"></textarea>
+  <label for="card">Card number</label><input id="card" name="cardnumber" type="text" autocomplete="cc-number">
+  <fieldset><legend>Contact preference</legend>
+   <label><input type="radio" name="pref" value="email"> Email</label><label><input type="radio" name="pref" value="sms"> SMS</label></fieldset>
+  <label><input type="checkbox" name="terms" required> I accept the terms *</label>
+  <label for="pw">Password</label><input id="pw" name="password" type="password" minlength="8" required>
+  <button type="submit">Create account</button>
+  <button type="button" id="del">Delete my account</button>
+</form></main></body></html>

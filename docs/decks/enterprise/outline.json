@@ -1,0 +1,476 @@
+{
+  "deck": {
+    "id": "sparkv-enterprise",
+    "title": "SparkV Team: 30-day pilot proposal",
+    "audience": "Enterprise and agency buyers (IT, security, ops leads)",
+    "goal": "Team plan pilot: 30 days, up to 5 seats",
+    "version": "phase2-blueprint-2026-10-22",
+    "slide_size_in": [13.333, 7.5],
+    "master_px": [3840, 2160],
+    "px_per_in": 288,
+    "safe_area_in": {"left": 0.6, "right": 0.6, "top": 0.5, "bottom": 0.56},
+    "screenshots_dir": "../../screenshots",
+    "recordings_dir": "./recordings",
+    "max_screenshot_upscale": 1.5,
+    "placeholder_rule": "Any string containing [TBD: ...] must render in token tbd (dashed outline, muted) and never be removed silently."
+  },
+  "styles": {
+    "sparkv_red": {
+      "bg": "#09090A", "bg_elev": "#111113", "line": "#FFFFFF1F", "text": "#F7F7F5", "text_muted": "#9A9AA1",
+      "accent": "#F8262F", "accent_strong": "#F01822", "accent_ink": "#FFFFFF", "ok": "#57D791",
+      "glow": "rgba(248,38,47,0.35)", "tbd": "#9A9AA1",
+      "chart": ["#F8262F", "#F7F7F5", "#9A9AA1", "#57D791", "#303035"],
+      "font_display": "SF Pro Display", "font_body": "SF Pro Text", "font_mono": "SF Mono",
+      "font_fallback": "Helvetica Neue",
+      "source": "Colors read from https://www.sparkv.si CSS (--background #09090a, --red #f01822, --red-on-dark #f8262f, --surface #111113, --muted #9a9aa1) on 2026-10-22"
+    },
+    "apple_minimal": {
+      "bg": "#FFFFFF", "bg_elev": "#F5F5F7", "line": "#D2D2D7", "text": "#1D1D1F", "text_muted": "#6E6E73",
+      "accent": "#0071E3", "accent_strong": "#0066CC", "accent_ink": "#FFFFFF", "ok": "#1D8E3E",
+      "glow": "none (shadow 0 40px 80px rgba(0,0,0,0.12))", "tbd": "#86868B",
+      "chart": ["#0071E3", "#1D1D1F", "#86868B", "#1D8E3E", "#D2D2D7"],
+      "font_display": "SF Pro Display", "font_body": "SF Pro Text", "font_mono": "SF Mono",
+      "font_fallback": "Helvetica Neue"
+    },
+    "cyberpunk": {
+      "bg": "#05060A", "bg_elev": "#0D0F1A", "line": "#00E5FF24", "text": "#E6F1FF", "text_muted": "#7A8BA8",
+      "accent": "#00E5FF", "accent_strong": "#FF2E88", "accent_ink": "#05060A", "ok": "#39FF88",
+      "glow": "rgba(0,229,255,0.45)", "tbd": "#7A8BA8",
+      "chart": ["#00E5FF", "#FF2E88", "#7A8BA8", "#39FF88", "#1B2033"],
+      "font_display": "Space Grotesk", "font_body": "Inter", "font_mono": "JetBrains Mono",
+      "font_fallback": "Helvetica Neue"
+    }
+  },
+  "type_scale_pt": {"kpi": 72, "h1": 40, "h2": 28, "subtitle": 20, "body": 18, "caption": 12, "source": 10},
+  "layouts": {
+    "key_visual_header": "Full-bleed visual; header lower-left in safe area; subtitle under header; body as 2-3 short lines.",
+    "metrics_dashboard": "Header + subtitle top; 3-4 KPI tiles; optional chart region left 0.6-7.8in; source line at y 6.75in.",
+    "two_column_comparison": "Header + subtitle; two equal columns 0.6-6.5in and 6.83-12.73in; optional footer chip row.",
+    "feature_showcase": "Header + subtitle; media left 0.6-7.8in (notch mockup or window); 3-4 bullets right 8.2-12.73in.",
+    "minimal_body": "Header + subtitle; 4 labeled rows, label column 2.2in, text column rest.",
+    "timeline": "Header + subtitle; horizontal rail at y 3.2in with 5 nodes; caption under each node; status strip at y 6.3in.",
+    "pricing_table": "Header + subtitle; 3-column table 0.6-9.0in with recommended column highlighted; chart right 9.3-12.73in.",
+    "cta": "Header centered; 3 numbered steps; contact line; small notch visual top-center."
+  },
+  "slides": [
+    {
+      "n": 1,
+      "id": "title",
+      "layout": "key_visual_header",
+      "header": "Your team's notch, now an AI command center.",
+      "subtitle": "SparkV Team: a 30-day pilot for up to 5 seats",
+      "body": [
+        "Dictation, meetings, search and screen help, on device",
+        "Private by default. Deploys with your MDM.",
+        "sparkv.si"
+      ],
+      "notes": "SparkV lives in the MacBook notch. Hover it and a drawer opens with media, a file tray, your day and a hub of more than 20 agents. Today we are asking for one thing: a 30-day pilot with up to five people on your team. We measure the time it saves against a baseline you set, and you decide on day 30.",
+      "images": [
+        {"file": "recordings/R1-hero.mov@00:05", "fallback": "01-home.png", "role": "hero_fullbleed", "box_in": [0, 0, 13.333, 7.5], "mockup": "full_screen_frame"},
+        {"file": "01-home.png", "role": "fallback_notch", "box_in": [3.5, 0, 6.333, 1.459], "mockup": "notch_drawer", "use_if": "R1 not recorded yet"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 2,
+      "id": "problem",
+      "layout": "metrics_dashboard",
+      "header": "Where the work week goes",
+      "subtitle": "Talking about work and looking for things crowd out the work itself",
+      "body": [
+        "57% | of Microsoft 365 users' time goes to communicating; 43% to creating | Microsoft Work Trend Index 2023",
+        "19% | of interaction workers' time goes to searching for and gathering information | McKinsey Global Institute, 2012",
+        "68% | say they lack enough uninterrupted focus time | Microsoft Work Trend Index 2023",
+        "3x | faster text entry by speech than a phone keyboard (English) | Stanford, Baidu, UW study, 2016",
+        "[TBD: your team's own baseline, measured in pilot week 1]"
+      ],
+      "notes": "Four public numbers frame the problem. Caveats to say out loud: the 3x figure compares speech with a phone keyboard, not a desktop keyboard, so the ROI model on slide 9 uses a much smaller gain. The McKinsey figure is from 2012. The pilot replaces all of these with your own baseline.",
+      "images": [],
+      "kpis": [
+        {"value": "57%", "label": "of time spent communicating, 43% creating", "source_id": "msft_wti_2023"},
+        {"value": "19%", "label": "of time spent searching for and gathering information", "source_id": "mgi_2012"},
+        {"value": "68%", "label": "lack uninterrupted focus time", "source_id": "msft_wti_2023"},
+        {"value": "3x", "label": "speech vs. phone-keyboard text entry", "source_id": "stanford_2016"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 3,
+      "id": "market",
+      "layout": "metrics_dashboard",
+      "header": "Macs keep gaining ground",
+      "subtitle": "SparkV runs on Apple silicon Macs with macOS 15+, best on MacBooks with a notch",
+      "body": [
+        "25.6M | Macs shipped worldwide in 2025 (+11.1%) | IDC preliminary, Jan 2026",
+        "9.0% | of global PC shipments, up from 8.7% | IDC preliminary, Jan 2026",
+        "[TBD: Macs in your organization]",
+        "[TBD: of those, MacBooks with a notch on macOS 15+]"
+      ],
+      "notes": "Context, not a pitch for our revenue: the Mac fleet keeps growing faster than the PC market. Omdia puts 2025 even higher, at 27.7M units. The 2024 bar is derived from IDC's growth rate (25.6 / 1.111). Ask the buyer for their own fleet numbers to fill the two TBD tiles; that also sizes the pilot.",
+      "images": [],
+      "chart": {
+        "type": "column_clustered",
+        "title": "Global Mac shipments (millions of units)",
+        "categories": ["2024", "2025"],
+        "series": [{"name": "Mac shipments (M)", "values": [23.0, 25.6]}],
+        "number_format": "0.0",
+        "box_in": [0.6, 1.7, 7.0, 4.6],
+        "data_table": [
+          {"year": "2024", "mac_units_m": 23.0, "share_pct": 8.7, "basis": "derived: 25.6 / 1.111 (IDC growth rate)"},
+          {"year": "2025", "mac_units_m": 25.6, "share_pct": 9.0, "basis": "IDC preliminary"}
+        ],
+        "annotations": ["Omdia estimate for 2025: 27.7M (+16.4%)", "Total PC market 2025: 284.7M (+8.1%)"],
+        "source_ids": ["idc_2025_9to5mac", "idc_2025_mactech"],
+        "label": "sourced (2024 bar derived)"
+      }
+    },
+    {
+      "n": 4,
+      "id": "hub",
+      "layout": "feature_showcase",
+      "header": "One notch. 20+ agents.",
+      "subtitle": "Hover the notch and the drawer opens. Move away and it closes.",
+      "body": [
+        "Write: dictation, reply drafts, prompt refiner",
+        "Meet: recording, notes, live answers, translation",
+        "Find: Spaces and Universal Search (⌥Space)",
+        "See: ask about any screen, copy text from any pixel",
+        "Ship: UI Audit, Browser Flows, Flow Canvas"
+      ],
+      "notes": "This is the Agents hub: 22 tiles in an 8 by 3 grid, every one wired in the current build. A tile opens its page, runs at once, or shows a menu. Hover a tile to see its shortcut. Everything in this deck is reachable from here or from a hotkey.",
+      "images": [
+        {"file": "10-agents-hub.png", "role": "main", "box_in": [0.6, 1.9, 6.3, 2.347], "mockup": "notch_drawer", "motion": "recordings/R2-hub.mov"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 5,
+      "id": "write",
+      "layout": "feature_showcase",
+      "header": "Write at the speed of speech",
+      "subtitle": "Hold fn, talk, release. Clean text lands where the cursor is.",
+      "body": [
+        "Dictate into any text field: filler words removed, lists formatted",
+        "⌃⌥R drafts a reply in your tone; you review and press Send",
+        "⌘⇧V opens the clipboard stack at the cursor",
+        "Clipboard history stays off until the user turns it on"
+      ],
+      "notes": "Dictation types into any app. Reply Drafter reads the thread and writes into the message box; it never sends. Clipboard history is off by default and skips passwords and private copies. Status: dictation and Reply Drafter are marked 'needs a live check' in the feature guide because they need the microphone, the fn key and other apps; the pilot is that check.",
+      "images": [
+        {"file": "50-dictation.png", "role": "band", "box_in": [0.6, 1.75, 6.2, 0.912], "mockup": "notch_band", "motion": "recordings/R3-dictation.mov"},
+        {"file": "17-reply-drafter.png", "role": "main", "box_in": [0.6, 2.9, 6.2, 1.428], "mockup": "notch_drawer", "motion": "recordings/R4-reply.mov"},
+        {"file": "14-clipboard-stack.png", "role": "inset", "box_in": [0.6, 4.55, 2.5, 2.052], "mockup": "floating_panel", "motion": "recordings/R5-clipboard.mov"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 6,
+      "id": "meetings",
+      "layout": "feature_showcase",
+      "header": "Meeting notes, no bot in the call",
+      "subtitle": "One click records the mic and the call audio. Transcription runs on the Mac.",
+      "body": [
+        "Minutes, decisions and your tasks with due days",
+        "Suggested answers when someone asks you a question",
+        "Live captions translate other speakers, on device",
+        "Filed to the right client Space automatically"
+      ],
+      "notes": "No bot joins the call, so there is nothing for the other side to admit. Your policy on telling participants about recording still applies: [TBD: customer's call-recording notice policy]. Live Translation uses Apple Translation on device after a one-time language download. Status: needs a live check (audio capture); notes and answers render from saved meetings.",
+      "images": [
+        {"file": "36-meeting-notes.png", "role": "main", "box_in": [0.6, 1.6, 6.0, 4.04], "mockup": "window", "motion": "recordings/R6-meeting.mov"},
+        {"file": "38-live-translation.png", "role": "inset", "box_in": [0.6, 5.8, 3.4, 1.0625], "mockup": "floating_panel"},
+        {"file": "37-meeting-live-answers.png", "role": "secondary", "box_in": [8.2, 4.3, 3.6, 2.424], "mockup": "window"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 7,
+      "id": "find",
+      "layout": "feature_showcase",
+      "header": "Every client in its own Space",
+      "subtitle": "Find anything you saw, heard or copied. Ask about anything on screen.",
+      "body": [
+        "Spaces file meetings, notes, mail, pages and screenshots per client",
+        "⌥Space searches Spaces, meetings, dictations, clipboard and Tray",
+        "Ask mode answers from your own items, with citations",
+        "Hold ⌃⌥ and ask about any app; SparkV points at the spot"
+      ],
+      "notes": "Built for agencies with several clients. Be exact about sharing: a Space can be exported and shared as a .sparkvspace file package; there is no live sync between teammates today. The screen assistant points and explains; it does not click or type. Without a Groq key it reads screen text on device. Status: Spaces and Universal Search verified headless (21 results for 'launch' on sample data); the screen assistant needs a live check.",
+      "images": [
+        {"file": "09-spaces-window.png", "role": "main", "box_in": [0.6, 1.6, 6.6, 4.32], "mockup": "window", "motion": "recordings/R7a-spaces.mov"},
+        {"file": "16-universal-search-panel.png", "role": "inset", "box_in": [4.6, 3.6, 3.2, 2.263], "mockup": "floating_panel", "motion": "recordings/R7b-search.mov"},
+        {"file": "51-clicky-answer.png", "role": "band", "box_in": [0.6, 6.05, 4.6, 0.827], "mockup": "notch_band", "motion": "recordings/R7c-assist.mov"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 8,
+      "id": "ui_audit",
+      "layout": "feature_showcase",
+      "header": "QA client sites before they ship",
+      "subtitle": "UI Audit walks your site like a tester, then writes the fix prompt",
+      "body": [
+        "Crawls pages, fills forms on test hosts, checks 1440 px and 390 px",
+        "Accessibility (axe-core), Tab order, console errors, failed requests",
+        "Findings by severity, with screenshot and steps to reproduce",
+        "P copies a fix prompt for Claude Code, Cursor or Copilot",
+        "Verified run on our test site: 6 pages, 69 findings, 3 critical, 15 high"
+      ],
+      "notes": "This is the one feature verified end to end: SparkV's own controller audited the bundled planted-issue test site on 127.0.0.1 (6 pages, 69 findings: 3 critical, 15 high), Apple Intelligence wrote the summary on device, and P produced a 51,666-character fix prompt covering 60 issues. The runner self-test passed 48/48. It submits forms only on local or test hosts unless allowed and never clicks Delete or Log out unless allowed. Needs Node 20+ and Playwright's Chromium. Use only on sites you own or may test.",
+      "images": [
+        {"file": "22-ui-audit-window.png", "role": "main", "box_in": [0.6, 1.6, 7.2, 4.8], "mockup": "window", "motion": "recordings/R8-ui-audit.mov"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 9,
+      "id": "roi",
+      "layout": "metrics_dashboard",
+      "header": "About 2.5 hours back per person, per week",
+      "subtitle": "A model to test in the pilot, not a measured result",
+      "body": [
+        "150 min | modeled time saved per person per week | Model (assumptions below)",
+        "$96 | Team list price per seat per year | SparkV pricing",
+        "~3 min | saved per week pays for a seat at $40/hour | Example rate, [TBD: your loaded rate]",
+        "Assumptions are conservative and replaced by measured values in the pilot"
+      ],
+      "notes": "Walk through the assumptions table, not the total. Dictation uses a 1.5x speed-up, half of the published 3x, because that study used a phone keyboard. Break-even formula: minutes per week = 96 / (46 working weeks x hourly rate) x 60. At $40 an hour that is about 3.1 minutes a week. The hourly rate is the buyer's number; $40 is only an example.",
+      "images": [],
+      "chart": {
+        "type": "bar_clustered",
+        "title": "Modeled minutes saved per person per week",
+        "categories": ["Dictation", "Meeting write-ups", "Reply drafts", "Finding past work", "Screen tools"],
+        "series": [{"name": "Minutes per week (model)", "values": [40, 40, 30, 20, 20]}],
+        "number_format": "0",
+        "box_in": [0.6, 1.7, 7.2, 4.4],
+        "data_table": [
+          {"workflow": "Dictation", "assumption": "120 min/week of typed prose; speech 1.5x faster (half the 3x phone-keyboard result)", "minutes": 40},
+          {"workflow": "Meeting write-ups", "assumption": "4 recorded meetings/week x 10 min of notes saved", "minutes": 40},
+          {"workflow": "Reply drafts", "assumption": "15 routine replies/week x 2 min saved", "minutes": 30},
+          {"workflow": "Finding past work", "assumption": "Spaces + Universal Search save 20 min/week of looking", "minutes": 20},
+          {"workflow": "Screen tools", "assumption": "Copy Text, clipboard stack, Converter, Ask Screen: 20 min/week", "minutes": 20},
+          {"workflow": "Total", "assumption": "Sum", "minutes": 150}
+        ],
+        "source_ids": ["stanford_2016", "model"],
+        "label": "model: assumptions, not measured"
+      }
+    },
+    {
+      "n": 10,
+      "id": "privacy",
+      "layout": "two_column_comparison",
+      "header": "Private by default",
+      "subtitle": "AI runs on the Mac. Nothing leaves unless someone turns it on.",
+      "columns": [
+        {
+          "title": "Stays on the Mac",
+          "bullets": [
+            "Speech, meeting audio and transcripts",
+            "Screenshots, clipboard, Spaces, camera",
+            "AI: Apple Intelligence, Vision, Speech, Translation",
+            "Keys stored in the macOS Keychain"
+          ]
+        },
+        {
+          "title": "Leaves only by choice",
+          "bullets": [
+            "Groq: opt-in per feature, with your own key",
+            "Sends the screenshot under the pointer and the question, only while asking",
+            "License check: key, anonymous device ID, app version to Lemon Squeezy",
+            "Nothing else. No analytics."
+          ]
+        }
+      ],
+      "body": [
+        "Clipboard history off by default; passwords skipped",
+        "No meeting bot",
+        "Recorded browser passwords never saved",
+        "Face Unlock not in the sold build"
+      ],
+      "notes": "This slide is the security reviewer's summary. Default: on-device Apple Intelligence; AI cost to us is $0, so there is no reason to route data to a server. Groq is optional, per feature, and uses the customer's own key; nothing uses it unless turned on. Licensing talks to Lemon Squeezy, the merchant of record. Face Unlock is excluded from the sold build because its face model is licensed for non-commercial use only. Gap to disclose: there is no admin-enforced switch to block Groq org-wide yet [TBD: managed preference to disable Groq].",
+      "images": [],
+      "chart": null
+    },
+    {
+      "n": 11,
+      "id": "deploy",
+      "layout": "timeline",
+      "header": "Deploy in a day",
+      "subtitle": "Signed, notarized and packaged for your MDM",
+      "steps": [
+        {"label": "Package", "text": "Developer ID signed, notarized .pkg (com.sparkv.app)"},
+        {"label": "Push", "text": "Install with any MDM that deploys .pkg [TBD: MDMs tested]"},
+        {"label": "Pre-approve", "text": "PPPC profile allows Accessibility; Screen Recording, camera and mic stay user-approved"},
+        {"label": "First launch", "text": "Setup explains each permission; nothing is asked until Allow"},
+        {"label": "Activate", "text": "Seat key from the Team portal; 2 Macs per person"}
+      ],
+      "body": [
+        "Status: signing, notarization, licensing and the .pkg are on the 1.0 checklist. The pilot runs on the notarized 1.0 build. [TBD: 1.0 date]",
+        "Requires Apple silicon and macOS 15+. Node 20+ only for UI Audit and Browser Flows."
+      ],
+      "notes": "Be candid: today's build is signed with a local identity. Developer ID signing, notarization, licensing and the MDM package are tasks in the 30-day launch plan, and the pilot starts on that build. On permissions: an MDM privacy profile (PPPC) can pre-approve Accessibility; Screen Recording can at most be made approvable by standard users; camera and microphone always need the user's own approval. Verify against Apple's PPPC payload documentation for the customer's macOS version. With one stable Developer ID, grants survive updates.",
+      "images": [
+        {"file": "41-onboarding-permissions.png", "role": "main", "box_in": [8.6, 1.6, 4.1, 3.574], "mockup": "window", "motion": "recordings/R9-setup.mov"}
+      ],
+      "chart": null
+    },
+    {
+      "n": 12,
+      "id": "admin_support",
+      "layout": "minimal_body",
+      "header": "Seats, admin and support",
+      "subtitle": "One invoice, simple seats, and a person who answers",
+      "rows": [
+        {"label": "Seats", "text": "1 seat = 1 person on 2 Macs. Minimum 3 seats. Move a Mac by deactivating it in the gear menu."},
+        {"label": "Admin", "text": "Assign and revoke seats in the Lemon Squeezy customer portal. One invoice, PO or bank transfer."},
+        {"label": "Resilience", "text": "Checks the license every 7 days, 14 days offline grace. Never locks: falls back to Free and keeps data."},
+        {"label": "Support", "text": "Priority email, 1 business day. Signed automatic updates. 30-day refund."}
+      ],
+      "body": [],
+      "notes": "Disclose what does not exist: no SSO or SCIM, no central policy console beyond the seat portal, and shared Spaces are file packages without live sync. Seat management may run on Keygen instead of Lemon Squeezy if needed. Updates ship through Sparkle with EdDSA-signed feeds. Support contact: [TBD: support email].",
+      "images": [],
+      "chart": null
+    },
+    {
+      "n": 13,
+      "id": "competition",
+      "layout": "two_column_comparison",
+      "header": "One seat instead of five subscriptions",
+      "subtitle": "Overlapping tools, per seat, year one, list prices",
+      "table": {
+        "columns": ["Tool", "Covers", "List price"],
+        "rows": [
+          ["Wispr Flow Teams", "Dictation", "from $10/user/mo"],
+          ["Granola Business", "Meeting notes", "$14/user/mo"],
+          ["Raycast Pro", "Launcher with AI", "$8/mo billed yearly"],
+          ["Paste", "Clipboard", "$29.99/yr"],
+          ["CleanShot X", "Screenshots, recording", "$29 one-time"],
+          ["NotchNook", "Notch hub", "$25 one-time"],
+          ["Alcove", "Notch", "about $13.99 one-time"],
+          ["SparkV Team", "All of the above areas", "$8/seat/mo billed yearly"]
+        ],
+        "box_in": [0.6, 1.7, 6.9, 4.6]
+      },
+      "body": [
+        "Prices from third-party listings, Oct 2026; verify on vendor pages before external use.",
+        "Overlap in areas covered, not feature parity."
+      ],
+      "notes": "The point is consolidation: one vendor review, one invoice, one privacy story. Do not claim parity: Granola, Wispr and Raycast are deep products in their own lanes. Monthly prices are annualized x12 for year one. NotchNook and Alcove are left out of the stack bar because SparkV replaces them outright and they are one-time.",
+      "images": [],
+      "chart": {
+        "type": "bar_stacked",
+        "title": "Year-one cost per seat (USD, list)",
+        "categories": ["Five-tool stack", "SparkV Team"],
+        "series": [
+          {"name": "Wispr Flow Teams", "values": [120.0, 0]},
+          {"name": "Granola Business", "values": [168.0, 0]},
+          {"name": "Raycast Pro", "values": [96.0, 0]},
+          {"name": "Paste", "values": [29.99, 0]},
+          {"name": "CleanShot X", "values": [29.0, 0]},
+          {"name": "SparkV Team", "values": [0, 96.0]}
+        ],
+        "number_format": "$#,##0",
+        "box_in": [7.9, 1.7, 4.8, 4.6],
+        "data_table": [
+          {"item": "Wispr Flow Teams", "basis": "from $10/user/mo x 12", "usd": 120.0},
+          {"item": "Granola Business", "basis": "$14/user/mo x 12", "usd": 168.0},
+          {"item": "Raycast Pro", "basis": "$8/mo billed yearly x 12", "usd": 96.0},
+          {"item": "Paste", "basis": "$29.99/yr", "usd": 29.99},
+          {"item": "CleanShot X", "basis": "$29 one-time (year one)", "usd": 29.0},
+          {"item": "Stack total", "basis": "sum", "usd": 442.99},
+          {"item": "SparkV Team", "basis": "$8/seat/mo billed yearly", "usd": 96.0}
+        ],
+        "source_ids": ["bp_section3"],
+        "label": "sourced (third-party listings via business plan section 3)"
+      }
+    },
+    {
+      "n": 14,
+      "id": "pricing",
+      "layout": "pricing_table",
+      "header": "Simple per-seat pricing",
+      "subtitle": "Start with a pilot. Keep the seats that earn their place.",
+      "table": {
+        "columns": ["", "Free", "Pro", "Team"],
+        "highlight_column": 3,
+        "rows": [
+          ["Price", "$0", "$39 one-time (launch $29), ₹1,499", "$8 per seat per month, billed yearly ($96), ₹499"],
+          ["For", "Trying the notch", "Individual professionals", "Teams of 3 or more"],
+          ["Includes", "Notch core, clocks and gauges, clipboard (25), Copy Text, dictation without AI formatting", "Everything: AI assistants, meetings, Spaces, developer tools", "Everything in Pro, plus one invoice, seat portal, shared Spaces packages, priority support, MDM .pkg"],
+          ["Macs", "1", "2 per person", "2 per seat"],
+          ["Try it", "Always free", "14-day full trial, no card", "30-day pilot, up to 5 seats"]
+        ],
+        "box_in": [0.6, 1.6, 8.4, 4.9]
+      },
+      "body": ["List prices. [TBD: volume tiers above 50 seats]"],
+      "notes": "Team is the recommended column for this audience. Pro includes 12 months of updates and optional renewal at $19 a year; the app keeps working. Students get 50% off Pro. The chart is plain list-price arithmetic for common team sizes, not a forecast and not a discount offer.",
+      "images": [],
+      "chart": {
+        "type": "column_clustered",
+        "title": "Annual Team cost by seat count (USD, list)",
+        "categories": ["5 seats", "10 seats", "25 seats", "50 seats"],
+        "series": [{"name": "Annual list price", "values": [480, 960, 2400, 4800]}],
+        "number_format": "$#,##0",
+        "box_in": [9.3, 1.6, 3.43, 4.9],
+        "data_table": [
+          {"seats": 5, "usd_per_year": 480, "inr_per_year": 29940},
+          {"seats": 10, "usd_per_year": 960, "inr_per_year": 59880},
+          {"seats": 25, "usd_per_year": 2400, "inr_per_year": 149700},
+          {"seats": 50, "usd_per_year": 4800, "inr_per_year": 299400}
+        ],
+        "source_ids": ["bp_section6"],
+        "label": "list-price arithmetic ($96 or ₹5,988 per seat per year); not a forecast"
+      }
+    },
+    {
+      "n": 15,
+      "id": "pilot",
+      "layout": "timeline",
+      "header": "The 30-day pilot",
+      "subtitle": "Up to 5 seats. Your success criteria. A clear yes or no.",
+      "steps": [
+        {"label": "Day 0", "text": "Kickoff: pick 5 users, agree success criteria, share the security pack"},
+        {"label": "Days 1-3", "text": "Deploy the .pkg and PPPC profile; 15-minute permissions walkthrough"},
+        {"label": "Days 1-7", "text": "Baseline: users log time on writing, meeting notes and searching"},
+        {"label": "Days 8-25", "text": "Daily use; weekly 15-minute check-in; support within 1 business day"},
+        {"label": "Days 26-30", "text": "Readout: measured vs. modeled time saved; decide on Team seats"}
+      ],
+      "body": [
+        "Success criteria [TBD with customer]: hours saved per user per week, zero open security findings, users who want to keep it",
+        "After day 30: seats convert to Team (minimum 3) or are removed; the app falls back to Free"
+      ],
+      "notes": "The pilot is designed to produce a yes or a no, not a slow fade. Agree the measurement method on day 0 [TBD: time-log method, e.g. a short daily form]. If the measured savings come in under the model, say so in the readout.",
+      "images": [],
+      "chart": null
+    },
+    {
+      "n": 16,
+      "id": "cta",
+      "layout": "cta",
+      "header": "Start your 30-day pilot",
+      "subtitle": "Five seats. Thirty days. Your numbers.",
+      "body": [
+        "1. Name up to 5 pilot users and a start date",
+        "2. We send the security pack and the signed .pkg",
+        "3. Day 30: readout and a decision",
+        "[TBD: sales contact email] | sparkv.si"
+      ],
+      "notes": "Close on the single ask. Leave the slide up during questions. Do not promise SSO, live Spaces sync or org-wide Groq controls; they do not exist today.",
+      "images": [
+        {"file": "01-home.png", "role": "accent", "box_in": [3.5, 0, 6.333, 1.459], "mockup": "notch_drawer", "motion": "recordings/R1-hero.mov"}
+      ],
+      "chart": null
+    }
+  ],
+  "sources": [
+    {"id": "msft_wti_2023", "title": "Microsoft Work Trend Index 2023: Will AI Fix Work?", "url": "https://www.microsoft.com/en-us/worklab/work-trend-index/will-ai-fix-work", "secondary_url": "https://www.theregister.com/2023/05/10/microsoft_work_trend_index/", "note": "57/43 communicate/create split and 68% focus-time figure; verify wording on Microsoft's page"},
+    {"id": "mgi_2012", "title": "McKinsey Global Institute, The social economy (2012)", "url": "https://www.mckinsey.com/industries/technology-media-and-telecommunications/our-insights/the-social-economy", "note": "19% of interaction workers' time searching and gathering information; do not convert to '1.8 hours a day'"},
+    {"id": "stanford_2016", "title": "Stanford News: speech recognition three times faster than typing (Ruan, Landay et al., 2016)", "url": "https://news.stanford.edu/stories/2016/08/stanford-study-speech-recognition-faster-texting", "note": "Phone keyboard comparison; English 3.0x"},
+    {"id": "idc_2025_9to5mac", "title": "9to5Mac: Apple shipments unchanged as PC market grew during Q4 2025 (IDC)", "url": "https://9to5mac.com/2026/01/13/apple-shipments-unchanged-as-pc-market-grew-during-q4-2025/", "note": "IDC preliminary: 2025 Mac 25.6M (+11.1%), share 9.0% (from 8.7%), PC market 284.7M"},
+    {"id": "idc_2025_mactech", "title": "MacTech: IDC on 2025 Mac sales", "url": "https://www.mactech.com/2026/01/12/well-idc-says-global-mac-sales-only-grew-0-2-annual-as-of-the-fourth-quarter-of-2025/amp/", "note": "Q4 detail; Omdia 27.7M alternative reported via Cult of Mac"},
+    {"id": "bp_section3", "title": "SparkV Business Plan, section 3 (competitor prices with linked sources)", "url": "../../SparkV-Business-Plan.md#3-comparable-products-and-prices", "note": "Third-party listings; verify on vendor pages"},
+    {"id": "bp_section6", "title": "SparkV Business Plan, section 6a (pricing)", "url": "../../SparkV-Business-Plan.md#6a-recommended-three-plans"},
+    {"id": "apple_pppc", "title": "Apple Platform Deployment: Privacy Preferences Policy Control payload", "url": "https://support.apple.com/guide/deployment/privacy-preferences-policy-control-payload-dep38df53c2a/web", "note": "Verify which services can be pre-approved on the customer's macOS version"},
+    {"id": "model", "title": "SparkV ROI model (this blueprint, slide 9)", "url": "./BLUEPRINT.md (Slide 9 assumptions table)", "note": "Assumptions, not measurements"}
+  ]
+}

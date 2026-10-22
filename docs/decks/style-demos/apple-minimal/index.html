@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SparkV Apple Minimal</title>
+<meta name="description" content="Style demo: six 16:9 SparkV slides in an Apple-style minimal look, with real product screenshots in a CSS MacBook notch mockup.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Grounds (60) */
+    --white: #FFFFFF;
+    --mist: #F5F5F7;
+    /* Ink and neutrals (30) */
+    --ink: #1D1D1F;
+    --ink-2: #6E6E73;
+    --ink-3: #86868B;
+    --hairline: #D2D2D7;
+    --track: #E8E8ED;
+    --bar: #AEAEB2;
+    /* Accent (10) */
+    --red: #F01822;
+    /* Device */
+    --bezel: #0A0A0B;
+    --lid-edge: #BDBDC2;
+    --base-top: #E3E3E7;
+    --base-bottom: #A8A8AD;
+    --scr-top: #2A2E43;
+    --scr-mid: #171925;
+    --scr-end: #0F1119;
+
+    --page: #E8E8ED;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 16px 64px;
+  }
+  .page-head { max-width: 1600px; margin: 0 auto 32px; }
+  .page-head h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+  .page-head p { color: var(--ink-2); font-size: 15px; margin-top: 6px; line-height: 1.5; max-width: 760px; }
+
+  .deck { max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+  .slide-label { font-size: 13px; color: var(--ink-2); margin-bottom: 10px; letter-spacing: 0.02em; }
+  .slot {
+    position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
+    border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.06);
+  }
+  .frame {
+    position: absolute; top: 0; left: 0; width: 1600px; height: 900px;
+    transform-origin: 0 0; transform: scale(var(--k, 1));
+    overflow: hidden; background: var(--white);
+  }
+  .frame.mist { background: var(--mist); }
+
+  /* 12-column grid: 120px margins, 84px columns, 32px gutters */
+  .grid {
+    position: absolute; left: 120px; right: 120px; top: 96px; bottom: 80px;
+    display: grid; grid-template-columns: repeat(12, 84px); column-gap: 32px;
+  }
+  .foot {
+    position: absolute; left: 120px; right: 120px; bottom: 36px; height: 20px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 14px; line-height: 20px; color: var(--ink-3);
+  }
+
+  /* Type */
+  .eyebrow { font-size: 22px; line-height: 28px; font-weight: 600; color: var(--ink-2); letter-spacing: 0; }
+  .eyebrow.red { color: var(--red); }
+  .display { font-size: 92px; line-height: 1.08; font-weight: 300; letter-spacing: -0.02em; }
+  .h1 { font-size: 64px; line-height: 1.12; font-weight: 300; letter-spacing: -0.015em; }
+  .h1 b, .display b { font-weight: 600; }
+  .lead { font-size: 28px; line-height: 1.36; font-weight: 400; color: var(--ink-2); }
+  .body { font-size: 22px; line-height: 1.45; color: var(--ink-2); }
+  .small { font-size: 17px; line-height: 1.45; color: var(--ink-2); }
+  .h3 { font-size: 28px; line-height: 1.2; font-weight: 600; color: var(--ink); }
+  .num-label { font-size: 15px; font-weight: 600; color: var(--ink-3); letter-spacing: 0.04em; }
+
+  /* MacBook mockup (CSS only) */
+  .mac { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .mac-lid {
+    width: var(--lid); background: var(--bezel);
+    border: 2px solid var(--lid-edge); border-bottom: 0;
+    border-radius: 26px 26px 6px 6px;
+    padding: var(--pad) var(--pad) calc(var(--pad) + 6px);
+  }
+  .mac-screen {
+    position: relative; width: 100%; aspect-ratio: 1.54; overflow: hidden;
+    border-radius: 10px 10px 2px 2px;
+    background: linear-gradient(to bottom, var(--scr-top) 0, var(--scr-mid) var(--shot-h), var(--scr-end) 100%);
+  }
+  .mac-shot { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: var(--shot-w); height: auto; display: block; }
+  .mac-notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: var(--notch-w); height: var(--notch-h); background: #000;
+    border-radius: 0 0 14px 14px;
+  }
+  .mac-notch::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px;
+    transform: translate(-50%, -50%); border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #2B3448 0, #11141C 60%);
+    box-shadow: 0 0 0 2px #0D0D10;
+  }
+  .mac-base {
+    position: relative; width: var(--base); height: 22px;
+    background: linear-gradient(to bottom, var(--base-top) 0, #CFCFD4 45%, var(--base-bottom) 100%);
+    border-radius: 3px 3px 20px 20px / 3px 3px 16px 16px;
+  }
+  .mac-thumb {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 16%; height: 9px; border-radius: 0 0 10px 10px;
+    background: linear-gradient(to bottom, #B4B4B9, #CDCDD2);
+  }
+
+  /* Slide 1 */
+  .s1 .center { position: absolute; left: 120px; right: 120px; top: 96px; text-align: center; }
+  .s1 .display { margin-top: 18px; }
+  .s1 .lead { margin-top: 26px; }
+  .s1 .mac { position: absolute; left: 50%; top: 452px; transform: translateX(-50%);
+    --lid: 1100px; --pad: 16px; --base: 1276px; --shot-w: 832px; --shot-h: 192px; --notch-w: 250px; --notch-h: 37px; }
+
+  /* Slide 2 */
+  .s2 .head { grid-column: 1 / span 10; grid-row: 1; }
+  .s2 .head .h1 { margin-top: 20px; font-size: 80px; line-height: 1.16; }
+  .s2 .pt { grid-row: 2; align-self: end; padding-top: 28px; border-top: 1px solid var(--hairline); }
+  .s2 .pt .h3 { margin-top: 18px; }
+  .s2 .pt .body { margin-top: 14px; }
+  .s2 .grid { grid-template-rows: auto 1fr; }
+
+  /* Slide 3 */
+  .s3 .text { grid-column: 1 / span 4; align-self: center; }
+  .s3 .text .h1 { margin-top: 20px; font-size: 60px; }
+  .s3 .text .body { margin-top: 24px; }
+  .keys { margin-top: 36px; border-top: 1px solid var(--hairline); }
+  .keys li { list-style: none; display: grid; grid-template-columns: 116px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--hairline); font-size: 17px; line-height: 24px; }
+  .keys kbd { font-family: var(--font); font-weight: 600; color: var(--ink); font-size: 17px; }
+  .keys span { color: var(--ink-2); }
+  .s3 .device { grid-column: 5 / span 8; align-self: center; display: flex; justify-content: center; }
+  .s3 .mac { --lid: 820px; --pad: 12px; --base: 896px; --shot-w: 792px; --shot-h: 295px; --notch-w: 238px; --notch-h: 36px; }
+
+  /* Slide 4 */
+  .s4 .grid { grid-template-rows: auto 1fr auto; row-gap: 36px; }
+  .s4 .head { grid-column: 1 / span 12; }
+  .s4 .head .h1 { margin-top: 16px; font-size: 56px; }
+  .kpis { grid-column: 1 / span 4; grid-row: 2; display: grid; grid-template-rows: 1fr 1fr; row-gap: 24px; }
+  .card { background: var(--mist); border-radius: 22px; padding: 28px 32px; }
+  .kpi-num { font-size: 80px; line-height: 1.1; font-weight: 300; letter-spacing: -0.02em; color: var(--ink); }
+  .kpi-num.red { color: var(--red); font-weight: 500; }
+  .kpi-cap { font-size: 17px; line-height: 1.4; color: var(--ink-2); margin-top: 14px; }
+  .kpi-cap b { color: var(--ink); font-weight: 600; }
+  .chart { grid-column: 5 / span 8; grid-row: 2; display: flex; flex-direction: column; }
+  .chart-title { font-size: 17px; font-weight: 600; color: var(--ink); display: flex; justify-content: space-between; }
+  .chart-title span { font-weight: 400; color: var(--ink-3); }
+  .rows { margin-top: 18px; display: flex; flex-direction: column; justify-content: space-between; flex: 1; }
+  .row { display: grid; grid-template-columns: 236px 1fr 96px; column-gap: 20px; align-items: center; height: 36px; }
+  .row .nm { font-size: 17px; font-weight: 600; color: var(--ink); line-height: 1.15; }
+  .row .nm small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-3); margin-top: 2px; }
+  .row .tr { height: 14px; background: var(--track); border-radius: 7px; overflow: hidden; }
+  .row .fill { height: 100%; width: var(--v); background: var(--bar); border-radius: 7px; }
+  .row .val { font-size: 17px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .row.total { border-top: 1px solid var(--hairline); padding-top: 14px; height: 52px; }
+  .row.total .fill { background: var(--ink); }
+  .row.spark .fill { background: var(--red); }
+  .row.spark .val { color: var(--red); font-weight: 600; }
+  .tiles { grid-column: 1 / span 12; grid-row: 3; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 32px; }
+  .tile { border-top: 1px solid var(--hairline); padding-top: 18px; display: grid; grid-template-columns: 148px 1fr; column-gap: 16px; align-items: baseline; }
+  .tile .n { font-size: 44px; line-height: 1.12; font-weight: 300; letter-spacing: -0.01em; }
+  .tile .t { font-size: 16px; line-height: 1.4; color: var(--ink-2); }
+
+  /* Slide 5 */
+  .s5 .grid { grid-template-rows: auto 1fr; row-gap: 40px; }
+  .s5 .head { grid-column: 1 / span 12; }
+  .s5 .head .h1 { margin-top: 16px; }
+  .cmp { grid-column: 1 / span 12; display: grid; grid-template-columns: 664px 664px; column-gap: 32px; align-content: start; }
+  .cmp .colhead { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 14px; border-bottom: 1px solid var(--ink); }
+  .cmp .colhead.us { color: var(--ink); }
+  .cell { display: grid; align-content: center; height: 84px; border-bottom: 1px solid var(--hairline); }
+  .cell.them { grid-template-columns: 1fr 190px; column-gap: 24px; }
+  .cell .a { font-size: 22px; font-weight: 600; color: var(--ink); line-height: 1.2; }
+  .cell .b { font-size: 16px; color: var(--ink-2); line-height: 1.4; margin-top: 4px; }
+  .cell .p { font-size: 20px; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; align-self: center; }
+  .cell .p small { display: block; font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+  .cell.sum { border-bottom: 0; height: 76px; }
+  .cell.sum .a.red { color: var(--red); }
+
+  /* Slide 6 */
+  .s6 .grid { grid-template-rows: auto 1fr auto; row-gap: 36px; }
+  .s6 .head { grid-column: 1 / span 12; text-align: center; }
+  .s6 .head .h1 { margin-top: 16px; }
+  .plan { grid-row: 2; background: var(--white); border-radius: 24px; padding: 32px 34px; border: 1px solid var(--hairline); display: flex; flex-direction: column; }
+  .plan.pro { border: 2px solid var(--red); padding: 31px 33px; }
+  .plan .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .plan .name { font-size: 28px; font-weight: 600; }
+  .plan .tag { font-size: 14px; font-weight: 600; color: var(--red); }
+  .plan .price { margin-top: 14px; font-size: 64px; line-height: 1.12; font-weight: 300; letter-spacing: -0.02em; }
+  .plan .price small { font-size: 20px; font-weight: 400; color: var(--ink-2); letter-spacing: 0; margin-left: 6px; }
+  .plan .inr { margin-top: 10px; font-size: 20px; color: var(--ink); }
+  .plan .inr span { color: var(--ink-3); }
+  .plan .note { margin-top: 6px; font-size: 15px; color: var(--ink-3); min-height: 21px; }
+  .plan ul { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--hairline); list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  .plan li { font-size: 16px; line-height: 1.4; color: var(--ink-2); padding-left: 22px; position: relative; }
+  .plan li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 8px; height: 5px; border-left: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); transform: rotate(-45deg); }
+  .plan li b { color: var(--ink); font-weight: 600; }
+  .cta { grid-column: 1 / span 12; grid-row: 3; display: flex; align-items: center; justify-content: center; gap: 28px; }
+  .btn { display: inline-block; background: var(--red); color: #fff; font-size: 20px; font-weight: 600; padding: 15px 30px; border-radius: 980px; text-decoration: none; }
+  .cta .aside { font-size: 17px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <h1>SparkV · Apple minimal</h1>
+  <p>Style demo with six 16:9 slides. Each frame is 1600 × 900 and scales to the window width. Screenshots are real SparkV renders; prices come from the SparkV Business Plan (Oct 2026).</p>
+</header>
+
+<main class="deck">
+
+  <!-- 1. Title / key visual -->
+  <section>
+    <div class="slide-label">01 · Title</div>
+    <div class="slot"><div class="frame mist s1">
+      <div class="center">
+        <div class="eyebrow red">SparkV</div>
+        <h2 class="display">Your notch,<br>now an <b>AI command center.</b></h2>
+        <p class="lead">Dictation, meetings, screen help and 20 more tools. Private by default, pay once.</p>
+      </div>
+      <div class="mac" aria-label="MacBook showing the SparkV Home drawer">
+        <div class="mac-lid"><div class="mac-screen">
+          <img class="mac-shot" src="01-home.png" alt="SparkV Home drawer: media, volume knob, Dictate and Capture capsules, camera mirror">
+          <div class="mac-notch"></div>
+        </div></div>
+        <div class="mac-base"><div class="mac-thumb"></div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 2. Problem -->
+  <section>
+    <div class="slide-label">02 · Problem</div>
+    <div class="slot"><div class="frame s2">
+      <div class="grid">
+        <div class="head">
+          <div class="eyebrow">The problem</div>
+          <h2 class="h1">Five apps, five bills,<br>and the notch <b>does nothing.</b></h2>
+        </div>
+        <div class="pt" style="grid-column: 1 / span 4">
+          <div class="num-label">01</div>
+          <div class="h3">Scattered tools</div>
+          <p class="body">A notch app, a clipboard manager, a dictation app, a meeting recorder and a screenshot tool. Five windows, five sets of hotkeys.</p>
+        </div>
+        <div class="pt" style="grid-column: 5 / span 4">
+          <div class="num-label">02</div>
+          <div class="h3">Stacked bills</div>
+          <p class="body">Bought separately, those tools cost well over $300 a year, and three of them renew every month or year.</p>
+        </div>
+        <div class="pt" style="grid-column: 9 / span 4">
+          <div class="num-label">03</div>
+          <div class="h3">Lost context</div>
+          <p class="body">Notes, clips, dictations and meeting decisions land in different places, so finding last week's detail means five searches.</p>
+        </div>
+      </div>
+      <div class="foot"><span>Source: SparkV Business Plan, section 3</span><span>02</span></div>
+    </div></div>
+  </section>
+
+  <!-- 3. Feature showcase -->
+  <section>
+    <div class="slide-label">03 · Feature showcase</div>
+    <div class="slot"><div class="frame mist s3">
+      <div class="grid">
+        <div class="text">
+          <div class="eyebrow">Agents hub</div>
+          <h2 class="h1">More than 20 agents. <b>One hover away.</b></h2>
+          <p class="body">Hover the notch and the drawer slides out. Search, Focus, Reply, Ask Screen, Clipboard, Translate, UI Audit and the rest sit in one grid.</p>
+          <ul class="keys">
+            <li><kbd>⌥ Space</kbd><span>Universal Search</span></li>
+            <li><kbd>Hold fn</kbd><span>Dictate into any app</span></li>
+            <li><kbd>Hold ⌃⌥</kbd><span>Ask Clicky about the screen</span></li>
+          </ul>
+        </div>
+        <div class="device">
+          <div class="mac" aria-label="MacBook showing the SparkV Agents hub">
+            <div class="mac-lid"><div class="mac-screen">
+              <img class="mac-shot" src="10-agents-hub.png" alt="SparkV Agents hub: a grid of agent tiles under the notch">
+              <div class="mac-notch"></div>
+            </div></div>
+            <div class="mac-base"><div class="mac-thumb"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Real render of the current build, sample data</span><span>03</span></div>
+    </div></div>
+  </section>
+
+  <!-- 4. Metrics dashboard -->
+  <section>
+    <div class="slide-label">04 · Metrics</div>
+    <div class="slot"><div class="frame s4">
+      <div class="grid">
+        <div class="head">
+          <div class="eyebrow">The math</div>
+          <h2 class="h1">One app instead of five. <b>90% less in year one.</b></h2>
+        </div>
+        <div class="kpis">
+          <div class="card">
+            <div class="kpi-num">$395.99</div>
+            <p class="kpi-cap"><b>Five separate apps</b>, first year</p>
+          </div>
+          <div class="card">
+            <div class="kpi-num red">$39</div>
+            <p class="kpi-cap"><b>SparkV Pro</b>, one-time. Launch price $29</p>
+          </div>
+        </div>
+        <div class="card chart">
+          <div class="chart-title">Year-one cost, USD <span>Scale: $0 to $400</span></div>
+          <div class="rows">
+            <div class="row"><div class="nm">Granola<small>Meeting notes · $14/user/mo</small></div><div class="tr"><div class="fill" style="--v:42%"></div></div><div class="val">$168.00</div></div>
+            <div class="row"><div class="nm">Wispr Flow<small>Dictation · $144/yr</small></div><div class="tr"><div class="fill" style="--v:36%"></div></div><div class="val">$144.00</div></div>
+            <div class="row"><div class="nm">Paste<small>Clipboard · $29.99/yr</small></div><div class="tr"><div class="fill" style="--v:7.5%"></div></div><div class="val">$29.99</div></div>
+            <div class="row"><div class="nm">CleanShot X<small>Screenshots · one-time</small></div><div class="tr"><div class="fill" style="--v:7.25%"></div></div><div class="val">$29.00</div></div>
+            <div class="row"><div class="nm">NotchNook<small>Notch hub · one-time</small></div><div class="tr"><div class="fill" style="--v:6.25%"></div></div><div class="val">$25.00</div></div>
+            <div class="row total"><div class="nm">Five apps</div><div class="tr"><div class="fill" style="--v:99%"></div></div><div class="val">$395.99</div></div>
+            <div class="row spark"><div class="nm">SparkV Pro</div><div class="tr"><div class="fill" style="--v:9.75%"></div></div><div class="val">$39.00</div></div>
+          </div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><div class="n">$0</div><div class="t">AI cost to us per user. Apple Intelligence, Vision and Speech run on the Mac.</div></div>
+          <div class="tile"><div class="n">$36.55</div><div class="t">Kept from each $39 sale after the Lemon Squeezy fee of 5% + 50¢.</div></div>
+          <div class="tile"><div class="n">14 days</div><div class="t">Full Pro trial with no card. The app falls back to Free and never locks.</div></div>
+        </div>
+      </div>
+      <div class="foot"><span>Prices: SparkV Business Plan, section 3 (third-party listings, Oct 2026). Check vendor pages before quoting.</span><span>04</span></div>
+    </div></div>
+  </section>
+
+  <!-- 5. Comparison -->
+  <section>
+    <div class="slide-label">05 · Comparison</div>
+    <div class="slot"><div class="frame mist s5">
+      <div class="grid">
+        <div class="head">
+          <div class="eyebrow">Compared</div>
+          <h2 class="h1">Five price tags, <b>or one.</b></h2>
+        </div>
+        <div class="cmp">
+          <div class="colhead">Separate apps</div>
+          <div class="colhead us">In SparkV</div>
+
+          <div class="cell them"><div><div class="a">NotchNook</div><div class="b">Notch hub with media and tray</div></div><div class="p">$25<small>one-time</small></div></div>
+          <div class="cell"><div class="a">Home and Tray</div><div class="b">Media with scrubber and glow, file Tray, AirDrop, Shortcut capsules</div></div>
+
+          <div class="cell them"><div><div class="a">Alcove</div><div class="b">Dynamic Island for the Mac</div></div><div class="p">~$13.99<small>one-time</small></div></div>
+          <div class="cell"><div class="a">Live activities</div><div class="b">Volume, battery, AirPods, notifications and meetings beside the camera</div></div>
+
+          <div class="cell them"><div><div class="a">Raycast Pro</div><div class="b">Launcher with AI</div></div><div class="p">$8/mo<small>billed yearly</small></div></div>
+          <div class="cell"><div class="a">Universal Search</div><div class="b">⌥Space across Spaces, meetings, Flow, clipboard and Tray, with cited answers</div></div>
+
+          <div class="cell them"><div><div class="a">Wispr Flow</div><div class="b">AI dictation</div></div><div class="p">$15/mo<small>Pro</small></div></div>
+          <div class="cell"><div class="a">Flow dictation</div><div class="b">Hold fn, speak, release. Cleaned-up text is typed where the cursor is</div></div>
+
+          <div class="cell them"><div><div class="a">Granola</div><div class="b">AI meeting notes</div></div><div class="p">$14/user/mo<small>Business</small></div></div>
+          <div class="cell"><div class="a">Meeting notes</div><div class="b">No bot joins the call. On-device transcript, decisions and your tasks</div></div>
+
+          <div class="cell them sum"><div><div class="a">Five apps</div><div class="b">Two one-time licenses, three subscriptions</div></div><div class="p"></div></div>
+          <div class="cell sum"><div><div class="a red">SparkV Pro · $39 one-time</div><div class="b">All of the above, plus 20 more agents. 14-day free trial</div></div></div>
+        </div>
+      </div>
+      <div class="foot"><span>Rows map each app to its closest SparkV feature; they are not feature-for-feature claims. Prices: SparkV Business Plan, section 3.</span><span>05</span></div>
+    </div></div>
+  </section>
+
+  <!-- 6. Pricing -->
+  <section>
+    <div class="slide-label">06 · Pricing</div>
+    <div class="slot"><div class="frame mist s6">
+      <div class="grid">
+        <div class="head">
+          <div class="eyebrow">Pricing</div>
+          <h2 class="h1">Start free. <b>Pay once for Pro.</b></h2>
+        </div>
+
+        <div class="plan" style="grid-column: 1 / span 4">
+          <div class="top"><div class="name">Free</div></div>
+          <div class="price">$0</div>
+          <div class="inr">₹0</div>
+          <div class="note">1 Mac</div>
+          <ul>
+            <li>Media, HUD, battery and notification mirror</li>
+            <li>Tray (5 items), Timer, Pomodoro and Today</li>
+            <li>World Clock and System Gauges</li>
+            <li>Clipboard history (last 25) and Copy Text</li>
+            <li>Dictation without AI formatting</li>
+          </ul>
+        </div>
+
+        <div class="plan pro" style="grid-column: 5 / span 4">
+          <div class="top"><div class="name">Pro</div><div class="tag">Recommended</div></div>
+          <div class="price">$39<small>one-time</small></div>
+          <div class="inr">₹1,499 <span>· launch week $29 / ₹999</span></div>
+          <div class="note">2 Macs · 12 months of updates</div>
+          <ul>
+            <li><b>Everything in Free</b></li>
+            <li>Clicky, Ask Screen, Reply Drafter, Prompt Refiner</li>
+            <li>Meeting notes, summaries, Live Translation</li>
+            <li>Spaces, Universal Search, Converter, Recorder</li>
+            <li>UI Audit, Browser Flows, Flow Canvas</li>
+          </ul>
+        </div>
+
+        <div class="plan" style="grid-column: 9 / span 4">
+          <div class="top"><div class="name">Team</div></div>
+          <div class="price">$8<small>per seat / month</small></div>
+          <div class="inr">₹499 <span>· billed yearly</span></div>
+          <div class="note">Minimum 3 seats · 2 Macs per seat</div>
+          <ul>
+            <li><b>Everything in Pro</b></li>
+            <li>One invoice (PO or bank transfer)</li>
+            <li>Shared Spaces packages</li>
+            <li>Priority email support, 1 business day</li>
+            <li>Deployment .pkg for MDM</li>
+          </ul>
+        </div>
+
+        <div class="cta">
+          <a class="btn" href="https://www.sparkv.si">Start the 14-day free trial</a>
+          <span class="aside">No card needed · 50% off for students · sparkv.si</span>
+        </div>
+      </div>
+      <div class="foot"><span>Recommended plans from the SparkV Business Plan, section 6a. Pro renewal is optional: $19 / ₹799 a year.</span><span>06</span></div>
+    </div></div>
+  </section>
+
+</main>
+
+<script>
+  (function () {
+    var slots = document.querySelectorAll('.slot');
+    function fit() {
+      slots.forEach(function (s) {
+        var f = s.firstElementChild;
+        f.style.setProperty('--k', s.clientWidth / 1600);
+      });
+    }
+    fit();
+    if ('ResizeObserver' in window) {
+      var ro = new ResizeObserver(fit);
+      slots.forEach(function (s) { ro.observe(s); });
+    } else {
+      window.addEventListener('resize', fit);
+    }
+  })();
+</script>
+</body>
+</html>

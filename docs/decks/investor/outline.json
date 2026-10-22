@@ -1,0 +1,2110 @@
+{
+ "deck": {
+  "id": "sparkv-investor",
+  "title": "SparkV: seed investor deck",
+  "audience": "Angel and seed investors",
+  "goal": "A follow-up meeting and a cheque",
+  "version": "phase2-blueprint-2026-10-22",
+  "slide_size_in": [
+   13.333,
+   7.5
+  ],
+  "master_px": [
+   3840,
+   2160
+  ],
+  "px_per_in": 288,
+  "emu_per_px": 3175,
+  "safe_area_px": {
+   "left": 192,
+   "right": 192,
+   "top": 160,
+   "bottom": 160
+  },
+  "safe_area_in": {
+   "left": 0.667,
+   "right": 0.667,
+   "top": 0.556,
+   "bottom": 0.556
+  },
+  "screenshots_dir": "../../screenshots",
+  "recordings_dir": "./media/rec",
+  "stills_dir": "./media/stills",
+  "max_screenshot_upscale": 1.25,
+  "preferred_screenshot_scale": 1.0,
+  "placeholder_rule": "Any string containing [TBD: ...] renders with token tbd (dashed 2 px outline, tbd text colour). Never delete or fill a [TBD] with a guess.",
+  "image_rule": "If images[].final exists on disk, use it; else use images[].file from screenshots_dir. Drawer and band PNGs always sit inside a notch_mockup whose screen is filled with the wallpaper gradient #2A2E43 -> #171925 (the renders' own surround), so there is no seam.",
+  "feature_names": {
+   "clicky": "Clicky (working name; may become 'SparkV Assist', business plan section 7)"
+  },
+  "style_source": "docs/decks/style-demos/{sparkv-red-black,apple-minimal,dark-cyberpunk}/index.html and apple-minimal/STYLE.md"
+ },
+ "styles": {
+  "sparkv_red": {
+   "bg": "#09090A",
+   "bg_hero": "#050506",
+   "bg_elev": "#111113",
+   "bg_elev_2": "#17171A",
+   "line": "#FFFFFF1A",
+   "line_strong": "#FFFFFF26",
+   "text": "#F7F7F5",
+   "text_muted": "#A0A0A3",
+   "text_faint": "#808088",
+   "accent": "#F01822",
+   "accent_text": "#F8262F",
+   "accent_soft": "#FF8A90",
+   "accent_ink": "#FFFFFF",
+   "glow": "radial rgba(240,24,34,0.16) r=1400px under the notch",
+   "ok": "#57D791",
+   "tbd": "#9A9AA1",
+   "bar_neutral": "#3A3A3F",
+   "chart": [
+    "#F01822",
+    "#F7F7F5",
+    "#808088",
+    "#3A3A3F",
+    "#57D791"
+   ],
+   "font_display": "SF Pro Display",
+   "font_body": "SF Pro Text",
+   "font_mono": "SF Mono",
+   "font_fallback": "Inter",
+   "source": "style-demos/sparkv-red-black/index.html; colours match https://www.sparkv.si CSS read 2026-10-22 (--red #f01822, --red-on-dark #f8262f, bg #080809/#09090a, surface #101012/#111113, border #29292f, muted #8e8e95, green #57d791; system-ui sans and ui-monospace)"
+  },
+  "apple_minimal": {
+   "bg": "#FFFFFF",
+   "bg_hero": "#F5F5F7",
+   "bg_elev": "#F5F5F7",
+   "bg_elev_2": "#E8E8ED",
+   "line": "#D2D2D7",
+   "line_strong": "#1D1D1F",
+   "text": "#1D1D1F",
+   "text_muted": "#6E6E73",
+   "text_faint": "#86868B",
+   "accent": "#F01822",
+   "accent_text": "#F01822",
+   "accent_soft": "#F01822",
+   "accent_ink": "#FFFFFF",
+   "glow": "none (no shadows on slide content; depth only from the device mockup)",
+   "ok": "#1D8E3E",
+   "tbd": "#86868B",
+   "bar_neutral": "#AEAEB2",
+   "chart": [
+    "#F01822",
+    "#1D1D1F",
+    "#AEAEB2",
+    "#E8E8ED",
+    "#1D8E3E"
+   ],
+   "font_display": "SF Pro Display Light",
+   "font_body": "SF Pro Text",
+   "font_mono": "SF Mono",
+   "font_fallback": "Inter",
+   "source": "style-demos/apple-minimal/STYLE.md (red stays under 10% of any slide; SF Pro is Apple-platform licensed, use Inter when the deck leaves a Mac)"
+  },
+  "cyberpunk": {
+   "bg": "#000000",
+   "bg_hero": "#000000",
+   "bg_elev": "#0A0A0C",
+   "bg_elev_2": "#111114",
+   "line": "#26262B",
+   "line_strong": "#3A3A41",
+   "text": "#F2F2F4",
+   "text_muted": "#A1A1AA",
+   "text_faint": "#6B6B74",
+   "accent": "#FF1E2D",
+   "accent_text": "#FF1E2D",
+   "accent_soft": "#8A0F18",
+   "accent_ink": "#000000",
+   "glow": "rgba(255,30,45,0.45) neon bloom + rgba(0,229,255,0.28) chromatic offset 2 px",
+   "ok": "#39FF88",
+   "tbd": "#6B6B74",
+   "bar_neutral": "#26262B",
+   "chart": [
+    "#FF1E2D",
+    "#00E5FF",
+    "#A1A1AA",
+    "#3A3A41",
+    "#39FF88"
+   ],
+   "font_display": "Chakra Petch",
+   "font_body": "Inter",
+   "font_mono": "JetBrains Mono",
+   "font_fallback": "Arial Narrow",
+   "source": "style-demos/dark-cyberpunk/index.html (Google Fonts: Chakra Petch 500-700, Inter 400-600, JetBrains Mono 400-700)"
+  }
+ },
+ "type_scale_pt": {
+  "display": 44,
+  "h1": 36,
+  "h2": 26,
+  "kpi": 60,
+  "subtitle": 20,
+  "body": 18,
+  "caption": 12,
+  "source": 10,
+  "note": "pt at 13.333x7.5 in. At the 3840 px master, 1 pt = 4 px (display 176 px, h1 144 px, kpi 240 px, body 72 px, source 40 px)."
+ },
+ "layouts": {
+  "key_visual_header": "Hero device or full-bleed clip; header and subtitle in the upper safe area; up to 3 short body lines as chips.",
+  "metrics_dashboard": "Header + subtitle; 2-4 KPI tiles; one chart region; source line at y 2016 px.",
+  "two_column_comparison": "Header + subtitle; left table (cols 1-8), right visual (cols 9-12); footnote at y 1900 px.",
+  "feature_showcase": "Header + subtitle; copy on cols 1-5; media (notch mockup, window or clip) on cols 6-12.",
+  "minimal_body": "Header + subtitle; 3-4 rows or cards; lots of space.",
+  "timeline": "Header + subtitle; horizontal rail with nodes; captions under nodes; optional second lane.",
+  "pricing_table": "Header + subtitle; 3 plan cards, recommended card raised with accent outline; footer fact strip.",
+  "cta": "Header + subtitle; ask block left, use-of-funds chart right, contact bar bottom."
+ },
+ "slides": [
+  {
+   "n": 1,
+   "id": "title",
+   "layout": "key_visual_header",
+   "header": "Your notch, now an AI command center.",
+   "subtitle": "Dictation, meetings, screen help and 20+ tools in one Mac app. Private by default. Pay once.",
+   "body": [
+    "SparkV for macOS",
+    "Seed round · [TBD: month and year]",
+    "sparkv.si"
+   ],
+   "notes": "SparkV turns the MacBook notch into a drawer that opens when you hover it: media, a file tray, your day, a converter, knowledge Spaces and a hub of more than 20 agents. The AI runs on the Mac by default, so we pay nothing per user for AI. That is why we can sell it once instead of monthly. In two minutes I will show it working, then the numbers.",
+   "images": [
+    {
+     "file": "01-home.png",
+     "role": "hero_drawer",
+     "placement_px": {
+      "x": 1155,
+      "y": 1100,
+      "w": 1530,
+      "h": 352
+     },
+     "box_in": [
+      4.01,
+      3.819,
+      5.312,
+      1.222
+     ],
+     "mockup": "notch_mockup",
+     "final": "media/stills/I01-hero-0005-R-DRAWER-HOME.png",
+     "screen_px": {
+      "x": 1011,
+      "y": 1100,
+      "w": 1818,
+      "h": 1180
+     },
+     "notch_px": {
+      "x": 1690,
+      "y": 1100,
+      "w": 459,
+      "h": 69
+     },
+     "scale": 1.25,
+     "note": "Screen rect bleeds off the bottom edge. Prefer the 4K still from clip I01."
+    }
+   ],
+   "video": {
+    "clip": "I01",
+    "file": "media/rec/I01-hero.mov",
+    "in": "00:00",
+    "out": "00:08",
+    "loop": true,
+    "placement_px": {
+     "x": 1011,
+     "y": 1100,
+     "w": 1818,
+     "h": 1023
+    },
+    "use": "Keynote/video export only; PPTX uses the still"
+   },
+   "chart": null,
+   "table": null,
+   "claims": [
+    {
+     "claim": "20+ tools",
+     "basis": "Agents hub has 22 cells (fg section 8); positioning line (bp section 10)",
+     "status": "verified headless"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "id": "problem",
+   "layout": "metrics_dashboard",
+   "header": "Mac power users rent five apps for one workflow.",
+   "subtitle": "Notch, clipboard, dictation, meeting notes and screenshots are sold separately, and the AI ones are subscriptions.",
+   "body": [
+    "$395.99 in year one for five separate apps",
+    "$312 a year for AI dictation plus AI meeting notes",
+    "Five shortcuts, five windows, five bills"
+   ],
+   "notes": "This is the stack a busy Mac user ends up with: a notch app, a clipboard manager, a dictation app, a meeting-notes app and a screenshot tool. Using public list prices, year one costs about $396, and the two AI subscriptions alone are $312 a year, every year. Cloud AI has a cost on every request, and subscriptions are the norm for these tools. We do not have that cost; it is the core of our business model.",
+   "images": [],
+   "chart": {
+    "id": "C1",
+    "type": "bar_horizontal",
+    "title": "Year-one cost of five separate apps vs SparkV Pro (USD)",
+    "categories": [
+     "Granola (Business)",
+     "Wispr Flow (Pro, yearly)",
+     "Paste (yearly)",
+     "CleanShot X",
+     "NotchNook",
+     "Five apps total",
+     "SparkV Pro"
+    ],
+    "series": [
+     {
+      "name": "USD, year one",
+      "values": [
+       168.0,
+       144.0,
+       29.99,
+       29.0,
+       25.0,
+       395.99,
+       39.0
+      ]
+     }
+    ],
+    "highlight": {
+     "SparkV Pro": "accent",
+     "Five apps total": "text"
+    },
+    "number_format": "$0.00",
+    "placement_px": {
+     "x": 192,
+     "y": 600,
+     "w": 2112,
+     "h": 1300
+    },
+    "box_in": [
+     0.667,
+     2.083,
+     7.333,
+     4.514
+    ],
+    "data_table": [
+     {
+      "product": "Granola",
+      "job": "AI meeting notes",
+      "basis": "$14 per user per month x 12 (Business)",
+      "usd_year1": 168.0,
+      "source_id": "granola"
+     },
+     {
+      "product": "Wispr Flow",
+      "job": "AI dictation",
+      "basis": "$144 per year (Pro, yearly)",
+      "usd_year1": 144.0,
+      "source_id": "wispr"
+     },
+     {
+      "product": "Paste",
+      "job": "Clipboard manager",
+      "basis": "$29.99 per year",
+      "usd_year1": 29.99,
+      "source_id": "paste"
+     },
+     {
+      "product": "CleanShot X",
+      "job": "Screenshots and recording",
+      "basis": "$29 one-time (1 year of updates)",
+      "usd_year1": 29.0,
+      "source_id": "cleanshot"
+     },
+     {
+      "product": "NotchNook",
+      "job": "Notch hub",
+      "basis": "$25 one-time",
+      "usd_year1": 25.0,
+      "source_id": "notchnook"
+     },
+     {
+      "product": "Five apps total",
+      "job": "",
+      "basis": "sum",
+      "usd_year1": 395.99,
+      "source_id": "bp"
+     },
+     {
+      "product": "SparkV Pro",
+      "job": "All five jobs",
+      "basis": "$39 one-time, 12 months of updates (launch week $29)",
+      "usd_year1": 39.0,
+      "source_id": "bp"
+     }
+    ],
+    "annotations": [
+     "Wispr Flow + Granola alone: $312 per year"
+    ],
+    "source_ids": [
+     "granola",
+     "wispr",
+     "paste",
+     "cleanshot",
+     "notchnook",
+     "bp"
+    ],
+    "source_line": "Prices from third-party listings cited in the SparkV business plan (section 3), Oct 2026. Re-check vendor pages before sending.",
+    "label": "sourced"
+   },
+   "table": null,
+   "kpi_tiles": [
+    {
+     "value": "$395.99",
+     "label": "year one, five separate apps",
+     "placement_px": {
+      "x": 2496,
+      "y": 600,
+      "w": 1152,
+      "h": 400
+     }
+    },
+    {
+     "value": "$312/yr",
+     "label": "Wispr Flow + Granola, recurring",
+     "placement_px": {
+      "x": 2496,
+      "y": 1050,
+      "w": 1152,
+      "h": 400
+     }
+    },
+    {
+     "value": "$39",
+     "label": "SparkV Pro, once",
+     "accent": true,
+     "placement_px": {
+      "x": 2496,
+      "y": 1500,
+      "w": 1152,
+      "h": 400
+     }
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "id": "solution",
+   "layout": "feature_showcase",
+   "header": "One drawer. Every tool. Right under the camera.",
+   "subtitle": "Hover the notch: 12 header buttons, 21 drawer pages and a 22-tile agents hub.",
+   "body": [
+    "Notch core: media, volume and battery, tray, AirDrop, your day",
+    "Productivity: clipboard, converter, downloads, search, Spaces",
+    "AI: dictation, screen help, reply drafts, meetings, translation",
+    "Developer tools: UI Audit, Browser Flows, Flow Canvas"
+   ],
+   "notes": "Everything lives in one place the user already looks at. Hover the notch and the drawer opens; move away and it closes. The header has six pages on the left and six actions on the right, and the agents hub launches every tool. When the drawer is closed, live activities such as volume, battery, AirPods, notifications, meetings and recordings show beside the camera. All 21 drawer pages render in the real app layout, and every tile and hotkey is wired.",
+   "images": [
+    {
+     "file": "10-agents-hub.png",
+     "role": "hero_drawer",
+     "placement_px": {
+      "x": 2043,
+      "y": 560,
+      "w": 1530,
+      "h": 570
+     },
+     "box_in": [
+      7.094,
+      1.944,
+      5.312,
+      1.979
+     ],
+     "mockup": "notch_mockup",
+     "final": "media/stills/I02-tour-0014-R-DRAWER-HUB.png",
+     "screen_px": {
+      "x": 1968,
+      "y": 560,
+      "w": 1680,
+      "h": 1100
+     },
+     "notch_px": {
+      "x": 2578,
+      "y": 560,
+      "w": 459,
+      "h": 69
+     },
+     "scale": 1.25
+    },
+    {
+     "file": "01-home.png",
+     "role": "secondary_drawer",
+     "placement_px": {
+      "x": 2196,
+      "y": 1220,
+      "w": 1224,
+      "h": 282
+     },
+     "box_in": [
+      7.625,
+      4.236,
+      4.25,
+      0.979
+     ],
+     "mockup": "card",
+     "scale": 1.0,
+     "note": "Home page card overlapping the device by 80 px; optional in style B"
+    }
+   ],
+   "video": {
+    "clip": "I02",
+    "file": "media/rec/I02-tour.mov",
+    "in": "00:00",
+    "out": "00:24",
+    "loop": false,
+    "placement_px": {
+     "x": 1968,
+     "y": 560,
+     "w": 1680,
+     "h": 945
+    }
+   },
+   "chart": null,
+   "table": null,
+   "claims": [
+    {
+     "claim": "21 drawer pages, 22 hub tiles, all wired",
+     "basis": "fg sections 1, 8 and verification summary",
+     "status": "verified headless"
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "id": "live_demo",
+   "layout": "feature_showcase",
+   "header": "Live demo: 90 seconds, all on the Mac.",
+   "subtitle": "Talk, ask, record and find, with Groq switched off.",
+   "body": [
+    "Hold fn, speak, release: clean text is typed for you",
+    "Hold ⌃⌥ and ask: SparkV answers and points to the spot",
+    "One click records a meeting: tasks, decisions, answers",
+    "⌥Space finds anything you saw, with cited answers"
+   ],
+   "notes": "Run this live on the demo Mac; the film I03 is the backup if the room's Wi-Fi, audio or permissions fail. Order: dictation into TextEdit, the screen assistant in Preview, a short recorded meeting, then Universal Search for 'launch' and the agents hub. Say out loud that Groq is off, so everything is on-device. Do not say SparkV clicks or types through other apps on its own: the assistant points and explains; dictation types where your cursor is. The screen assistant is called Clicky in the app today and may be renamed before launch.",
+   "images": [
+    {
+     "file": "50-dictation.png",
+     "role": "fallback_still_1",
+     "placement_px": {
+      "x": 1344,
+      "y": 560,
+      "w": 1000,
+      "h": 140
+     },
+     "box_in": [
+      4.667,
+      1.944,
+      3.472,
+      0.486
+     ],
+     "mockup": "band",
+     "src_crop_px": [
+      212,
+      0,
+      800,
+      112
+     ],
+     "scale": 1.25,
+     "final": "media/stills/I03-demo-0014-R-BAND.png"
+    },
+    {
+     "file": "51-clicky-answer.png",
+     "role": "fallback_still_2",
+     "placement_px": {
+      "x": 2512,
+      "y": 560,
+      "w": 1010,
+      "h": 205
+     },
+     "box_in": [
+      8.722,
+      1.944,
+      3.507,
+      0.712
+     ],
+     "mockup": "band",
+     "src_crop_px": [
+      208,
+      0,
+      808,
+      164
+     ],
+     "scale": 1.25,
+     "final": "media/stills/I03-demo-0031-R-BAND.png"
+    },
+    {
+     "file": "36-meeting-notes.png",
+     "role": "fallback_still_3",
+     "placement_px": {
+      "x": 1344,
+      "y": 1100,
+      "w": 1136,
+      "h": 765
+     },
+     "box_in": [
+      4.667,
+      3.819,
+      3.944,
+      2.656
+     ],
+     "mockup": "window",
+     "scale": 0.58
+    },
+    {
+     "file": "16-universal-search-panel.png",
+     "role": "fallback_still_4",
+     "placement_px": {
+      "x": 2512,
+      "y": 1100,
+      "w": 1136,
+      "h": 803
+     },
+     "box_in": [
+      8.722,
+      3.819,
+      3.944,
+      2.788
+     ],
+     "mockup": "window",
+     "scale": 0.78,
+     "final": "media/stills/I06-search.png",
+     "warning": "The render's 'Pricing call notes' row shows sample prices (Pro $9, Team $19) that contradict real pricing. Use the I06 re-capture with corrected sample data, or blur that row."
+    }
+   ],
+   "video": {
+    "clip": "I03",
+    "file": "media/rec/I03-demo.mov",
+    "in": "00:00",
+    "out": "01:30",
+    "loop": false,
+    "placement_px": {
+     "x": 1344,
+     "y": 560,
+     "w": 2304,
+     "h": 1296
+    }
+   },
+   "chart": null,
+   "table": null,
+   "claims": [
+    {
+     "claim": "Dictation types cleaned text",
+     "basis": "fg section 9",
+     "status": "needs a live check"
+    },
+    {
+     "claim": "Screen assistant answers and points",
+     "basis": "fg section 10",
+     "status": "needs a live check"
+    },
+    {
+     "claim": "Meeting notes with tasks, decisions, answers",
+     "basis": "fg section 31",
+     "status": "needs a live check"
+    },
+    {
+     "claim": "Universal Search with cited answers",
+     "basis": "fg section 12 (21 results for 'launch' on sample data)",
+     "status": "verified headless"
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "id": "meetings",
+   "layout": "feature_showcase",
+   "header": "Meeting notes without a bot in the call.",
+   "subtitle": "SparkV records your mic and the call audio, transcribes on device and hands you the follow-ups.",
+   "body": [
+    "Minutes, key points, decisions and your tasks with due days",
+    "Suggested answers when someone asks you a question",
+    "Live translated captions, with the original underneath",
+    "Filed into Spaces and searchable later"
+   ],
+   "notes": "This is the feature people pay Granola $14 per user per month for. In SparkV it is part of Pro at one price, because transcription and summaries run on the Mac. No bot joins the call, and audio does not leave the machine unless the user turns on their own Groq key. Status: the notes and answers views render from saved meetings; live audio capture is on our pre-launch live-check list.",
+   "images": [
+    {
+     "file": "36-meeting-notes.png",
+     "role": "hero_window",
+     "placement_px": {
+      "x": 1660,
+      "y": 560,
+      "w": 1960,
+      "h": 1320
+     },
+     "box_in": [
+      5.764,
+      1.944,
+      6.806,
+      4.583
+     ],
+     "mockup": "window",
+     "scale": 1.0,
+     "final": "media/stills/I04-meetings-0024.png"
+    },
+    {
+     "file": "37-meeting-live-answers.png",
+     "role": "build_step_2",
+     "placement_px": {
+      "x": 1660,
+      "y": 560,
+      "w": 1960,
+      "h": 1320
+     },
+     "box_in": [
+      5.764,
+      1.944,
+      6.806,
+      4.583
+     ],
+     "mockup": "window",
+     "scale": 1.0,
+     "build": "crossfade on click 1",
+     "final": "media/stills/I04-meetings-0029.png"
+    },
+    {
+     "file": "38-live-translation.png",
+     "role": "secondary_card",
+     "placement_px": {
+      "x": 192,
+      "y": 1480,
+      "w": 1280,
+      "h": 400
+     },
+     "box_in": [
+      0.667,
+      5.139,
+      4.444,
+      1.389
+     ],
+     "mockup": "card",
+     "scale": 1.0,
+     "final": "media/stills/I04-meetings-0012.png"
+    }
+   ],
+   "video": {
+    "clip": "I04",
+    "file": "media/rec/I04-meetings.mov",
+    "in": "00:00",
+    "out": "00:30",
+    "loop": false,
+    "placement_px": {
+     "x": 1632,
+     "y": 560,
+     "w": 2016,
+     "h": 1134
+    }
+   },
+   "chart": null,
+   "table": null,
+   "claims": [
+    {
+     "claim": "Records mic and system audio, transcribes on device",
+     "basis": "fg section 31",
+     "status": "needs a live check"
+    },
+    {
+     "claim": "Live Translation captions",
+     "basis": "fg section 24",
+     "status": "needs a live check"
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "id": "proof_ui_audit",
+   "layout": "metrics_dashboard",
+   "header": "Proof it works: one real UI Audit run.",
+   "subtitle": "SparkV crawled a test site, found the planted bugs and wrote the fix prompt.",
+   "body": [
+    "Summary written on device by Apple Intelligence",
+    "Fix prompt pastes straight into Claude Code, Cursor or Copilot",
+    "Runs only on sites you own or may test"
+   ],
+   "notes": "This is not a mock-up. SparkV's own UI Audit controller audited a bundled test site with planted issues on 127.0.0.1: six pages, 69 findings, three of them critical and fifteen high. Apple Intelligence wrote the summary on device, and the P button produced a 51,666-character fix prompt covering 60 issues. The runner's self-test passes 48 of 48, including never sending a form to a non-test host and never clicking logout or delete. It needs Node.js on the Mac. Its sibling, Browser Flows, is still in beta: its self-test was not clean on 22 October.",
+   "images": [
+    {
+     "file": "22-ui-audit-window.png",
+     "role": "hero_window",
+     "placement_px": {
+      "x": 1728,
+      "y": 560,
+      "w": 1920,
+      "h": 1280
+     },
+     "box_in": [
+      6.0,
+      1.944,
+      6.667,
+      4.444
+     ],
+     "mockup": "window",
+     "scale": 0.889,
+     "final": "media/stills/I05-ui-audit-0020-R-WINDOW-C.png"
+    }
+   ],
+   "video": {
+    "clip": "I05",
+    "file": "media/rec/I05-ui-audit.mov",
+    "in": "00:00",
+    "out": "00:30",
+    "loop": false,
+    "placement_px": {
+     "x": 1728,
+     "y": 640,
+     "w": 1920,
+     "h": 1080
+    }
+   },
+   "kpi_tiles": [
+    {
+     "value": "69",
+     "label": "findings across 6 pages",
+     "placement_px": {
+      "x": 192,
+      "y": 600,
+      "w": 696,
+      "h": 560
+     }
+    },
+    {
+     "value": "3 · 15",
+     "label": "critical · high severity",
+     "accent": true,
+     "placement_px": {
+      "x": 936,
+      "y": 600,
+      "w": 696,
+      "h": 560
+     }
+    },
+    {
+     "value": "51,666",
+     "label": "characters in the fix prompt (60 issues)",
+     "placement_px": {
+      "x": 192,
+      "y": 1220,
+      "w": 696,
+      "h": 560
+     }
+    },
+    {
+     "value": "48/48",
+     "label": "runner self-tests pass",
+     "placement_px": {
+      "x": 936,
+      "y": 1220,
+      "w": 696,
+      "h": 560
+     }
+    }
+   ],
+   "chart": null,
+   "table": null,
+   "source_line": "Internal test, 22 Oct 2026, planted-issue site on 127.0.0.1 (feature guide section 25).",
+   "claims": [
+    {
+     "claim": "6 pages, 69 findings (3 critical, 15 high), 51,666-char prompt, 48/48",
+     "basis": "fg section 25 and verification summary",
+     "status": "verified headless, end to end"
+    }
+   ]
+  },
+  {
+   "n": 7,
+   "id": "why_now",
+   "layout": "timeline",
+   "header": "Why now: the AI already ships inside the Mac.",
+   "subtitle": "Apple silicon and Apple's on-device models make private AI with zero cost per request possible.",
+   "body": [
+    "Cloud AI apps pay for every request. SparkV pays $0.",
+    "Works offline. Audio and screens stay on the Mac.",
+    "Every MacBook Pro since 2021 has a notch to build on."
+   ],
+   "timeline": [
+    {
+     "when": "Oct 2021",
+     "what": "14- and 16-inch MacBook Pro introduce the notch",
+     "source_id": "mbp_2021"
+    },
+    {
+     "when": "Jun 2023",
+     "what": "Mac Pro moves to M2 Ultra: every Mac is now Apple silicon",
+     "source_id": "as_2023"
+    },
+    {
+     "when": "Jun 2025",
+     "what": "Foundation Models framework opens Apple's on-device model to apps, 'without cloud API costs'",
+     "source_id": "fm_2025"
+    },
+    {
+     "when": "2025",
+     "what": "25.6M Macs shipped, up 11.1%",
+     "source_id": "idc_fy25"
+    },
+    {
+     "when": "Next",
+     "what": "SparkV 1.0: notarized direct download [TBD: launch date]",
+     "source_id": "bp"
+    }
+   ],
+   "notes": "Three things lined up. The notch arrived on the MacBook Pro in 2021. Since mid-2023 every Mac Apple sells runs Apple silicon. And at WWDC 2025 Apple opened its on-device model to developers; in Craig Federighi's words, it runs without cloud API costs and works offline. That turns AI from a per-request cost into a free capability of the hardware. Competitors built on cloud models have to charge monthly. We do not.",
+   "images": [],
+   "chart": null,
+   "table": null
+  },
+  {
+   "n": 8,
+   "id": "market",
+   "layout": "metrics_dashboard",
+   "header": "A big, paying, AI-curious audience.",
+   "subtitle": "Sized bottom-up from public Mac data. Our own funnel numbers are [TBD] until launch.",
+   "body": [
+    "TAM: 100M+ active Macs (Apple, 2018; latest public figure)",
+    "SAM: [TBD: Apple-silicon MacBooks with a notch on macOS 15+]",
+    "SOM: [TBD: year-3 paid users target]"
+   ],
+   "kpi_tiles": [
+    {
+     "value": "25.6M",
+     "label": "Macs shipped in 2025 (IDC, prelim.)",
+     "accent": true,
+     "placement_px": {
+      "x": 192,
+      "y": 600,
+      "w": 792,
+      "h": 620
+     }
+    },
+    {
+     "value": "100M+",
+     "label": "active Macs (Apple, Oct 2018)",
+     "placement_px": {
+      "x": 1032,
+      "y": 600,
+      "w": 792,
+      "h": 620
+     }
+    },
+    {
+     "value": "83%",
+     "label": "of surveyed Mac users paid for software in the past month (Setapp 2023, n=1,241)",
+     "placement_px": {
+      "x": 192,
+      "y": 1280,
+      "w": 792,
+      "h": 620
+     }
+    },
+    {
+     "value": "42%",
+     "label": "use AI apps daily (same survey)",
+     "placement_px": {
+      "x": 1032,
+      "y": 1280,
+      "w": 792,
+      "h": 620
+     }
+    }
+   ],
+   "table": {
+    "id": "T8",
+    "title": "Sizing funnel",
+    "placement_px": {
+     "x": 2016,
+     "y": 1420,
+     "w": 1632,
+     "h": 480
+    },
+    "columns": [
+     "Layer",
+     "Definition",
+     "Figure",
+     "Source"
+    ],
+    "rows": [
+     [
+      "TAM",
+      "Active Macs",
+      "100M+ (2018)",
+      "apple_100m"
+     ],
+     [
+      "SAM",
+      "Apple-silicon MacBooks with a notch, macOS 15+",
+      "[TBD: count]",
+      "[TBD: method: notched-model share of shipments 2021-2025 x survival]"
+     ],
+     [
+      "SOM",
+      "Paid Pro + Team seats in 3 years",
+      "[TBD: target]",
+      "[TBD]"
+     ]
+    ]
+   },
+   "notes": "I will not show you a made-up market number. What is public: IDC counts 25.6 million Macs shipped in 2025, up 11 percent, and Apple last said there were 100 million active Macs, in 2018. Setapp's 2023 survey of its own audience found 83 percent had paid for Mac software in the past month and 42 percent use AI apps daily; that is a survey of Mac app buyers, not of all Mac owners. The notched-MacBook share of that base is the number we still need to source, and it is marked TBD.",
+   "images": [],
+   "chart": {
+    "id": "C2",
+    "type": "column_clustered",
+    "title": "Mac shipments worldwide (millions of units)",
+    "categories": [
+     "2024",
+     "2025"
+    ],
+    "series": [
+     {
+      "name": "Macs shipped (M)",
+      "values": [
+       23.0,
+       25.6
+      ]
+     }
+    ],
+    "number_format": "0.0",
+    "placement_px": {
+     "x": 2016,
+     "y": 600,
+     "w": 1632,
+     "h": 760
+    },
+    "box_in": [
+     7.0,
+     2.083,
+     5.667,
+     2.639
+    ],
+    "data_table": [
+     {
+      "period": "FY2024",
+      "mac_units_m": 23.0,
+      "basis": "derived: 25.6 / 1.111 (IDC growth rate); draw this bar with a hatched or 60% fill",
+      "source_id": "idc_fy25"
+     },
+     {
+      "period": "FY2025",
+      "mac_units_m": 25.6,
+      "basis": "IDC preliminary",
+      "source_id": "idc_fy25"
+     },
+     {
+      "period": "Q2 2024",
+      "mac_units_m": 5.1,
+      "basis": "IDC preliminary (annotation only)",
+      "source_id": "idc_q2_25"
+     },
+     {
+      "period": "Q2 2025",
+      "mac_units_m": 6.2,
+      "basis": "IDC preliminary, +21.4% (annotation only)",
+      "source_id": "idc_q2_25"
+     },
+     {
+      "period": "Q4 2025",
+      "mac_units_m": 7.1,
+      "basis": "IDC preliminary, 9.3% PC share (annotation only)",
+      "source_id": "idc_fy25"
+     }
+    ],
+    "annotations": [
+     "+11.1% in 2025",
+     "Q4 2025: 7.1M, 9.3% of PCs"
+    ],
+    "source_ids": [
+     "idc_fy25",
+     "idc_q2_25"
+    ],
+    "source_line": "IDC preliminary data via 9to5Mac (Jan 2026) and MacTrast (Jul 2025). 2024 bar derived from IDC's growth rate.",
+    "label": "sourced (2024 bar derived)"
+   }
+  },
+  {
+   "n": 9,
+   "id": "competition",
+   "layout": "two_column_comparison",
+   "header": "Five jobs, one app, one price.",
+   "subtitle": "Each rival owns one job. SparkV covers all five and charges once.",
+   "body": [
+    "Breadth: 20+ tools behind one hover",
+    "Pay once: no AI bill to pass on",
+    "Private by default: on-device models"
+   ],
+   "notes": "Read the matrix by column: every competitor is excellent at one job. Notch apps such as NotchNook are built around media and a file tray, and the free open-source one is not notarized. The AI tools, Wispr Flow, Granola and Raycast Pro, are sold as subscriptions. SparkV is the only one in this set that combines the notch with the AI jobs and charges once. The honest risk: any of them can add features. Our answer is breadth plus integration, because Spaces and Search tie meetings, dictation, clipboard and captures together, and the cost structure lets us stay one-time. Prices are from third-party listings; we re-check them before every send.",
+   "images": [],
+   "chart": {
+    "id": "P9",
+    "type": "scatter_2x2",
+    "title": "Positioning (qualitative)",
+    "x_axis": "Point tool → Suite",
+    "y_axis": "Subscription → Pay once",
+    "placement_px": {
+     "x": 2832,
+     "y": 560,
+     "w": 816,
+     "h": 816
+    },
+    "points": [
+     {
+      "label": "SparkV",
+      "x": 0.9,
+      "y": 0.9,
+      "accent": true
+     },
+     {
+      "label": "NotchNook",
+      "x": 0.25,
+      "y": 0.7
+     },
+     {
+      "label": "Alcove",
+      "x": 0.15,
+      "y": 0.85
+     },
+     {
+      "label": "boring.notch",
+      "x": 0.2,
+      "y": 0.95,
+      "note": "free"
+     },
+     {
+      "label": "CleanShot X",
+      "x": 0.3,
+      "y": 0.6
+     },
+     {
+      "label": "Paste",
+      "x": 0.15,
+      "y": 0.35
+     },
+     {
+      "label": "Raycast Pro",
+      "x": 0.6,
+      "y": 0.15
+     },
+     {
+      "label": "Wispr Flow",
+      "x": 0.2,
+      "y": 0.1
+     },
+     {
+      "label": "Granola",
+      "x": 0.3,
+      "y": 0.1
+     }
+    ],
+    "label": "qualitative; y position from each product's price model (cited), x from its main job"
+   },
+   "table": {
+    "id": "T9",
+    "title": "Jobs covered and price model",
+    "placement_px": {
+     "x": 192,
+     "y": 560,
+     "w": 2496,
+     "h": 1280
+    },
+    "columns": [
+     "Job",
+     "SparkV",
+     "NotchNook",
+     "Alcove",
+     "boring.notch",
+     "Paste",
+     "Wispr Flow",
+     "Granola",
+     "CleanShot X",
+     "Raycast Pro"
+    ],
+    "rows": [
+     [
+      "Notch drawer and live activities",
+      "●",
+      "●",
+      "●",
+      "●",
+      "",
+      "",
+      "",
+      "",
+      ""
+     ],
+     [
+      "Clipboard history",
+      "●",
+      "",
+      "",
+      "",
+      "●",
+      "",
+      "",
+      "",
+      ""
+     ],
+     [
+      "AI dictation",
+      "●",
+      "",
+      "",
+      "",
+      "",
+      "●",
+      "",
+      "",
+      ""
+     ],
+     [
+      "AI meeting notes",
+      "●",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "●",
+      "",
+      ""
+     ],
+     [
+      "Screenshots and recording",
+      "●",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "●",
+      ""
+     ],
+     [
+      "Search and AI answers",
+      "◐",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "●"
+     ],
+     [
+      "Price",
+      "$39 once",
+      "$25 once or $3/mo",
+      "~$13.99 once",
+      "Free (GPL)",
+      "$29.99/yr",
+      "$15/mo",
+      "$14/user/mo",
+      "$29 + $19/yr opt.",
+      "$8-10/mo"
+     ]
+    ],
+    "highlight_column": "SparkV",
+    "legend": "● = the product's main job per the cited listing. ◐ = SparkV Universal Search with cited answers; not a full app launcher. Blank = not that product's main job; this is not a full feature audit.",
+    "source_ids": [
+     "notchnook",
+     "alcove",
+     "boringnotch",
+     "paste",
+     "wispr",
+     "granola",
+     "cleanshot",
+     "raycast",
+     "bp"
+    ]
+   }
+  },
+  {
+   "n": 10,
+   "id": "business_model",
+   "layout": "pricing_table",
+   "header": "Free to start. $39 once for everything.",
+   "subtitle": "Sold direct, with Lemon Squeezy as merchant of record for tax and license keys.",
+   "body": [
+    "Free hooks users away from free notch apps",
+    "Pro is one price for every feature",
+    "Team adds recurring revenue from companies"
+   ],
+   "notes": "Three plans. Free is a useful notch app at zero, which competes with the free open-source option and gives reviewers something to try. Pro is $39 once, $29 in launch week, and includes every feature; buyers on r/macapps prefer one-time prices and CleanShot X shows the model works. Team is $8 per seat per month, billed yearly, minimum three seats, for companies that need invoices, seat management and an MDM package. We are not on the Mac App Store because SparkV needs Accessibility and other APIs the sandbox does not allow; Lemon Squeezy handles VAT, GST and sales tax worldwide. Shared Spaces for Team is a file package today, not live sync.",
+   "images": [],
+   "chart": null,
+   "table": {
+    "id": "T10",
+    "type": "plan_cards",
+    "columns": [
+     "Free",
+     "Pro",
+     "Team"
+    ],
+    "highlight_column": "Pro",
+    "cards": [
+     {
+      "plan": "Free",
+      "price": "$0",
+      "price_inr": "₹0",
+      "unit": "",
+      "tag": "",
+      "lines": [
+       "Notch core: media, HUD, battery, tray, Today, timer",
+       "World Clock and System Gauges",
+       "Clipboard history (last 25), Copy Text",
+       "Dictation without AI formatting"
+      ],
+      "placement_px": {
+       "x": 192,
+       "y": 600,
+       "w": 1088,
+       "h": 1180
+      }
+     },
+     {
+      "plan": "Pro",
+      "price": "$39",
+      "price_inr": "₹1,499",
+      "unit": "once",
+      "tag": "Recommended",
+      "lines": [
+       "Everything: all AI assistants, meetings, dev tools",
+       "2 Macs per person, 12 months of updates",
+       "Optional renewal $19/yr; the app never stops working",
+       "Launch week: $29 (₹999)"
+      ],
+      "placement_px": {
+       "x": 1376,
+       "y": 560,
+       "w": 1088,
+       "h": 1260
+      }
+     },
+     {
+      "plan": "Team",
+      "price": "$8",
+      "price_inr": "₹499",
+      "unit": "per seat / month, billed yearly",
+      "tag": "",
+      "lines": [
+       "Minimum 3 seats; one invoice (PO or bank transfer)",
+       "Seat management, shared Spaces packages",
+       "Priority support, 1 business day",
+       "Deployment .pkg for MDM"
+      ],
+      "placement_px": {
+       "x": 2560,
+       "y": 600,
+       "w": 1088,
+       "h": 1180
+      }
+     }
+    ],
+    "footer": "14-day full Pro trial, no card · 50% student discount · 30-day refunds · Alternative held back: five feature packs at $9-19 each (all five = $39)"
+   }
+  },
+  {
+   "n": 11,
+   "id": "unit_economics",
+   "layout": "metrics_dashboard",
+   "header": "We keep about 94% of every Pro sale.",
+   "subtitle": "On-device AI means no inference bill. The only variable cost is the payment fee.",
+   "body": [
+    "$0 AI cost per user",
+    "$99 a year fixed (Apple Developer); no MoR monthly fee",
+    "3 Pro sales cover the fixed Apple fee"
+   ],
+   "kpi_tiles": [
+    {
+     "value": "$0",
+     "label": "AI cost per user",
+     "accent": true,
+     "placement_px": {
+      "x": 2400,
+      "y": 560,
+      "w": 600,
+      "h": 440
+     }
+    },
+    {
+     "value": "$99/yr",
+     "label": "fixed platform cost (Apple Developer Program)",
+     "placement_px": {
+      "x": 3048,
+      "y": 560,
+      "w": 600,
+      "h": 440
+     }
+    }
+   ],
+   "table": {
+    "id": "T11",
+    "title": "Net per sale by plan (USD)",
+    "placement_px": {
+     "x": 192,
+     "y": 1620,
+     "w": 2016,
+     "h": 400
+    },
+    "columns": [
+     "Plan",
+     "Price",
+     "Net, US buyer",
+     "Net, non-US buyer"
+    ],
+    "rows": [
+     [
+      "Pro",
+      "$39.00",
+      "$36.55",
+      "$35.97"
+     ],
+     [
+      "Pro, launch week",
+      "$29.00",
+      "$27.05",
+      "$26.62"
+     ],
+     [
+      "Pro, student",
+      "$19.50",
+      "$18.03",
+      "$17.73"
+     ],
+     [
+      "Team, per seat-year (3-seat order)",
+      "$96.00",
+      "$90.55",
+      "$89.11"
+     ]
+    ],
+    "basis": "Lemon Squeezy 5% + $0.50 per order; +1.5% non-US; +0.5% on subscriptions (Team). Team row = (3 x $96 - 5.5% - $0.50) / 3."
+   },
+   "notes": "Our gross margin is the payment fee and nothing else. On a $39 sale Lemon Squeezy takes 5 percent plus 50 cents, so we keep $36.55; about $36 from a non-US buyer. AI runs on the Mac, and the optional Groq path uses the buyer's own key, so inference costs us nothing. Fixed costs are the $99 Apple Developer fee, a domain and static hosting for the site and update feed. The chart on the right is arithmetic, not a forecast: it shows what tiny shares of one year's Mac shipments would be worth. Our real revenue plan is marked TBD until the beta gives us a conversion rate.",
+   "images": [],
+   "chart": {
+    "id": "C3",
+    "type": "waterfall",
+    "title": "What we keep from one $39 Pro sale (US buyer, USD)",
+    "categories": [
+     "List price",
+     "MoR fee 5%",
+     "Per-order fee",
+     "AI inference",
+     "Net to SparkV"
+    ],
+    "series": [
+     {
+      "name": "USD",
+      "values": [
+       39.0,
+       -1.95,
+       -0.5,
+       0.0,
+       36.55
+      ]
+     }
+    ],
+    "total_indices": [
+     0,
+     4
+    ],
+    "number_format": "$0.00",
+    "placement_px": {
+     "x": 192,
+     "y": 560,
+     "w": 2016,
+     "h": 1000
+    },
+    "box_in": [
+     0.667,
+     1.944,
+     7.0,
+     3.472
+    ],
+    "data_table": [
+     {
+      "step": "List price",
+      "usd": 39.0,
+      "basis": "Pro one-time",
+      "source_id": "bp"
+     },
+     {
+      "step": "MoR fee 5%",
+      "usd": -1.95,
+      "basis": "Lemon Squeezy 5%",
+      "source_id": "lemonsqueezy"
+     },
+     {
+      "step": "Per-order fee",
+      "usd": -0.5,
+      "basis": "Lemon Squeezy 50c",
+      "source_id": "lemonsqueezy"
+     },
+     {
+      "step": "AI inference",
+      "usd": 0.0,
+      "basis": "on-device; Groq optional with the buyer's own key",
+      "source_id": "bp"
+     },
+     {
+      "step": "Net to SparkV",
+      "usd": 36.55,
+      "basis": "93.7% of list",
+      "source_id": "bp"
+     }
+    ],
+    "annotations": [
+     "Non-US buyer: about +1.5% fee, net $35.97",
+     "Affiliate-sourced sale (30% commission): net about $24.85"
+    ],
+    "source_ids": [
+     "bp",
+     "lemonsqueezy"
+    ],
+    "source_line": "Fee schedule from the business plan section 4. Excludes refunds [TBD: refund rate], support time and DMG bandwidth (20-60 MB per download).",
+    "label": "sourced arithmetic"
+   },
+   "chart_2": {
+    "id": "C4",
+    "type": "column_clustered",
+    "title": "Illustrative only: net revenue if a share of ONE year's Mac shipments bought Pro",
+    "categories": [
+     "0.01%",
+     "0.05%",
+     "0.10%"
+    ],
+    "series": [
+     {
+      "name": "Net revenue (USD)",
+      "values": [
+       93568,
+       467840,
+       935680
+      ]
+     }
+    ],
+    "number_format": "$#,##0",
+    "placement_px": {
+     "x": 2400,
+     "y": 1060,
+     "w": 1248,
+     "h": 900
+    },
+    "box_in": [
+     8.333,
+     3.681,
+     4.333,
+     3.125
+    ],
+    "data_table": [
+     {
+      "share_of_2025_shipments": "0.01%",
+      "pro_sales": 2560,
+      "net_per_sale_usd": 36.55,
+      "net_revenue_usd": 93568
+     },
+     {
+      "share_of_2025_shipments": "0.05%",
+      "pro_sales": 12800,
+      "net_per_sale_usd": 36.55,
+      "net_revenue_usd": 467840
+     },
+     {
+      "share_of_2025_shipments": "0.10%",
+      "pro_sales": 25600,
+      "net_per_sale_usd": 36.55,
+      "net_revenue_usd": 935680
+     }
+    ],
+    "annotations": [
+     "Arithmetic on 25.6M (IDC 2025) x share x $36.55. Not a forecast. Our forecast: [TBD: revenue plan]"
+    ],
+    "source_ids": [
+     "idc_fy25",
+     "bp"
+    ],
+    "label": "illustrative scenario, clearly not a forecast"
+   }
+  },
+  {
+   "n": 12,
+   "id": "go_to_market",
+   "layout": "timeline",
+   "header": "Go to market: waitlist to Product Hunt in 30 days.",
+   "subtitle": "Demo-first and creator-led. Affiliates earn 30%, only when a sale happens.",
+   "body": [
+    "Product Hunt, r/macapps App Pile, Show HN",
+    "YouTube: one 2-4 min demo plus a 30 s Short per feature",
+    "Comparison pages: SparkV vs NotchNook, Alcove, boring.notch"
+   ],
+   "timeline": [
+    {
+     "when": "Days 1-3",
+     "what": "Apple Developer ID, Lemon Squeezy products, domain"
+    },
+    {
+     "when": "Days 4-7",
+     "what": "Legal pages; Face Unlock out of the sold build"
+    },
+    {
+     "when": "Days 8-12",
+     "what": "Licensing, trial, Sparkle updates, notarization"
+    },
+    {
+     "when": "Days 13-15",
+     "what": "Clean-Mac install and update test"
+    },
+    {
+     "when": "Days 16-18",
+     "what": "Landing page, pricing, waitlist"
+    },
+    {
+     "when": "Days 19-22",
+     "what": "Demo video, 5 Shorts, keys to 10-15 creators"
+    },
+    {
+     "when": "Days 23-25",
+     "what": "Private beta, 30-50 users, 5 testimonials"
+    },
+    {
+     "when": "Day 26",
+     "what": "Ship 1.0 at the launch price"
+    },
+    {
+     "when": "Day 27",
+     "what": "Product Hunt (Tue/Wed), r/macapps, X, LinkedIn, waitlist email"
+    },
+    {
+     "when": "Days 28-30",
+     "what": "Show HN, affiliates open, retrospective"
+    }
+   ],
+   "kpi_placeholders": [
+    "[TBD: waitlist target]",
+    "[TBD: trial-to-paid target]",
+    "[TBD: CAC by channel]",
+    "[TBD: creator reach]"
+   ],
+   "channels": [
+    "Product Hunt",
+    "r/macapps",
+    "YouTube creators (20k-300k subs)",
+    "Lemon Squeezy affiliates (30%, 30-day cookie)",
+    "Show HN / Indie Hackers",
+    "Setapp (month 3+)"
+   ],
+   "notes": "The plan is in the business plan, day by day. Days one to fifteen make the app sellable: Developer ID, notarization, licensing and a clean-Mac test. Then the landing page and waitlist, a demo video and Shorts, keys for creators, a private beta of 30 to 50 users, and launch on a Tuesday or Wednesday on Product Hunt and in the r/macapps App Pile thread. Affiliates are paid only on sales. Setapp is a second channel from month three. The targets on the bottom row are TBD; we will set them from the waitlist and beta numbers.",
+   "images": [],
+   "chart": null,
+   "table": null
+  },
+  {
+   "n": 13,
+   "id": "traction",
+   "layout": "metrics_dashboard",
+   "header": "Built and tested. Launch numbers come next.",
+   "subtitle": "Pre-revenue today. This is what is verified, and what we will report.",
+   "body": [
+    "Full app compiles; every tab, tile and hotkey is wired",
+    "50 real views rendered with sample data",
+    "Open: Browser Flows self-test not clean; live hardware checks pending"
+   ],
+   "kpi_tiles": [
+    {
+     "value": "29,283",
+     "label": "widget checks, 0 failures",
+     "placement_px": {
+      "x": 192,
+      "y": 600,
+      "w": 816,
+      "h": 520
+     }
+    },
+    {
+     "value": "195",
+     "label": "clipboard and paste-stack checks, 0 failures",
+     "placement_px": {
+      "x": 1072,
+      "y": 600,
+      "w": 816,
+      "h": 520
+     }
+    },
+    {
+     "value": "63",
+     "label": "OCR and screen-recorder checks, 0 failures",
+     "placement_px": {
+      "x": 1952,
+      "y": 600,
+      "w": 816,
+      "h": 520
+     }
+    },
+    {
+     "value": "48/48",
+     "label": "UI Audit runner self-tests",
+     "placement_px": {
+      "x": 2832,
+      "y": 600,
+      "w": 816,
+      "h": 520
+     }
+    }
+   ],
+   "tbd_tiles": [
+    "[TBD: waitlist signups]",
+    "[TBD: beta users]",
+    "[TBD: trial starts]",
+    "[TBD: paid conversions]",
+    "[TBD: revenue]"
+   ],
+   "source_line": "Internal checks run 22 Oct 2026 against current sources (feature guide, verification summary).",
+   "notes": "We are pre-revenue and pre-launch, and I will not dress that up. What exists: the full app compiles with the Command Line Tools, every drawer tab, hub tile and default hotkey is wired, 50 views were rendered from the real code, and the automated harnesses pass, about 29,000 widget checks, 195 clipboard checks, 63 OCR and recorder checks and 48 of 48 UI Audit runner tests. What is still open: the Browser Flows self-test was not clean, and features that need a microphone, camera or system permission are on a live-check list before launch. The bottom row is what we will report to you monthly.",
+   "images": [],
+   "chart": null,
+   "table": null
+  },
+  {
+   "n": 14,
+   "id": "roadmap",
+   "layout": "timeline",
+   "header": "Four known blockers, all scheduled.",
+   "subtitle": "What stands between the build and the first sale, and what comes after.",
+   "body": [
+    "Before sale: signing, licensing, the face model, Node.js",
+    "After launch: Setapp, packs, Team sync, reliability"
+   ],
+   "lanes": [
+    {
+     "name": "Before the first sale",
+     "items": [
+      {
+       "title": "Developer ID + notarization",
+       "detail": "Self-signed today; Developer ID cert, notarize and staple (days 1-3, 8-12)"
+      },
+      {
+       "title": "Licensing, trial, paywall",
+       "detail": "Not in the app yet; Lemon Squeezy License API; about 4-6 days of work"
+      },
+      {
+       "title": "Face Unlock model",
+       "detail": "ArcFace weights are non-commercial: Face Unlock is left out of 1.0"
+      },
+      {
+       "title": "Node.js for dev tools",
+       "detail": "List as a requirement, or bundle a signed Node (+40-100 MB)"
+      }
+     ]
+    },
+    {
+     "name": "After launch ([TBD: order and dates])",
+     "items": [
+      {
+       "title": "Setapp channel",
+       "detail": "From month 3, once reviews exist"
+      },
+      {
+       "title": "Feature packs",
+       "detail": "e.g. a Meetings-only pack as a cheaper entry"
+      },
+      {
+       "title": "Team: live Spaces sync",
+       "detail": "Not built; today Spaces share as a file package"
+      },
+      {
+       "title": "Browser Flows reliability",
+       "detail": "Self-test must pass cleanly before it leaves beta"
+      },
+      {
+       "title": "Commercial face model",
+       "detail": "[TBD: licensed or replacement model]"
+      }
+     ]
+    }
+   ],
+   "notes": "Investors should hear the risks from us first. Four things block the first sale and all four are on the 30-day plan: proper Apple signing and notarization, licensing code, the face-recognition model's non-commercial license, which we solve by leaving Face Unlock out of 1.0, and the Node.js dependency of the developer tools. One more risk: SparkV uses private macOS paths for media and the HUD. Fallbacks already exist, and Sparkle lets us ship fixes fast. After launch, the order of Setapp, packs and Team sync is TBD and will follow what beta users ask for.",
+   "images": [],
+   "chart": null,
+   "table": null
+  },
+  {
+   "n": 15,
+   "id": "team",
+   "layout": "minimal_body",
+   "header": "Team",
+   "subtitle": "[TBD: one line on why this team wins]",
+   "body": [
+    "[TBD: founder name] · [TBD: role] · [TBD: relevant prior work]",
+    "[TBD: co-founder or first hire] · [TBD: role]",
+    "[TBD: advisors]",
+    "Built at SparkV, a software studio in Telangana, India (sparkv.si)"
+   ],
+   "cards": [
+    {
+     "name": "[TBD: founder name]",
+     "role": "[TBD: role]",
+     "line": "[TBD: one proof point]",
+     "photo": "[TBD: photo]",
+     "placement_px": {
+      "x": 192,
+      "y": 700,
+      "w": 1088,
+      "h": 1100
+     }
+    },
+    {
+     "name": "[TBD: co-founder / first hire]",
+     "role": "[TBD: role]",
+     "line": "[TBD]",
+     "photo": "[TBD: photo]",
+     "placement_px": {
+      "x": 1376,
+      "y": 700,
+      "w": 1088,
+      "h": 1100
+     }
+    },
+    {
+     "name": "[TBD: advisor]",
+     "role": "[TBD: role]",
+     "line": "[TBD]",
+     "photo": "[TBD: photo]",
+     "placement_px": {
+      "x": 2560,
+      "y": 700,
+      "w": 1088,
+      "h": 1100
+     }
+    }
+   ],
+   "notes": "[TBD: founder to write this in their own words: who built SparkV, what they shipped before, and why they will win the Mac power-user market.] The only fact from our files is the studio: SparkV is a software studio in Telangana, India, per sparkv.si.",
+   "images": [],
+   "chart": null,
+   "table": null
+  },
+  {
+   "n": 16,
+   "id": "the_ask",
+   "layout": "cta",
+   "header": "The ask",
+   "subtitle": "Raising [TBD: amount] on [TBD: instrument and terms] for [TBD: months] of runway.",
+   "body": [
+    "Milestone: [TBD: paid users or revenue] by [TBD: date]",
+    "Next step: a 20-minute live demo on your Mac",
+    "sparkv.si · [TBD: founder email]"
+   ],
+   "notes": "We are raising [TBD: amount]. The money goes to four buckets, and the percentages are TBD: engineering to clear the launch blockers and harden the beta features, go to market for the launch video, creators and Product Hunt, legal for the EULA, privacy and the India DPDP rules, and support. The milestone we commit to is [TBD]. The best next step is a 20-minute demo on your own Mac.",
+   "images": [
+    {
+     "file": "01-home.png",
+     "role": "cta_drawer",
+     "placement_px": {
+      "x": 2490,
+      "y": 1880,
+      "w": 1068,
+      "h": 246
+     },
+     "box_in": [
+      8.646,
+      6.528,
+      3.708,
+      0.854
+     ],
+     "mockup": "notch_mockup",
+     "scale": 0.87,
+     "note": "Optional small device at bottom-right; drop it if the donut needs the room"
+    }
+   ],
+   "chart": {
+    "id": "C5",
+    "type": "donut",
+    "title": "Use of funds",
+    "categories": [
+     "Product and engineering",
+     "Go to market",
+     "Legal and compliance",
+     "Support and operations"
+    ],
+    "series": [
+     {
+      "name": "% of round",
+      "values": [
+       null,
+       null,
+       null,
+       null
+      ]
+     }
+    ],
+    "tbd": true,
+    "placeholder_equal_split": true,
+    "placement_px": {
+     "x": 2400,
+     "y": 560,
+     "w": 1248,
+     "h": 1248
+    },
+    "box_in": [
+     8.333,
+     1.944,
+     4.333,
+     4.333
+    ],
+    "data_table": [
+     {
+      "bucket": "Product and engineering",
+      "percent": "[TBD: %]",
+      "covers": "licensing and trial, notarization pipeline, Sparkle, Browser Flows reliability, commercial face model"
+     },
+     {
+      "bucket": "Go to market",
+      "percent": "[TBD: %]",
+      "covers": "demo video and Shorts, creator keys, launch, comparison pages"
+     },
+     {
+      "bucket": "Legal and compliance",
+      "percent": "[TBD: %]",
+      "covers": "EULA, privacy, refunds, GDPR, India DPDP (notice duties from 13 May 2027), trademark review incl. the Clicky name"
+     },
+     {
+      "bucket": "Support and operations",
+      "percent": "[TBD: %]",
+      "covers": "support, docs site, $99/yr Apple fee, hosting"
+     }
+    ],
+    "source_ids": [
+     "bp"
+    ],
+    "label": "[TBD] values; draw equal dashed slices until the founder fills them"
+   },
+   "table": null
+  },
+  {
+   "n": "A1",
+   "id": "appendix_features",
+   "layout": "feature_showcase",
+   "hidden": true,
+   "header": "Appendix: every feature, one hover",
+   "subtitle": "Real renders from the current code with sample data.",
+   "body": [],
+   "grid": {
+    "cols": 4,
+    "tile_w_px": 816,
+    "gap_px": 64,
+    "origin_px": [
+     192,
+     560
+    ],
+    "files": [
+     "02-widgets.png",
+     "04-tray.png",
+     "06-today.png",
+     "07-converter.png",
+     "08-spaces.png",
+     "11-flow.png",
+     "13-clipboard.png",
+     "15-universal-search.png",
+     "28-focus.png",
+     "31-downloads.png",
+     "17-reply-drafter.png",
+     "23-job-agent.png"
+    ],
+    "mockup": "notch_mockup_mini",
+    "scale": "816/1224 = 0.67"
+   },
+   "notes": "Backup slide for questions about breadth. Every image is a real view rendered from the current source with sample data.",
+   "images": [],
+   "chart": null,
+   "table": null
+  },
+  {
+   "n": "A2",
+   "id": "appendix_sources",
+   "layout": "minimal_body",
+   "hidden": true,
+   "header": "Appendix: sources",
+   "subtitle": "Every number in this deck, and where it comes from.",
+   "body": [
+    "See sources[] (rendered as a two-column list, 40 px, text_muted)"
+   ],
+   "notes": "Leave this in the PDF version sent after the meeting.",
+   "images": [],
+   "chart": null,
+   "table": null
+  }
+ ],
+ "recordings": [
+  {
+   "id": "I01",
+   "name": "Hero hover",
+   "slides": [
+    1,
+    16
+   ],
+   "duration": "00:20",
+   "same_as": "customer C01 (reuse the take if already recorded)"
+  },
+  {
+   "id": "I02",
+   "name": "Drawer tour and agents hub",
+   "slides": [
+    3
+   ],
+   "duration": "00:24"
+  },
+  {
+   "id": "I03",
+   "name": "Master demo film",
+   "slides": [
+    4
+   ],
+   "duration": "01:30"
+  },
+  {
+   "id": "I04",
+   "name": "Meetings, live answers, translation",
+   "slides": [
+    5
+   ],
+   "duration": "00:30"
+  },
+  {
+   "id": "I05",
+   "name": "UI Audit run (time-lapse)",
+   "slides": [
+    6
+   ],
+   "duration": "00:30"
+  },
+  {
+   "id": "I06",
+   "name": "4K still set (corrected search, hub, home, bands)",
+   "slides": [
+    1,
+    3,
+    4,
+    "A1"
+   ],
+   "duration": "stills"
+  }
+ ],
+ "sources": [
+  {
+   "id": "bp",
+   "title": "SparkV Business Plan (docs/SparkV-Business-Plan.md), researched 22 Oct 2026",
+   "url": "docs/SparkV-Business-Plan.md",
+   "note": "Pricing, fees, competitors, GTM, launch plan, blockers"
+  },
+  {
+   "id": "fg",
+   "title": "SparkV Feature Guide (docs/SparkV-Feature-Guide.md), checks run 22 Oct 2026",
+   "url": "docs/SparkV-Feature-Guide.md",
+   "note": "Features, verification status, test results"
+  },
+  {
+   "id": "idc_fy25",
+   "title": "IDC preliminary Q4/FY2025 PC tracker, via 9to5Mac (13 Jan 2026)",
+   "url": "https://9to5mac.com/2026/01/13/apple-shipments-unchanged-as-pc-market-grew-during-q4-2025/",
+   "note": "Apple 25.6M Macs in 2025 (+11.1%); Q4 2025 7.1M, share 9.3%. Preliminary; confirm on idc.com"
+  },
+  {
+   "id": "idc_q2_25",
+   "title": "IDC preliminary Q2 2025, via MacTrast (Jul 2025)",
+   "url": "https://www.mactrast.com/2025/07/new-data-released-by-idc-shows-mac-shipments-are-continuing-to-increase/",
+   "note": "6.2M Macs in Q2 2025 vs 5.1M in Q2 2024 (+21.4%)"
+  },
+  {
+   "id": "apple_100m",
+   "title": "Apple, Oct 2018 event: 100 million active Macs, via TechCrunch (30 Oct 2018)",
+   "url": "https://techcrunch.com/2018/10/30/there-are-now-100-million-macs-in-use",
+   "note": "Latest public active-Mac figure found; dated, label it 2018"
+  },
+  {
+   "id": "setapp_2023",
+   "title": "Setapp Mac Apps Report 2023 (n=1,241, mostly US), via SecurityBrief Asia (Oct 2023)",
+   "url": "https://securitybrief.asia/story/42-of-macos-users-use-ai-based-apps-daily-report",
+   "note": "42% use AI apps daily; 83% paid for Mac software in the past month; 70% own an M1/M2 Mac. Survey of Setapp's audience, not a census"
+  },
+  {
+   "id": "fm_2025",
+   "title": "Apple Foundation Models framework, WWDC 2025, via TechCrunch (9 Jun 2025)",
+   "url": "https://techcrunch.com/2025/06/09/apple-lets-developers-tap-into-its-offline-ai-models/",
+   "note": "Federighi: on-device models run 'without cloud API costs' and work offline"
+  },
+  {
+   "id": "as_2023",
+   "title": "Mac Pro with M2 Ultra completes Apple silicon transition, via MobileSyrup (5 Jun 2023)",
+   "url": "https://mobilesyrup.com/2023/06/05/apple-completes-its-transition-to-in-house-chips-with-m2-ultra-mac-pro/",
+   "note": "Every Mac Apple sells since June 2023 is Apple silicon"
+  },
+  {
+   "id": "mbp_2021",
+   "title": "14- and 16-inch MacBook Pro with notch, 18 Oct 2021, via Macworld",
+   "url": "https://www.macworld.com/article/677726/everything-apple-announced-at-its-18-october-event.html",
+   "note": "Notch introduced on MacBook Pro; 16-inch panel 3456x2234"
+  },
+  {
+   "id": "notchnook",
+   "title": "NotchNook price, via iMore",
+   "url": "https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny",
+   "note": "$25 one-time or $3/month (business plan section 3)"
+  },
+  {
+   "id": "alcove",
+   "title": "Alcove price, via appgefahren",
+   "url": "https://www.appgefahren.de/alcove-bringt-die-dynamic-island-auf-den-mac-394469.html",
+   "note": "about $13.99 one-time"
+  },
+  {
+   "id": "boringnotch",
+   "title": "boring.notch on GitHub",
+   "url": "https://github.com/TheBoredTeam/boring.notch",
+   "note": "Free, GPL-3.0, not notarized"
+  },
+  {
+   "id": "raycast",
+   "title": "Raycast Pro pricing, Raycast blog",
+   "url": "https://www.raycast.com/blog/changing-how-raycast-ai-is-priced",
+   "note": "$10/month or $8/month billed yearly"
+  },
+  {
+   "id": "cleanshot",
+   "title": "CleanShot X pricing, via toolradar",
+   "url": "https://toolradar.com/tools/cleanshot/pricing",
+   "note": "$29 one-time with 1 year of updates, then $19/year optional"
+  },
+  {
+   "id": "wispr",
+   "title": "Wispr Flow pricing, via getvoibe",
+   "url": "https://www.getvoibe.com/resources/wispr-flow-pricing/",
+   "note": "Pro $15/month or $144/year"
+  },
+  {
+   "id": "granola",
+   "title": "Granola pricing, Granola blog",
+   "url": "https://granola.ai/blog/granola-pricing-plans-features-roi",
+   "note": "Business $14/user/month"
+  },
+  {
+   "id": "paste",
+   "title": "Paste on the App Store",
+   "url": "https://apps.apple.com/app/id967805235",
+   "note": "$3.99/month, $29.99/year or $89.99 lifetime"
+  },
+  {
+   "id": "lemonsqueezy",
+   "title": "Lemon Squeezy fees, via Dodo Payments review",
+   "url": "https://dodopayments.com/blogs/lemonsqueezy-review",
+   "note": "5% + 50c; about +1.5% non-US orders, +0.5% subscriptions"
+  },
+  {
+   "id": "sparkv_site",
+   "title": "sparkv.si (company site), read 22 Oct 2026",
+   "url": "https://www.sparkv.si",
+   "note": "Software studio in Telangana, India; colour tokens"
+  }
+ ]
+}

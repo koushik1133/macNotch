@@ -1,0 +1,110 @@
+# XcodeGen spec: `brew install xcodegen && xcodegen` creates NotchIsland.xcodeproj.
+# Mirrors build.sh: GlanceKit (Vendor/glance) as a static library with glance's
+# own concurrency settings, the app on top of it, and the Now Playing adapter
+# framework compiled with clang into Contents/Resources/MediaRemoteAdapter.
+# Needs Xcode 26 or later (SWIFT_DEFAULT_ACTOR_ISOLATION, SWIFT_APPROACHABLE_CONCURRENCY).
+name: NotchIsland
+options:
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    ARCHS: arm64
+    SWIFT_VERSION: "5.0"
+targets:
+  GlanceKit:
+    type: library.static
+    platform: macOS
+    sources:
+      - path: Vendor/glance/Sources
+    settings:
+      base:
+        PRODUCT_NAME: GlanceKit
+        PRODUCT_MODULE_NAME: GlanceKit
+        SKIP_INSTALL: YES
+        # build.sh: -default-isolation MainActor
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        # build.sh: DisableOutwardActorInference, GlobalActorIsolatedTypesUsability,
+        # InferIsolatedConformances, InferSendableFromCaptures,
+        # NonisolatedNonsendingByDefault
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        # build.sh: -enable-upcoming-feature MemberImportVisibility
+        SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
+
+  NotchIsland:
+    type: application
+    platform: macOS
+    dependencies:
+      - target: GlanceKit
+    sources:
+      - path: Sources
+      # glance's videos and images, copied loose (Bundle.main lookups).
+      - path: Vendor/glance/Resources
+        buildPhase: resources
+      # Pre-compiled ArcFace face-embedding model, copied as-is.
+      - path: Vendor/glance/Models/ArcFace.mlmodelc
+        type: file
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.notchisland.app
+        PRODUCT_NAME: NotchIsland
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: NotchIsland.entitlements
+        # Automatic with no team signs to run locally; pick your team for a
+        # stable identity so privacy grants survive rebuilds.
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        # The app itself builds like build.sh's second swiftc call.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        SWIFT_APPROACHABLE_CONCURRENCY: NO
+        # The adapter phase reads Vendor/ and writes into the bundle.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postCompileScripts:
+      - name: Build MediaRemoteAdapter
+        basedOnDependencyAnalysis: false
+        shell: /bin/zsh
+        script: |
+          # Same steps as build.sh: macOS 15.4+ only lets Apple-signed processes
+          # read Now Playing, so the app runs /usr/bin/perl with this framework.
+          set -euo pipefail
+          A="${SRCROOT}/Vendor/mediaremote-adapter"
+          RES="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          ADAPTER_DIR="${RES}/MediaRemoteAdapter"
+          FW="${ADAPTER_DIR}/MediaRemoteAdapter.framework"
+          ARCH_FLAGS=()
+          for arch in ${=ARCHS}; do ARCH_FLAGS+=(-arch "$arch"); done
+
+          rm -rf "$FW"
+          mkdir -p "$FW/Versions/A/Resources"
+          xcrun clang "${ARCH_FLAGS[@]}" -mmacosx-version-min=14.0 -isysroot "${SDKROOT}" \
+            -fobjc-arc -fvisibility=default -dynamiclib -O2 \
+            -I"$A/include" -I"$A/src" \
+            "$A"/src/adapter/*.m "$A/src/private/MediaRemote.m" "$A"/src/utility/*.m \
+            -framework Foundation -framework AppKit -framework UniformTypeIdentifiers \
+            -install_name @rpath/MediaRemoteAdapter.framework/Versions/A/MediaRemoteAdapter \
+            -o "$FW/Versions/A/MediaRemoteAdapter"
+          cat > "$FW/Versions/A/Resources/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>MediaRemoteAdapter</string>
+            <key>CFBundleIdentifier</key><string>com.vandenbe.MediaRemoteAdapter</string>
+            <key>CFBundleName</key><string>MediaRemoteAdapter</string>
+            <key>CFBundlePackageType</key><string>FMWK</string>
+            <key>CFBundleShortVersionString</key><string>0.1</string>
+            <key>CFBundleVersion</key><string>0.1.0</string>
+          </dict></plist>
+          PLIST
+          ln -sfn A "$FW/Versions/Current"
+          ln -sfn Versions/Current/MediaRemoteAdapter "$FW/MediaRemoteAdapter"
+          ln -sfn Versions/Current/Resources "$FW/Resources"
+          cp "$A/bin/mediaremote-adapter.pl" "$ADAPTER_DIR/"
+          cp "$A/LICENSE" "$ADAPTER_DIR/LICENSE"
+          cp "${SRCROOT}/Vendor/glance/LICENSE" "$RES/glance-LICENSE"
+
+          # Nested code is signed before Xcode signs the app.
+          codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$FW"

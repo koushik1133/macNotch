@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Acme signup</title>
+<style>body{font:14px system-ui;margin:40px;height:2200px} .btn{padding:6px 12px}</style></head><body>
+<h1>Create your Acme account</h1>
+<form id="signup" onsubmit="return false">
+  <label for="email">Email address</label> <input id="email" name="email" type="email"><br>
+  <label for="pw">Password</label> <input id="pw" name="pw" type="password"><br>
+  <label for="plan">Plan</label> <select id="plan" name="plan"><option value="free">Free</option><option value="team">Team</option><option value="ent">Enterprise</option></select><br>
+  <input type="search" placeholder="Referral code" name="ref"><br>
+  <label><input type="checkbox" id="agree" name="agree"> I agree to the terms</label><br>
+  <input type="file" id="avatar" name="avatar" aria-label="Avatar"><br>
+  <button id="submit-btn" class="btn primary" type="button" onclick="go()">Create account</button>
+</form>
+<script>
+function go(){const q=new URLSearchParams({email:email.value,plan:plan.value,agree:agree.checked,ref:document.querySelector('[name=ref]').value,file:(avatar.files[0]||{}).name||'',pwlen:pw.value.length});
+ fetch('/submit?'+q).then(()=>{setTimeout(()=>location.href='/welcome.html?'+q,300)});}
+</script></body></html>

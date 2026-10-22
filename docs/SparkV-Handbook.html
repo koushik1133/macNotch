@@ -1,0 +1,1642 @@
+<title>SparkV Handbook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sparkv.si look. Black page, a red-glow hero band, then a contents rail beside one reading column. Single dark theme by design. */
+:root {
+  --bg: #09090a; --surface: #111113; --surface-2: #17171a; --fg: #f7f7f5; --muted: #9a9aa2; --line: rgba(255,255,255,.10);
+  --accent: #f01822; --accent-deep: #d7131d; --accent-soft: rgba(240,24,34,.14); --notch: #09090a; --notch-fg: #f7f7f5;
+  --ok: #4ccd80; --ok-soft: rgba(76,205,128,.14); --warn: #ffb340; --warn-soft: rgba(255,179,64,.14);
+  --code-bg: #17171a;
+  --display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--bg); color: var(--fg); font: 16px/1.65 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--notch); }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { background: radial-gradient(60% 90% at 85% 40%, rgba(240,24,34,.22), transparent 70%), var(--notch); color: var(--notch-fg); border-bottom: 1px solid var(--line); }
+header.top .inner { max-width: 1180px; margin: 0 auto; padding-block: 48px 40px; display: grid; gap: 18px; }
+.island { width: 132px; height: 30px; border-radius: 0 0 18px 18px; background: #000; box-shadow: 0 0 0 1px #2a2a2e inset; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+.island i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: block; box-shadow: 0 0 10px var(--accent); }
+.island b { font: 500 11px/1 var(--mono); color: #9b9ba5; }
+h1.brand { font: 600 clamp(2.6rem, 7vw, 5.2rem)/0.98 var(--display); letter-spacing: -0.055em; margin: 0; text-wrap: balance; }
+.lede { max-width: 62ch; color: #c7c7cf; margin: 0; font-size: 1.05rem; }
+.switch { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.switch a { color: var(--notch-fg); text-decoration: none; border: 1px solid #3a3a40; border-radius: 8px; padding: 8px 16px; font-weight: 500; }
+.switch a:hover, .switch a:focus-visible { border-color: var(--accent); outline: none; }
+.switch a.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.switch a:not(.primary) { background: rgba(255,255,255,.07); border-color: var(--line); }
+.meta { font: 400 12.5px/1.4 var(--mono); color: #8d8d96; letter-spacing: 0.02em; }
+.layout { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 48px; padding-block: 40px 80px; }
+nav.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; max-height: calc(100vh - 40px); overflow: auto; font-size: 13.5px; }
+nav.rail h2 { font: 600 11px/1 var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 22px 0 8px; }
+nav.rail h2:first-child { margin-top: 0; }
+nav.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.rail a { display: block; color: var(--fg); text-decoration: none; padding: 4px 10px; border-radius: 6px; line-height: 1.35; }
+nav.rail a { color: var(--muted); }
+nav.rail a:hover, nav.rail a:focus-visible { background: var(--accent-soft); color: var(--fg); outline: none; }
+main { min-width: 0; }
+.doc { max-width: 760px; }
+.doc + .doc { margin-top: 72px; padding-top: 48px; border-top: 1px solid var(--accent); }
+.kicker { font: 500 11.5px/1 var(--mono); color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+.kicker::before { content: ""; width: 22px; height: 1px; background: var(--accent); }
+.doc > h2.doc-title { font: 600 clamp(2rem, 4.5vw, 3rem)/1.05 var(--display); letter-spacing: -0.045em; margin: 0 0 18px; text-wrap: balance; }
+.doc h2 { font: 600 1.7rem/1.15 var(--display); margin: 56px 0 14px; text-wrap: balance; letter-spacing: -0.035em; }
+.doc h3 { font: 600 1.12rem/1.3 var(--body); margin: 30px 0 8px; }
+.doc h4 { font: 600 0.95rem/1.3 var(--body); margin: 22px 0 6px; color: var(--muted); }
+.doc p, .doc li { max-width: 68ch; }
+.doc a { color: var(--accent); text-underline-offset: 2px; }
+.doc hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
+.doc code { font: 0.88em var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.doc pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+.doc pre code { background: none; padding: 0; overflow-wrap: normal; }
+.doc blockquote { margin: 18px 0; padding: 10px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+.table-wrap { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; background: var(--surface-2); color: var(--fg); }
+tr:last-child td { border-bottom: 0; }
+figure.shot { margin: 18px 0 22px; }
+figure.shot img, img.inline-shot { display: block; width: min(100%, 640px); max-width: 100%; height: auto; border-radius: 14px; background: #000; box-shadow: 0 1px 0 var(--line), 0 10px 30px -18px rgba(0,0,0,.6); }
+figure.shot figcaption { font: 12.5px/1.4 var(--mono); color: var(--muted); margin-top: 8px; }
+.pill { display: inline-block; font: 600 12px/1 var(--body); padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.check { background: var(--warn-soft); color: var(--warn); }
+footer { max-width: 1180px; margin: 0 auto; padding-block: 0 48px; color: var(--muted); font-size: 13px; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  nav.rail { position: static; max-height: none; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--surface); }
+  nav.rail ol { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+</style>
+
+<header class="top gutter">
+  <div class="inner">
+    <div class="island" aria-hidden="true"><i></i><b>SparkV</b></div>
+    <h1 class="brand">SparkV Handbook</h1>
+    <p class="lede">Everything the MacBook notch can do with SparkV: each feature with a screenshot, where to find it, how to use it and who it is for. Then the plan for selling it as a paid Mac app.</p>
+    <div class="switch">
+      <a class="primary" href="#feature-guide">Feature guide</a>
+      <a href="#business-plan">Business plan</a>
+    </div>
+    <p class="meta"><span style="color:var(--accent)">●</span> 50 screenshots · October 2026 · build signed for local development</p>
+  </div>
+</header>
+
+<div class="layout gutter">
+  <nav class="rail" aria-label="Contents">
+    <h2>Feature guide</h2>
+    <ol><li><a href="#quick-start">Quick start</a></li>
+<li><a href="#shortcuts-cheat-sheet">Shortcuts cheat sheet</a></li>
+<li><a href="#1-the-drawer-and-header-tabs">The drawer and header tabs</a></li>
+<li><a href="#2-home-media-shortcut-capsules-and-camera-mirror">Home: media, shortcut capsules and camera mirror</a></li>
+<li><a href="#3-widgets">Widgets</a></li>
+<li><a href="#4-tray-tray-ai-and-airdrop">Tray, Tray AI and AirDrop</a></li>
+<li><a href="#5-today-calendar-peek-join-and-timer">Today: calendar peek, Join and timer</a></li>
+<li><a href="#6-converter">Converter</a></li>
+<li><a href="#7-spaces">Spaces</a></li>
+<li><a href="#8-agents-hub">Agents hub</a></li>
+<li><a href="#9-dictation-and-flow">Dictation and Flow</a></li>
+<li><a href="#10-clicky-ask-about-your-screen">Clicky: ask about your screen</a></li>
+<li><a href="#11-gear-menu-settings">Gear menu (settings)</a></li>
+<li><a href="#12-universal-search">Universal Search</a></li>
+<li><a href="#13-focus-and-screen-effects">Focus and screen effects</a></li>
+<li><a href="#14-modes">Modes</a></li>
+<li><a href="#15-quick-capture-and-screenshot-to-clipboard">Quick Capture and screenshot-to-clipboard</a></li>
+<li><a href="#16-copy-text">Copy Text</a></li>
+<li><a href="#17-reply-drafter">Reply Drafter</a></li>
+<li><a href="#18-ask-screen">Ask Screen</a></li>
+<li><a href="#19-prompt-refiner">Prompt Refiner</a></li>
+<li><a href="#20-clipboard-history-c-button-and-paste-stack">Clipboard history, C button and paste stack</a></li>
+<li><a href="#21-screen-recording">Screen recording</a></li>
+<li><a href="#22-file-drop">File Drop</a></li>
+<li><a href="#23-downloads">Downloads</a></li>
+<li><a href="#24-live-translation">Live Translation</a></li>
+<li><a href="#25-ui-audit-developer-testing-of-websites">UI Audit (developer testing of websites)</a></li>
+<li><a href="#26-job-agent">Job Agent</a></li>
+<li><a href="#27-browser-flows">Browser Flows</a></li>
+<li><a href="#28-screen-distance">Screen Distance</a></li>
+<li><a href="#29-flow-canvas">Flow Canvas</a></li>
+<li><a href="#30-onboarding-and-permissions">Onboarding and permissions</a></li>
+<li><a href="#31-meeting-notes-and-live-answers">Meeting notes and live answers</a></li>
+<li><a href="#32-live-activities">Live activities</a></li>
+<li><a href="#33-face-unlock">Face Unlock</a></li>
+<li><a href="#verification-summary">Verification summary</a></li>
+<li><a href="#known-limits-and-open-problems">Known limits and open problems</a></li></ol>
+    <h2>Business plan</h2>
+    <ol><li><a href="#1-summary">Summary</a></li>
+<li><a href="#2-what-sparkv-actually-contains-from-the-code">What SparkV actually contains (from the code)</a></li>
+<li><a href="#3-comparable-products-and-prices">Comparable products and prices</a></li>
+<li><a href="#4-payment-and-licensing-platforms">Payment and licensing platforms</a></li>
+<li><a href="#5-apple-requirements-for-selling-outside-the-app-store">Apple requirements for selling outside the App Store</a></li>
+<li><a href="#6-pricing">Pricing</a></li>
+<li><a href="#7-legal-pages-to-publish">Legal pages to publish</a></li>
+<li><a href="#8-third-party-code-shipped-in-the-app">Third-party code shipped in the app</a></li>
+<li><a href="#9-ai-costs">AI costs</a></li>
+<li><a href="#10-go-to-market">Go-to-market</a></li>
+<li><a href="#11-30-day-launch-checklist">30-day launch checklist</a></li>
+<li><a href="#12-engineering-plan-adding-licensing">Engineering plan: adding licensing</a></li>
+<li><a href="#13-risks">Risks</a></li></ol>
+  </nav>
+  <main>
+    <section class="doc" id="feature-guide">
+      <p class="kicker">Part 1</p>
+      <h2 class="doc-title">Feature guide</h2>
+      
+<p>SparkV turns the MacBook notch into a control center. Hover the notch and a black drawer slides out with media controls, a file tray, your day, converters, knowledge Spaces and a hub of more than 20 agents. When the drawer is closed, live activities (volume, battery, AirPods, notifications, meetings, recordings) show beside and under the camera.</p>
+<p>This guide lists every feature with a screenshot, where to find it, how to use it, who it is for, the permissions it needs, and how it was checked.</p>
+<p><strong>How the screenshots were made.</strong> Every picture in <code>screenshots/</code> is a real SparkV view, rendered offscreen from the current source code with sample data (no mock-ups), dark appearance, at real size (2x). The renders ran in a throwaway home folder, so none of your own data appears. Live system values (CPU, memory, network, volume) in the Widgets picture are this Mac's real readings at the time of the render.</p>
+<p><strong>Status labels</strong></p>
+<ul>
+<li><strong><span class="pill ok">Verified headless</span></strong>: compiled in the full app build, the UI entry point is wired in code (tab, tile, menu item or hotkey), the view renders with data, and the feature's test harness passes where one exists.</li>
+<li><strong><span class="pill check">Needs a live check</span></strong>: everything above holds, but the part that matters (a hardware key, the camera, the microphone, a system permission, another app) can only be confirmed by using the running app. The reason is given each time.</li>
+</ul>
+<hr />
+<h2 id="quick-start">Quick start</h2>
+<h3 id="1-install-build-from-source">1. Install (build from source)</h3>
+<p>SparkV builds with the Xcode Command Line Tools; full Xcode is not needed.</p>
+<pre><code class="language-zsh">cd &quot;/Users/koushikgoudshaganti/Desktop/Agency/Apple Face id/NotchIsland&quot;
+./build.sh                # release build -&gt; build/SparkV.app
+open build/SparkV.app
+</code></pre>
+<p>Requirements: an Apple silicon Mac on macOS 15 or later, ideally a MacBook with a notch (on other displays the island rests inside the menu bar). Node.js (<code>/opt/homebrew/bin/node</code>) is needed only for UI Audit and Browser Flows.</p>
+<h3 id="2-signing-and-permissions">2. Signing and permissions</h3>
+<p>macOS ties privacy permissions (Accessibility, Screen Recording) to the app's signature. An ad-hoc signature changes on every build, so grants would be lost after each rebuild.</p>
+<ol>
+<li>Create the stable local signing identity once: <code>./Scripts/create-signing-identity.sh</code> (it is already present on this Mac as "NotchIsland Developer").</li>
+<li>Rebuild with <code>./build.sh</code>. The log must end with <code>Signed with: NotchIsland Developer</code>. If macOS asks whether codesign may use the key, choose <strong>Always Allow</strong>.</li>
+<li>Quit any running SparkV, then open the new <code>build/SparkV.app</code>.</li>
+<li>Grant the permissions once (see step 3 below). From then on rebuilding keeps every grant.</li>
+</ol>
+<blockquote>
+<p>Current state on this Mac (Oct 22): <code>build/SparkV.app</code> is signed with "NotchIsland Developer", so grants now survive rebuilds. The stray iCloud copies <code>SparkV 2.app</code> and <code>SparkV 3.app</code> were moved out of <code>build/</code>.</p>
+</blockquote>
+<h3 id="3-first-launch-and-the-setup-window">3. First launch and the Setup window</h3>
+<p>On first launch SparkV opens the Setup window: Welcome, Terms &amp; Privacy, then Permissions. Nothing is requested until you click <strong>Allow…</strong> next to a permission, and every feature that lacks a permission keeps working in a reduced way.</p>
+<p><img class="inline-shot" alt="Setup: welcome" src="screenshots/40-onboarding-welcome.png" loading="lazy">
+<img class="inline-shot" alt="Setup: permissions" src="screenshots/41-onboarding-permissions.png" loading="lazy"></p>
+<p>Open it again any time from <strong>Agents hub › Setup</strong> or <strong>gear menu › Permissions &amp; Setup</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Permission</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accessibility</td>
+<td>Dictation and Clicky hotkeys, typing/pasting text, clipboard shortcuts, Reply Drafter, notification previews, media keys, replacing the system volume HUD</td>
+</tr>
+<tr>
+<td>Screen Recording</td>
+<td>Ask Screen, Clicky, Quick Capture, Copy Text, screen recording, meeting system audio</td>
+</tr>
+<tr>
+<td>Camera</td>
+<td>Mirror, Face Unlock, Screen Distance</td>
+</tr>
+<tr>
+<td>Microphone + Speech Recognition</td>
+<td>Dictation, Clicky questions, meeting recording</td>
+</tr>
+<tr>
+<td>Calendars</td>
+<td>Today meetings, Join button, meeting titles</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td>Timer and Focus chimes, Job Agent reminders</td>
+</tr>
+<tr>
+<td>Bluetooth</td>
+<td>AirPods battery</td>
+</tr>
+<tr>
+<td>Downloads folder</td>
+<td>Downloads watcher</td>
+</tr>
+<tr>
+<td>Automation (Safari, Chrome, Mail)</td>
+<td>Quick Capture of web pages, Spaces "Save Current Web Page / Selected Mail", Job Agent page capture</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="4-use-it">4. Use it</h3>
+<p>Move the pointer onto the notch: the drawer opens. Move away: it closes after half a second. Drag a file onto the notch to drop it in the Tray.</p>
+<hr />
+<h2 id="shortcuts-cheat-sheet">Shortcuts cheat sheet</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>What it does</th>
+<th>Feature</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hover the notch</td>
+<td>Open the drawer</td>
+<td>Everywhere</td>
+</tr>
+<tr>
+<td>Hold <strong>fn</strong> (or Right Option)</td>
+<td>Talk, release to type the text where the cursor is</td>
+<td>Dictation</td>
+</tr>
+<tr>
+<td>Double-tap <strong>fn</strong></td>
+<td>Hands-free dictation (tap fn again to stop)</td>
+<td>Dictation</td>
+</tr>
+<tr>
+<td><strong>⌃⌘V</strong> / <strong>⌃⌘C</strong></td>
+<td>Paste / copy the last dictation</td>
+<td>Dictation</td>
+</tr>
+<tr>
+<td>Hold <strong>⌃⌥</strong></td>
+<td>Ask Clicky about the screen out loud, release to send</td>
+<td>Clicky</td>
+</tr>
+<tr>
+<td><strong>⌥Space</strong></td>
+<td>Universal Search panel</td>
+<td>Search</td>
+</tr>
+<tr>
+<td><strong>⌃⌥S</strong></td>
+<td>Ask about a screen region (Space picks a window, Esc cancels)</td>
+<td>Ask Screen</td>
+</tr>
+<tr>
+<td><strong>⌃⌥T</strong></td>
+<td>Copy the text in any screen region (OCR)</td>
+<td>Copy Text</td>
+</tr>
+<tr>
+<td><strong>⌃⌥C</strong></td>
+<td>Quick Capture: selection, web page or screenshot into a Space</td>
+<td>Quick Capture</td>
+</tr>
+<tr>
+<td><strong>⌃⌥R</strong></td>
+<td>Draft a reply in the focused message box</td>
+<td>Reply Drafter</td>
+</tr>
+<tr>
+<td><strong>⌃⌥⇧R</strong></td>
+<td>Start / stop screen recording</td>
+<td>Screen recording</td>
+</tr>
+<tr>
+<td><strong>⌃⌥J</strong></td>
+<td>Join the next calendar meeting</td>
+<td>Today</td>
+</tr>
+<tr>
+<td><strong>⌃⌥1</strong> … <strong>⌃⌥5</strong></td>
+<td>Turn the first five Modes on or off</td>
+<td>Modes</td>
+</tr>
+<tr>
+<td><strong>⌘⇧V</strong></td>
+<td>Clipboard stack at the text cursor (↑↓, ↩, ⌘1–9, type to search)</td>
+<td>Clipboard</td>
+</tr>
+<tr>
+<td>Hold <strong>⌘</strong>, tap <strong>1–9</strong>, tap <strong>V</strong></td>
+<td>Paste that item from history (1 = newest)</td>
+<td>Clipboard</td>
+</tr>
+<tr>
+<td><strong>fn + ⌃</strong> on a job posting</td>
+<td>Save the posting (again on the confirmation page marks it applied)</td>
+<td>Job Agent</td>
+</tr>
+</tbody>
+</table></div>
+<p>Hotkeys that watch modifier keys (dictation, Clicky, ⌘+number+V, ⌘⇧V) need Accessibility. A hotkey already taken by another app is skipped and logged.</p>
+<hr />
+<h2 id="1-the-drawer-and-header-tabs">1. The drawer and header tabs</h2>
+<p><strong>Screenshot:</strong> <code>screenshots/01-home.png</code> (full drawer with header)</p>
+<p><strong>Where:</strong> hover the notch. The header row sits beside the camera: places on the left, actions on the right.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Icon (left)</th>
+<th>Tab</th>
+<th>Icon (right)</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>House</td>
+<td>Home</td>
+<td>Moon</td>
+<td>Focus (start/stop)</td>
+</tr>
+<tr>
+<td>Four tiles</td>
+<td>Widgets</td>
+<td>Red record</td>
+<td>Record meeting</td>
+</tr>
+<tr>
+<td>Tray</td>
+<td>Tray</td>
+<td>2x2 grid</td>
+<td>Agents hub</td>
+</tr>
+<tr>
+<td>Calendar</td>
+<td>Today</td>
+<td>Waveform</td>
+<td>Flow (dictation)</td>
+</tr>
+<tr>
+<td>Arrows</td>
+<td>Converter</td>
+<td>Cursor rays</td>
+<td>Clicky</td>
+</tr>
+<tr>
+<td>Stack</td>
+<td>Spaces</td>
+<td>Gear</td>
+<td>Settings menu</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>How to use:</strong> click an icon to switch the drawer page. The drawer remembers the last tab. Dragging a file over any tab flips to the Tray (Converter, Spaces and File Drop keep their own drop targets).</p>
+<p><strong>Who it is for:</strong> every SparkV user.</p>
+<p><strong>Permissions:</strong> none.</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. All 21 drawer pages render inside the real <code>NotchNookLayoutView</code> with the header.</p>
+<hr />
+<h2 id="2-home-media-shortcut-capsules-and-camera-mirror">2. Home: media, shortcut capsules and camera mirror</h2>
+<figure class="shot"><img alt="Home" src="screenshots/01-home.png" loading="lazy"><figcaption>Home</figcaption></figure>
+<p><strong>Where:</strong> header › House (Home).</p>
+<p><strong>How to use</strong></p>
+<ul>
+<li><strong>Media:</strong> album art with a colour glow, title and artist, previous / play-pause / next, a live scrubber (drag to seek, elapsed and remaining time) and a <strong>bookmark</strong> button that saves a moment in the track with a note. Works with any app that reports Now Playing (Music, Spotify, Safari, Chrome, podcasts).</li>
+<li><strong>Volume knob:</strong> turn it with a drag or the scroll wheel.</li>
+<li><strong>Shortcut capsules (2):</strong> default <strong>Dictate</strong> and <strong>Capture to Tray</strong>. Right-click a capsule (or gear › Button 1/2) to assign a built-in action or any shortcut from the Shortcuts app. <code>SHORTCUTS.md</code> has ten ready-made recipes.</li>
+<li><strong>Mirror:</strong> click the camera circle to see yourself before a call; it turns off when you leave Home.</li>
+</ul>
+<p><strong>Who it is for:</strong> anyone who listens to music or joins video calls; power users who want one-click Shortcuts.</p>
+<p><strong>Permissions:</strong> Camera (mirror). Now Playing needs none on macOS 15.4+ (SparkV reads it through Apple's perl). Shortcuts that use scripts need "Allow Running Scripts" in Shortcuts.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: the render proves the layout, scrubber, bookmark button and glow; real Now Playing data, the camera and running a Shortcut need the running app.</p>
+<hr />
+<h2 id="3-widgets">3. Widgets</h2>
+<p><img class="inline-shot" alt="Widgets" src="screenshots/02-widgets.png" loading="lazy">
+<img class="inline-shot" alt="Change world clock cities" src="screenshots/03-world-clocks-editor.png" loading="lazy"></p>
+<p><strong>Where:</strong> header › Widgets (second icon), or Agents hub › Widgets.</p>
+<p><strong>How to use</strong></p>
+<ul>
+<li><strong>World clocks:</strong> India, Chicago and London by default, each with day/night, "Today/Tomorrow" and the offset from your time. <strong>To change them:</strong> right-click the clocks › <strong>Choose Cities…</strong>, or click the sliders button at the right edge of the widgets page › <strong>Cities</strong>. Remove a city with ×, type in <strong>Search a city or time zone</strong> (for example "Tokyo" or "New York") and click it to add, reorder with the arrows. Up to 3 cities; the choice is saved.</li>
+<li><strong>Volume knob:</strong> system output volume with a live level ring.</li>
+<li><strong>Habits:</strong> tick today's square for Exercise, Water, Read (edit the list under <strong>Habits</strong>, up to 6).</li>
+<li><strong>CPU / Memory / Thermal</strong> gauges and <strong>Network</strong> down/up speed. They sample only while visible.</li>
+<li><strong>Widgets</strong> section of the editor: choose which widgets show and their order.</li>
+</ul>
+<p><strong>Who it is for:</strong> remote teams across time zones, anyone who wants system stats at a glance.</p>
+<p><strong>Permissions:</strong> none.</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. Rendered with the real defaults (India +10:30, Chicago, London +6h from Chicago time) and the city editor; widget tests re-run (see summary).</p>
+<hr />
+<h2 id="4-tray-tray-ai-and-airdrop">4. Tray, Tray AI and AirDrop</h2>
+<figure class="shot"><img alt="Tray" src="screenshots/04-tray.png" loading="lazy"><figcaption>Tray</figcaption></figure>
+<p><strong>Where:</strong> header › Tray, or drag any file, image, link or text onto the notch.</p>
+<p><strong>How to use</strong></p>
+<ol>
+<li>Drop files on the notch (or click <strong>Paste</strong> / <strong>Capture</strong> in the tray toolbar). Screenshots are copied in; other files stay where they are.</li>
+<li>Drag an item out into any app. Shift-drop keeps the drawer open. Cmd-click selects several.</li>
+<li><strong>AirDrop:</strong> drop files on the AirDrop tile at the right.</li>
+<li><strong>Tray AI</strong> (sparkles button, "Ask AI" / "Compare with AI"): What is this?, Explain, Summarize, Copy Text (OCR), Improve writing, Check spelling, List items, Translate, Web search, Receipt to JSON, Compare designs, Add to Calendar, or a custom question. Runs on device (Apple Intelligence); Groq is used only if you allow it.</li>
+</ol>
+<p><strong>Who it is for:</strong> designers, writers, anyone moving files between apps; people who screenshot a lot.</p>
+<p><strong>Permissions:</strong> Screen Recording (Capture), none for drag and drop.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: the shelf renders with a PNG, JPG, PDF, DOCX and a link; drag in/out and AirDrop need a real drag session.</p>
+<hr />
+<h2 id="5-today-calendar-peek-join-and-timer">5. Today: calendar peek, Join and timer</h2>
+<figure class="shot"><img alt="Today" src="screenshots/06-today.png" loading="lazy"><figcaption>Today</figcaption></figure>
+<p><strong>Where:</strong> header › Today. A meeting also appears under the notch 10 minutes before it starts ("in 4 min" with <strong>Join</strong>).</p>
+<p><strong>How to use</strong></p>
+<ul>
+<li>Meetings for the next hours with <strong>Join</strong> (Zoom, Meet, Teams, Webex links are detected) and <strong>Notes</strong> (starts recording that meeting with notes).</li>
+<li><strong>⌃⌥J</strong> joins the next meeting from anywhere.</li>
+<li><strong>Timer:</strong> Pomodoro (focus/break rounds, shown "FOCUS 1/4") or a plain countdown; pause, reset, skip, list of presets.</li>
+</ul>
+<p><strong>Who it is for:</strong> people with back-to-back meetings.</p>
+<p><strong>Permissions:</strong> Calendars (click <strong>Connect Calendar</strong> the first time), Notifications for the chime.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: the render shows three sample meetings with Join buttons and a running Pomodoro; reading your calendar needs Calendars access in the running app.</p>
+<hr />
+<h2 id="6-converter">6. Converter</h2>
+<figure class="shot"><img alt="Converter" src="screenshots/07-converter.png" loading="lazy"><figcaption>Converter</figcaption></figure>
+<p><strong>Where:</strong> header › Converter (arrows icon). Drop a file on the page.</p>
+<p><strong>How to use:</strong> drop a PDF, image, document, spreadsheet or slides, then click a format: Word, JPG, PNG, TXT, Compress, Split, Extract, Remove pages, Rotate, page Numbers, Watermark, Protect, Unlock, Repair, OCR, Merge (several PDFs), Images to PDF, Resize. Results appear in the box underneath, ready to drag anywhere or add to the Tray. The sliders button holds options (quality, page ranges, password).</p>
+<p><strong>Who it is for:</strong> students, office workers, anyone who uses iLovePDF-style tools; works offline.</p>
+<p><strong>Permissions:</strong> none.</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. Rendered with a 3-page PDF and the full format row; converter harness passed in the earlier validation round.</p>
+<hr />
+<h2 id="7-spaces">7. Spaces</h2>
+<p><img class="inline-shot" alt="Spaces in the drawer" src="screenshots/08-spaces.png" loading="lazy">
+<img class="inline-shot" alt="Spaces window" src="screenshots/09-spaces-window.png" loading="lazy"></p>
+<p><strong>Where:</strong> header › Spaces (stack icon); <strong>Open Spaces</strong> for the full window; gear › Spaces.</p>
+<p><strong>How to use</strong></p>
+<ol>
+<li>Create a Space per client, project or team (<strong>New Space</strong>), with keywords, people, domains and apps.</li>
+<li>SparkV files meetings, notes, dictations, screenshots, web pages, mail and clipboard items into the right Space automatically (above the auto-file threshold) or leaves them in the <strong>Inbox</strong> with a suggestion.</li>
+<li>Each Space keeps a <strong>Memory</strong> summary; <strong>Ask</strong> answers questions from the Space's items with citations.</li>
+<li>Personas ("Me") keep separate sets of Spaces; Spaces can be exported and shared.</li>
+</ol>
+<p><strong>Who it is for:</strong> agencies and consultants with several clients, founders, researchers.</p>
+<p><strong>Permissions:</strong> Automation (Safari/Chrome/Mail) only for "Save Current Web Page" and "Save Selected Mail".</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. Drawer and window rendered with three Spaces, filed items and extracted entities (dates, people, domains).</p>
+<hr />
+<h2 id="8-agents-hub">8. Agents hub</h2>
+<figure class="shot"><img alt="Agents hub" src="screenshots/10-agents-hub.png" loading="lazy"><figcaption>Agents hub</figcaption></figure>
+<p><strong>Where:</strong> header › 2x2 grid icon.</p>
+<p><strong>Tiles (row by row)</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Row</th>
+<th>Tiles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Search · Focus · Modes · Capture · Copy Text · Reply · Ask Screen · Prompt</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Clipboard · Paste Stack · Record · Widgets · File Drop · Downloads · Translate · UI Audit</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Jobs · Browser · Distance · Canvas · Setup · <strong>C</strong> capsule</td>
+</tr>
+</tbody>
+</table></div>
+<p>A tile either opens its page in the drawer (Reply, Ask Screen, Prompt, Clipboard, Widgets, File Drop, Downloads, UI Audit, Jobs, Browser, Distance, Focus), runs at once (Search, Capture, Copy Text, Paste Stack, Record, Translate on/off, Canvas, Setup) or shows a menu (Modes). The <strong>C</strong> capsule pastes what is on the clipboard (⌥-click copies, hold or right-click for history). Hover a tile for its shortcut.</p>
+<p><strong>Who it is for:</strong> everyone; this is the launcher for every agent.</p>
+<p><strong>Permissions:</strong> per agent (below).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. All 22 cells render in the 8x3 grid and every tile's action is wired in <code>AgentsHubView</code>.</p>
+<hr />
+<h2 id="9-dictation-and-flow">9. Dictation and Flow</h2>
+<p><img class="inline-shot" alt="Flow" src="screenshots/11-flow.png" loading="lazy">
+<img class="inline-shot" alt="Dictation band" src="screenshots/50-dictation.png" loading="lazy"></p>
+<p><strong>Where:</strong> hold <strong>fn</strong> anywhere; header › waveform (Flow) for history; gear › Dictation for settings.</p>
+<p><strong>How to use</strong></p>
+<ol>
+<li>Put the cursor in any text field, hold <strong>fn</strong>, speak, release. The text is cleaned up (punctuation, filler words removed, lists formatted) and typed in. Double-tap <strong>fn</strong> for hands-free.</li>
+<li><strong>⌃⌘V</strong> pastes, <strong>⌃⌘C</strong> copies the last dictation.</li>
+<li><strong>Flow</strong> tab: <strong>History</strong> (every dictation, with app and time), <strong>Notes</strong> (dictate a note), <strong>Words</strong> (custom dictionary: names and terms it should spell right) and snippets.</li>
+<li>Gear › Dictation: choose the key (fn, Right Option, Off) and AI formatting.</li>
+</ol>
+<p><strong>Who it is for:</strong> writers, founders, anyone who types a lot; people with RSI.</p>
+<p><strong>Permissions:</strong> Microphone, Speech Recognition, Accessibility (typing and the fn key).</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: speech recognition and the fn key need the running app. Views render with sample history and the live band.</p>
+<hr />
+<h2 id="10-clicky-ask-about-your-screen">10. Clicky: ask about your screen</h2>
+<p><img class="inline-shot" alt="Clicky" src="screenshots/12-clicky.png" loading="lazy">
+<img class="inline-shot" alt="Clicky answer under the notch" src="screenshots/51-clicky-answer.png" loading="lazy"></p>
+<p><strong>Where:</strong> hold <strong>⌃⌥</strong> and speak, or header › cursor icon and type a question.</p>
+<p><strong>How to use:</strong> ask "Where do I change the export format?" while looking at any app. Clicky captures the display under your mouse at that moment, answers out loud and in the band under the notch, and flies a pointer to the spot on screen. History icon shows earlier answers; the key icon adds an optional Groq API key for image-aware answers (without a key it reads the screen text on device).</p>
+<p>It works in <strong>any app and on any screen</strong>, not only in a browser. It points and explains; it does not click or type for you.</p>
+<p><strong>Who it is for:</strong> people learning new software, support teams, older relatives.</p>
+<p><strong>Permissions:</strong> Accessibility (hold-to-ask), Screen Recording, Microphone, Speech Recognition.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: screen capture and the ⌃⌥ hold need the running app.</p>
+<hr />
+<h2 id="11-gear-menu-settings">11. Gear menu (settings)</h2>
+<p><strong>Where:</strong> header › gear icon (right end). It is a system menu, so it cannot be rendered offscreen; its items, from the code:</p>
+<ul>
+<li><strong>Button 1 / Button 2:</strong> assign the Home capsules.</li>
+<li><strong>Meetings:</strong> Record / Stop, Meeting Notes…, meeting heads-up options, Suggest Answers to Questions, Allow Meeting Notes to Use My Groq Key, Live Translation (on/off, language, caption window).</li>
+<li><strong>Live Activities:</strong> Now Playing beside the notch, Volume &amp; Brightness, Hide macOS volume pop-up, Battery &amp; AirPods (Enable AirPods Battery…), Timer, Meetings, Notifications, Hide Message Text.</li>
+<li><strong>Downloads:</strong> Watch Downloads Folder, Show Progress Under the Notch, Suggest Folders with Apple Intelligence, Sorting Rules…</li>
+<li><strong>Dictation:</strong> Hold to Talk key, AI Formatting, Paste/Copy Last Dictation.</li>
+<li><strong>Modes</strong>, <strong>Focus</strong> (start, settings, Do Not Disturb, distraction reminders, recap, Screen Glow, shake, confetti, preview).</li>
+<li><strong>Clipboard:</strong> Open Clipboard Stack ⌘⇧V, ⌘+Number+V, ⌘⇧V toggle.</li>
+<li><strong>Screen Tools:</strong> Copy Text and Screen Recording options.</li>
+<li><strong>Agents:</strong> UI Audit…, Job Agent…, Capture Job Page, Ask About Screen…, Pick a Window…, Prompt Refiner…, Browser Flows…, Draft Reply… with Reply Drafter options, Flow Canvas…, Send Tray to Flow Canvas, Allow Flow Canvas to Use My Groq Key.</li>
+<li><strong>Screen Distance</strong>, <strong>Spaces</strong> (Open, Save Current Web Page, Save Selected Mail, Quick Capture), <strong>Quick Capture</strong>, <strong>Search</strong>, <strong>File Drop</strong> settings.</li>
+<li><strong>Permissions &amp; Setup</strong>, <strong>Set Up Face Unlock… / Face Unlock Settings…</strong>, <strong>Launch at Login</strong>, <strong>Quit SparkV</strong>.</li>
+</ul>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> (wiring read from <code>NotchNookLayoutView.swift</code>; not rendered).</p>
+<hr />
+<h2 id="12-universal-search">12. Universal Search</h2>
+<p><img class="inline-shot" alt="Search page" src="screenshots/15-universal-search.png" loading="lazy">
+<img class="inline-shot" alt="Search panel" src="screenshots/16-universal-search-panel.png" loading="lazy"></p>
+<p><strong>Where:</strong> <strong>⌥Space</strong> anywhere, or Agents hub › Search.</p>
+<p><strong>How to use:</strong> type a word. Results come from Spaces, meetings, Flow notes and dictations, clipboard history and the Tray, grouped by source, with filters (All, Spaces, Meetings, Flow, Clipboard, Tray, Any time). ↩ opens, ⌘↩ opens the link, ⌘C copies. Press <strong>Tab (Ask)</strong> to get an answer written from your own items with citations. The mic button searches by voice.</p>
+<p><strong>Who it is for:</strong> anyone who forgets where they saw something.</p>
+<p><strong>Permissions:</strong> none (Microphone for voice).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. The search engine ran live on the sample data: "launch" returned 21 items across Spaces, Flow and Tray.</p>
+<hr />
+<h2 id="13-focus-and-screen-effects">13. Focus and screen effects</h2>
+<p><img class="inline-shot" alt="Focus page" src="screenshots/28-focus.png" loading="lazy">
+<img class="inline-shot" alt="Focus settings" src="screenshots/29-focus-settings.png" loading="lazy"></p>
+<p><strong>Where:</strong> header › moon icon (start/stop), Agents hub › Focus, gear › Focus.</p>
+<p><strong>How to use:</strong> pick a rhythm (25/5, 50/10, 90/15) and rounds, click <strong>Start Focus</strong>. SparkV turns on Do Not Disturb, runs the rounds on its timer, reminds you when you open a distracting app, and writes a recap at the end. <strong>Screen Effects:</strong> a glowing border around every screen at the start, at breaks and at the end (or always, subtly), with an optional shake, trackpad tap and confetti. Preview them with Focus / Break / End.</p>
+<p><strong>Who it is for:</strong> students, developers, writers.</p>
+<p><strong>Permissions:</strong> Notifications (chime). Do Not Disturb is switched through two Shortcuts named in Focus Settings › Do Not Disturb.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: the glow is a screen-level overlay window and Do Not Disturb changes a system setting, so neither was triggered headlessly. Pages render.</p>
+<hr />
+<h2 id="14-modes">14. Modes</h2>
+<p><img class="inline-shot" alt="Modes" src="screenshots/33-modes.png" loading="lazy">
+<img class="inline-shot" alt="Mode editor" src="screenshots/34-mode-editor.png" loading="lazy"></p>
+<p><strong>Where:</strong> Agents hub › Modes (menu), gear › Modes, <strong>⌃⌥1–5</strong>.</p>
+<p><strong>How to use:</strong> one click turns on a whole setup: Concentration, Study, Relax, Meeting, Presentation, Night. Each mode is a list of actions (Do Not Disturb, hide or quit apps, wallpaper, volume, brightness, appearance, music, Pomodoro). <strong>Edit Modes…</strong> opens the editor to add, reorder or remove actions. Turning a mode off puts your setup back (wallpaper, volume, apps).</p>
+<p><strong>Who it is for:</strong> people who switch between deep work, meetings and presenting.</p>
+<p><strong>Permissions:</strong> Accessibility/Automation for hiding apps; Shortcuts for Do Not Disturb.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: modes change system settings (wallpaper, volume, DND), so they were not run headlessly. Mode engine tests passed in the earlier round; views render.</p>
+<hr />
+<h2 id="15-quick-capture-and-screenshot-to-clipboard">15. Quick Capture and screenshot-to-clipboard</h2>
+<p><img class="inline-shot" alt="Quick Capture settings" src="screenshots/39-quick-capture-settings.png" loading="lazy">
+<img class="inline-shot" alt="Screenshot copied band" src="screenshots/49-screenshot-to-clipboard.png" loading="lazy"></p>
+<p><strong>Where:</strong> <strong>⌃⌥C</strong>, Agents hub › Capture, gear › Quick Capture.</p>
+<p><strong>How to use</strong></p>
+<ul>
+<li><strong>Quick Capture:</strong> press ⌃⌥C. SparkV saves the first thing that applies: the selected text (with the browser page as source), else the open web page, else an interactive screenshot, straight into the best-matching Space. A small toast lets you change the Space or undo.</li>
+<li><strong>Screenshot to clipboard:</strong> turn on "Copy every new screenshot to the clipboard". Every screenshot macOS saves (⇧⌘3/4/5) is also put on the clipboard as an image, with a "Copied screenshot" band. Your screenshot settings are not changed.</li>
+</ul>
+<p><strong>Who it is for:</strong> researchers, students, support teams.</p>
+<p><strong>Permissions:</strong> Accessibility (selected text), Automation (browser page), Screen Recording (screenshot), Desktop folder access (screenshot watcher).</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: capturing needs the running app and permissions.</p>
+<hr />
+<h2 id="16-copy-text">16. Copy Text</h2>
+<figure class="shot"><img alt="Copy Text band" src="screenshots/48-copy-text.png" loading="lazy"><figcaption>Copy Text band</figcaption></figure>
+<p><strong>Where:</strong> <strong>⌃⌥T</strong>, Agents hub › Copy Text, Ask Screen page › Copy text.</p>
+<p><strong>How to use:</strong> press ⌃⌥T, drag over any text on screen (an image, a video, a locked PDF, a slide in a call). The text is recognized on device and copied; the band shows how many lines.</p>
+<p><strong>Who it is for:</strong> everyone.</p>
+<p><strong>Permissions:</strong> Screen Recording.</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> for the recognition logic (screen-tools test suite re-run, see summary); the capture itself needs a live check.</p>
+<hr />
+<h2 id="17-reply-drafter">17. Reply Drafter</h2>
+<figure class="shot"><img alt="Reply Drafter" src="screenshots/17-reply-drafter.png" loading="lazy"><figcaption>Reply Drafter</figcaption></figure>
+<p><strong>Where:</strong> <strong>⌃⌥R</strong> in Mail, Messages, Slack, WhatsApp, Gmail and other apps; Agents hub › Reply.</p>
+<p><strong>How to use:</strong> open a conversation and press ⌃⌥R. SparkV reads the thread, drafts a reply in your tone (learned from your messages) and writes it into the message box. You review and press Send. Chips: write into box, fill an empty subject, use Spaces as context, read the window when text is hidden, Groq. <strong>Tone &amp; Name…</strong> sets your name and style.</p>
+<p><strong>Who it is for:</strong> sales, founders, support, recruiters.</p>
+<p><strong>Permissions:</strong> Accessibility (read and write the message box); Screen Recording only for the "read screen" fallback.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span> (reads other apps). The page now uses the taller drawer, so it no longer overflows.</p>
+<hr />
+<h2 id="18-ask-screen">18. Ask Screen</h2>
+<figure class="shot"><img alt="Ask Screen" src="screenshots/18-ask-screen.png" loading="lazy"><figcaption>Ask Screen</figcaption></figure>
+<p><strong>Where:</strong> <strong>⌃⌥S</strong>, Agents hub › Ask Screen, gear › Agents › Ask About Screen / Pick a Window.</p>
+<p><strong>How to use:</strong> press ⌃⌥S, drag over part of the screen (Space picks a window). A panel shows the capture with quick actions (explain, summarize, translate, copy text, detected links and dates) and a question box with streamed answers; <strong>Save to Tray</strong> keeps it.</p>
+<p><strong>Who it is for:</strong> anyone reading charts, errors, foreign text or dense pages.</p>
+<p><strong>Permissions:</strong> Screen Recording.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: the results panel needs a real capture, so only the page renders.</p>
+<hr />
+<h2 id="19-prompt-refiner">19. Prompt Refiner</h2>
+<p><img class="inline-shot" alt="Prompt Refiner page" src="screenshots/19-prompt-refiner.png" loading="lazy">
+<img class="inline-shot" alt="Prompt Refiner questions" src="screenshots/20-prompt-refiner-panel.png" loading="lazy"></p>
+<p><strong>Where:</strong> Agents hub › Prompt, gear › Agents › Prompt Refiner….</p>
+<p><strong>How to use:</strong> type a rough request ("write a cold email for our notch app"), pick the target (ChatGPT, Claude Code, Gemini, an image model, or General), click <strong>Refine</strong>. Answer 2–5 quick questions with chips or your own words (or skip), then copy a structured prompt. It never runs the prompt itself. History keeps past prompts.</p>
+<p><strong>Who it is for:</strong> people who use AI tools daily and want better results.</p>
+<p><strong>Permissions:</strong> none (Microphone for dictating the request).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> (on-device engine produced the questions shown; harness passed in the earlier round).</p>
+<hr />
+<h2 id="20-clipboard-history-c-button-and-paste-stack">20. Clipboard history, C button and paste stack</h2>
+<p><img class="inline-shot" alt="Clipboard page" src="screenshots/13-clipboard.png" loading="lazy">
+<img class="inline-shot" alt="Clipboard stack" src="screenshots/14-clipboard-stack.png" loading="lazy"></p>
+<p><strong>Where:</strong> Agents hub › Clipboard (page), Agents hub › Paste Stack or <strong>⌘⇧V</strong> (stack at the cursor), the <strong>C</strong> capsule, gear › Clipboard.</p>
+<p><strong>How to use</strong></p>
+<ol>
+<li>Clipboard history is <strong>off until you turn it on</strong> (privacy): Clipboard page › <strong>Turn On</strong>, or right-click the C capsule › Turn On Clipboard History.</li>
+<li>Every copy is kept (text, links, code, colours, emails, images, files) with smart badges; passwords and private copies are skipped.</li>
+<li><strong>⌘⇧V</strong> opens the stack where you type: ↑↓ and ↩ paste, ⌘1–9 paste by number, space previews, P pins.</li>
+<li><strong>Hold ⌘, tap a number, tap V</strong> pastes that item directly (1 = newest).</li>
+<li><strong>C</strong> capsule: click pastes the current clipboard, ⌥-click copies, hold for history.</li>
+</ol>
+<p><strong>Who it is for:</strong> developers, writers, anyone who copies and pastes a lot.</p>
+<p><strong>Permissions:</strong> Accessibility (paste and the ⌘ shortcuts).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> for history and stack logic (stack harness re-run, see summary); the global ⌘ shortcuts need a live check with Accessibility.</p>
+<hr />
+<h2 id="21-screen-recording">21. Screen recording</h2>
+<figure class="shot"><img alt="Recording band" src="screenshots/47-screen-recording.png" loading="lazy"><figcaption>Recording band</figcaption></figure>
+<p><strong>Where:</strong> <strong>⌃⌥⇧R</strong>, Agents hub › Record, gear › Screen Tools.</p>
+<p><strong>How to use:</strong> press ⌃⌥⇧R, drag an area, click a window, or press Return for the whole display. A red band shows the elapsed time; press ⌃⌥⇧R again (or the Stop tile) to save the movie to the Desktop, with a result card to drag it or add it to the Tray.</p>
+<p><strong>Who it is for:</strong> support, QA, product demos, tutorials.</p>
+<p><strong>Permissions:</strong> Screen Recording (Microphone if you record your voice).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> for the recorder state machine (screen-tools suite with a fake engine); real capture needs a live check.</p>
+<hr />
+<h2 id="22-file-drop">22. File Drop</h2>
+<figure class="shot"><img alt="File Drop" src="screenshots/30-file-drop.png" loading="lazy"><figcaption>File Drop</figcaption></figure>
+<p><strong>Where:</strong> start dragging files near the notch (a shelf appears only during the drag), or Agents hub › File Drop.</p>
+<p><strong>How to use:</strong> drop files, then pick an action: <strong>Rename</strong> (AI suggests a name from the content), <strong>Compress</strong> (zip or smaller images), <strong>Convert</strong> (opens the Converter), <strong>Space</strong>, <strong>AirDrop</strong>, <strong>Tray</strong>, <strong>Reveal</strong>. Drag the result anywhere.</p>
+<p><strong>Who it is for:</strong> anyone tidying downloads, sending files, sharing screenshots.</p>
+<p><strong>Permissions:</strong> none (Accessibility helps detect drags).</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: drag detection needs real drags; the strip renders with two files.</p>
+<hr />
+<h2 id="23-downloads">23. Downloads</h2>
+<p><img class="inline-shot" alt="Downloads" src="screenshots/31-downloads.png" loading="lazy">
+<img class="inline-shot" alt="Sorting rules" src="screenshots/32-downloads-rules.png" loading="lazy"></p>
+<p><strong>Where:</strong> Agents hub › Downloads, gear › Downloads.</p>
+<p><strong>How to use:</strong> turn on <strong>Watch Downloads Folder</strong>. Downloads from Safari, Chrome, Edge, Brave, Arc and Firefox show progress, speed and time left under the notch. Finished files get one-click <strong>Sort</strong> (by rules or an Apple Intelligence folder suggestion), open, Quick Look, Tray and Space buttons. <strong>Rules</strong> edits the sorting rules (Images, Documents, Videos, Music, Archives, Installers, Code, Invoices…).</p>
+<p><strong>Who it is for:</strong> everyone with a messy Downloads folder.</p>
+<p><strong>Permissions:</strong> Downloads folder access.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span> (watches a real folder). Drawer and rules render.</p>
+<hr />
+<h2 id="24-live-translation">24. Live Translation</h2>
+<figure class="shot"><img alt="Live Translation captions" src="screenshots/38-live-translation.png" loading="lazy"><figcaption>Live Translation captions</figcaption></figure>
+<p><strong>Where:</strong> Agents hub › Translate (turns it on), right-click the tile or gear › Meetings › Live Translation for the language and the caption window.</p>
+<p><strong>How to use:</strong> turn it on, choose the language you want to read (English by default), then record a meeting. Other people's speech is translated live into captions (with the original underneath); your own speech can be translated too. Apple Translation runs on device after a one-time language download.</p>
+<p><strong>Who it is for:</strong> international teams, interviews, travel.</p>
+<p><strong>Permissions:</strong> Microphone, Screen Recording (meeting audio), Speech Recognition.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span> (needs a recorded meeting). Caption window renders.</p>
+<hr />
+<h2 id="25-ui-audit-developer-testing-of-websites">25. UI Audit (developer testing of websites)</h2>
+<p><img class="inline-shot" alt="UI Audit page" src="screenshots/21-ui-audit.png" loading="lazy">
+<img class="inline-shot" alt="UI Audit window" src="screenshots/22-ui-audit-window.png" loading="lazy"></p>
+<p><strong>Where:</strong> Agents hub › UI Audit, gear › Agents › UI Audit….</p>
+<p><strong>How to use</strong></p>
+<ol>
+<li>Type your site's address (for example <code>http://localhost:3000</code> or a staging URL) and choose a mode: UI audit, Forms only, Accessibility, Full frontend.</li>
+<li>Click <strong>Start</strong>. SparkV opens a Chromium window and walks your site like a tester: crawls pages (max pages, depth), scrolls, fills and submits forms (only on local/test hosts unless you allow it), clicks buttons (never risky ones like Delete or Log out unless allowed), checks layout at 1440 px and 390 px, runs axe-core accessibility checks, walks the Tab order, and records console errors and failed requests. You can <strong>Take over</strong> the browser and <strong>Resume</strong>.</li>
+<li>Findings stream in by severity (Critical, High, Medium, Low) with the element, page, screenshot and steps to reproduce. <strong>Summarize</strong> writes a plain-English summary on device.</li>
+<li>Click <strong>P</strong> to copy a ready-to-paste <strong>fix prompt</strong> for Claude Code, Cursor or Copilot: every issue with selectors, Playwright locators, steps and acceptance checks. <strong>Open report</strong> shows the HTML report.</li>
+</ol>
+<p><strong>Who it is for:</strong> frontend developers, QA testers, agencies shipping client sites, founders checking a site before launch.</p>
+<p><strong>Permissions:</strong> none for SparkV. Requires Node.js (Homebrew <code>node</code>) and Playwright's Chromium in <code>~/Library/Caches/ms-playwright</code> (<code>npx playwright-core install chromium</code> if missing).</p>
+<p><strong>Status:</strong> <strong><span class="pill ok">Verified headless</span>, end to end.</strong> The screenshots come from a real run: SparkV's own <code>UIAuditController</code> audited the bundled planted-issue test site on 127.0.0.1 (6 pages, 69 findings: 3 critical, 15 high), the summary was written by Apple Intelligence on device, and the <strong>P</strong> button produced a 51,666-character fix prompt covering 60 issues. The runner's own self-test also passed 48/48 (all planted issues found, no POST sent to a non-test host, /logout and /account/delete never requested).</p>
+<blockquote>
+<p>Scope: UI Audit tests websites in its own Chromium. It does not test native Mac apps.</p>
+</blockquote>
+<hr />
+<h2 id="26-job-agent">26. Job Agent</h2>
+<p><img class="inline-shot" alt="Job Agent page" src="screenshots/23-job-agent.png" loading="lazy">
+<img class="inline-shot" alt="Job Agent window" src="screenshots/24-job-agent-window.png" loading="lazy"></p>
+<p><strong>Where:</strong> Agents hub › Jobs, gear › Agents › Job Agent…, <strong>fn + ⌃</strong> on a posting.</p>
+<p><strong>How to use:</strong> add your resume (PDF, DOCX, RTF or text) under <strong>Resume</strong>. On any job posting (LinkedIn, Greenhouse, Lever, Workday…) hold <strong>fn + ⌃</strong>: SparkV saves it and scores your fit (hard skills, experience, keywords, education, title) with matching and missing skills. Press fn + ⌃ again on the confirmation page to mark it applied. The window has a Tracker (table or board), Analytics, deadlines and truthful tailoring suggestions. Screenshots of postings can be dropped in.</p>
+<p><strong>Who it is for:</strong> job seekers, career switchers, recruiters tracking candidates.</p>
+<p><strong>Permissions:</strong> Screen Recording or Automation (to read the posting), Notifications (deadline reminders).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> for parsing and scoring (fit 81% computed live from the sample resume and posting); capturing from a browser needs a live check.</p>
+<hr />
+<h2 id="27-browser-flows">27. Browser Flows</h2>
+<p><img class="inline-shot" alt="Browser Flows page" src="screenshots/25-browser-flows.png" loading="lazy">
+<img class="inline-shot" alt="Browser Flows window" src="screenshots/26-browser-flows-window.png" loading="lazy"></p>
+<p><strong>Where:</strong> Agents hub › Browser, gear › Agents › Browser Flows….</p>
+<p><strong>How to use:</strong> click <strong>Record</strong>, do a task once in the browser window (sign up, fill a form, download a report). SparkV records each step with several selector candidates; passwords become <code>{{password}}</code> and are asked at replay, never saved. Edit steps, turn values into variables, then <strong>Replay</strong> or <strong>Replay with Data…</strong> (one run per CSV row). If the site changes, self-healing selectors find the moved or renamed element.</p>
+<p><strong>Who it is for:</strong> operations, sales ops, QA, anyone repeating web chores.</p>
+<p><strong>Permissions:</strong> none for SparkV; Node.js and Playwright's Chromium (or "Use installed Google Chrome").</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>. The recorder self-test was re-run twice: run 1 failed one replay ("v3", step 10 timed out at 4 s); run 2 passed that replay but the CSV-loop replay then hung past 400 s. The Mac was under heavy load (full disk, parallel builds), so this may be timing, but it is not a clean pass. Browser Flows drive their own Chromium only; they do not control other apps.</p>
+<hr />
+<h2 id="28-screen-distance">28. Screen Distance</h2>
+<figure class="shot"><img alt="Screen Distance" src="screenshots/27-screen-distance.png" loading="lazy"><figcaption>Screen Distance</figcaption></figure>
+<p><strong>Where:</strong> Agents hub › Distance, gear › Screen Distance.</p>
+<p><strong>How to use:</strong> turn the switch on and click <strong>Calibrate</strong> once at a normal distance. If your face stays closer than 40 cm for a while, a full-screen notice asks you to move back; it continues when you do. Today's "too close" minutes and warnings are shown. Off by default.</p>
+<p><strong>Who it is for:</strong> children, students, anyone with eye strain.</p>
+<p><strong>Permissions:</strong> Camera.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span> (camera). Distance math tests passed in the earlier round.</p>
+<hr />
+<h2 id="29-flow-canvas">29. Flow Canvas</h2>
+<figure class="shot"><img alt="Flow Canvas" src="screenshots/35-flow-canvas.png" loading="lazy"><figcaption>Flow Canvas</figcaption></figure>
+<p><strong>Where:</strong> Agents hub › Canvas, gear › Agents › Flow Canvas…, gear › Agents › Send Tray to Flow Canvas.</p>
+<p><strong>How to use:</strong> a whiteboard for AI workflows. Drop links, PDFs, screenshots and notes as cards, connect them to action cards (extract fields, compare, summarize, write report, chat with sources), click <strong>Run all</strong>. Or type what you want in "What do you want to do with these?" and <strong>Suggest steps</strong> builds the chain. Templates: Competitor pricing comparison, Summarize a PDF, Screenshots to notes, Research brief from links. Outputs export to Markdown/PDF/CSV, the Tray, Notes or a Space.</p>
+<p><strong>Who it is for:</strong> analysts, marketers, researchers, founders.</p>
+<p><strong>Permissions:</strong> none (Groq optional).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> (template loads and lays out; window renders).</p>
+<hr />
+<h2 id="30-onboarding-and-permissions">30. Onboarding and permissions</h2>
+<p>See <a href="#3-first-launch-and-the-setup-window">Quick start, step 3</a>. <strong>Where:</strong> first launch, Agents hub › Setup, gear › Permissions &amp; Setup. The ring shows how many of the 12 permissions are allowed; each row has <strong>Allow…</strong> and a gear that opens the matching System Settings page.</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> (renders; statuses come from the system's own checks).</p>
+<hr />
+<h2 id="31-meeting-notes-and-live-answers">31. Meeting notes and live answers</h2>
+<p><img class="inline-shot" alt="Meeting notes" src="screenshots/36-meeting-notes.png" loading="lazy">
+<img class="inline-shot" alt="Live answers" src="screenshots/37-meeting-live-answers.png" loading="lazy"></p>
+<p><strong>Where:</strong> header › red record button (one click), Today › Notes, gear › Meetings › Meeting Notes….</p>
+<p><strong>How to use</strong></p>
+<ol>
+<li>Click record. SparkV records your microphone and the meeting's audio (no bot joins the call) and transcribes on device. The notepad opens for your own notes.</li>
+<li><strong>Live answers:</strong> when someone asks you a question during the call ("Koushik, what's the status of the API migration?"), a suggested answer appears under the notch (turn on gear › Meetings › Suggest Answers to Questions).</li>
+<li>Click stop. You get Minutes, Key points, Decisions, <strong>your tasks</strong> with due days, other people's tasks, the transcript and the answers, all searchable and filed into Spaces. Export or copy as Markdown.</li>
+</ol>
+<p><strong>Who it is for:</strong> managers, consultants, founders, recruiters.</p>
+<p><strong>Permissions:</strong> Microphone, Screen Recording (system audio), Speech Recognition; Calendars for titles.</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span> (audio capture). Notes and answers render from saved meetings.</p>
+<hr />
+<h2 id="32-live-activities">32. Live activities</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Activity</th>
+<th>Screenshot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Volume and brightness HUD (replaces the macOS pop-up)</td>
+<td><img class="inline-shot" alt="Volume" src="screenshots/42-volume-hud.png" loading="lazy"></td>
+</tr>
+<tr>
+<td>Battery charging, low battery</td>
+<td><img class="inline-shot" alt="Battery" src="screenshots/43-battery.png" loading="lazy"></td>
+</tr>
+<tr>
+<td>AirPods connected with left/right/case battery</td>
+<td><img class="inline-shot" alt="AirPods" src="screenshots/44-airpods.png" loading="lazy"></td>
+</tr>
+<tr>
+<td>Notification preview (message text can be hidden)</td>
+<td><img class="inline-shot" alt="Notification" src="screenshots/45-notification.png" loading="lazy"></td>
+</tr>
+<tr>
+<td>Compact wings: now playing art and level meter beside the camera</td>
+<td><img class="inline-shot" alt="Wings" src="screenshots/46-compact-wings.png" loading="lazy"></td>
+</tr>
+<tr>
+<td>Screen recording, Copy Text, screenshot copied, dictation, Clicky</td>
+<td>see sections 21, 16, 15, 9, 10</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Where:</strong> automatic while the drawer is closed; turn each on or off in gear › Live Activities.</p>
+<p><strong>How it works:</strong> each activity has a priority. Short alerts (volume, notifications) queue and show for their own time; longer ones (timer, meeting, recording) tuck into the compact wings after a 4-second peek. Hovering an activity opens the matching tab (a meeting opens Today with Join).</p>
+<p><strong>Who it is for:</strong> everyone.</p>
+<p><strong>Permissions:</strong> Accessibility (volume/brightness keys, notification banners), Bluetooth (AirPods).</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span>: key interception, banners and Bluetooth need the running app. The bands render; the activity queue was tested in the earlier round. In offscreen renders the compact wings sit higher than they should (see Known limits).</p>
+<hr />
+<h2 id="33-face-unlock">33. Face Unlock</h2>
+<p><strong>Screenshot:</strong> none. The Face Unlock settings live inside the bundled GlanceKit module and read the login keychain, so they were not rendered offscreen.</p>
+<p><strong>Where:</strong> gear › Set Up Face Unlock… (later Face Unlock Settings…).</p>
+<p><strong>How to use:</strong> enroll your face, then unlock the Mac by looking at it; the notch shows the unlock animation. Liveness checks block photos.</p>
+<p><strong>Who it is for:</strong> anyone who wants Face ID-style unlock on a Mac.</p>
+<p><strong>Permissions:</strong> Camera, Accessibility; your login password is stored in the login keychain (this is why the stable signing identity matters).</p>
+<p><strong>Status:</strong> <span class="pill check">Needs a live check</span> (camera and keychain).</p>
+<hr />
+<h2 id="verification-summary">Verification summary</h2>
+<p>Checks run on Oct 22, 2026 against the current sources (snapshot taken 07:04).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full app (all <code>Sources/*.swift</code> plus the 22 <code>Sources/Labs/*</code> folders listed in <code>build.sh</code>) compiles with the Command Line Tools</td>
+<td>Pass, no errors</td>
+</tr>
+<tr>
+<td>Every drawer tab, hub tile, header icon and default hotkey is wired (read from <code>NotchNookLayoutView</code>, <code>AgentsHubView</code>, <code>NotchWindowController</code>)</td>
+<td>Pass</td>
+</tr>
+<tr>
+<td>Offscreen renders of 50 views with sample data</td>
+<td>50 written, all reviewed</td>
+</tr>
+<tr>
+<td>UI Audit runner self-test (<code>Vendor/ui-audit/test/run-test.mjs</code>)</td>
+<td>48/48 pass</td>
+</tr>
+<tr>
+<td>UI Audit end to end through SparkV's controller, plus the P fix prompt</td>
+<td>Pass (6 pages, 69 findings, 51,666-char prompt)</td>
+</tr>
+<tr>
+<td>Universal Search on sample data</td>
+<td>Pass (21 results for "launch")</td>
+</tr>
+<tr>
+<td>Browser Flows recorder self-test (<code>Vendor/browser-recorder/test/test.mjs</code>)</td>
+<td><strong>Not clean</strong>: run 1 failed one replay, run 2 hung in the CSV loop</td>
+</tr>
+<tr>
+<td>Widgets harness (world clocks, time zones, knob, habits, gauges, network), rebuilt from current sources</td>
+<td>29,283 checks pass, 0 fail</td>
+</tr>
+<tr>
+<td>Copy Text OCR + screen recorder harness, rebuilt against the current app sources</td>
+<td>63 pass, 0 fail</td>
+</tr>
+<tr>
+<td>Clipboard history + paste stack harness (⌘⇧V, ⌘+number+V logic), rebuilt against the current app sources</td>
+<td>195 pass, 0 fail</td>
+</tr>
+</tbody>
+</table></div>
+<p>Harnesses from the earlier validation rounds (converter, Spaces, Prompt Refiner, Job Agent, meetings, dictation, Clicky, live activities, Focus, Modes, Downloads, File Drop, Reply Drafter, Universal Search, Live Translation, Quick Capture) were not all re-run this time; their features are marked from today's build, wiring and render checks.</p>
+<hr />
+<h2 id="known-limits-and-open-problems">Known limits and open problems</h2>
+<ol>
+<li><strong>Signing:</strong> the app is signed with the local "NotchIsland Developer" identity. That is enough for this Mac; selling needs an Apple Developer ID and notarization (see the business plan).</li>
+<li><strong>Browser Flows self-test is not reliable</strong> under load (see section 27).</li>
+<li><strong>Drawer heights:</strong> the Reply Drafter page now uses the tall drawer and the Agents hub has a few points of extra room; both overflowed slightly in the first renders.</li>
+<li><strong>Compact wings position:</strong> in offscreen renders the closed-island wing content (timer, now playing) draws near the top edge and is partly clipped. This may be an artefact of rendering without the real notch window; check it in the running app.</li>
+<li><strong>"Control any app" is not a feature.</strong> Clicky understands any app on any screen and points at things, Dictation and Reply Drafter type into any app, and Browser Flows / UI Audit drive their own Chromium. Nothing clicks or types through arbitrary apps on its own.</li>
+<li><strong>Clipboard history is off by default</strong> and must be turned on once.</li>
+<li><strong>Not rendered offscreen:</strong> the gear menu (system menu), Face Unlock settings, Ask Screen's results panel (needs a real capture), the Focus screen glow and the Screen Distance full-screen notice (screen-level overlays).</li>
+<li><strong>AI:</strong> on-device Apple Intelligence is used by default. Groq is optional per feature and needs your own API key; nothing uses it unless you turn it on.</li>
+<li><strong>Hardware:</strong> designed for the 14/16-inch MacBook Pro notch; on other screens the island sits in the menu bar.</li>
+</ol>
+    </section>
+    <section class="doc" id="business-plan">
+      <p class="kicker">Part 2</p>
+      <h2 class="doc-title">Business plan</h2>
+      
+<p>Last researched: 22 October 2026. Prices of other products come from the sources linked inline. Many are third-party listings, so check each vendor's own page before you quote them publicly. INR prices assume about ₹88 per US$1 and are set lower than a straight conversion, matched to what people in India usually pay.</p>
+<hr />
+<h2 id="1-summary">1. Summary</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What we sell</td>
+<td>A direct-download, notarized Mac app (macOS 15+, <code>com.sparkv.app</code>). Buyers pay, get a license key by email, download a DMG and start using it.</td>
+</tr>
+<tr>
+<td>Where we sell</td>
+<td>Our own website, with a merchant of record handling checkout, tax and license keys. <strong>Lemon Squeezy</strong> is the recommended choice. Paddle with Keygen is the alternative. Not the Mac App Store (see section 5).</td>
+</tr>
+<tr>
+<td>Recommended pricing</td>
+<td><strong>Free</strong> (notch basics), <strong>Pro</strong> at <strong>$39 one-time</strong> (₹1,499), <strong>Team</strong> at <strong>$8 per seat per month, billed yearly</strong> (₹499). Launch week: Pro at $29 (₹999). 14-day full Pro trial, no card needed. 50% student discount.</td>
+</tr>
+<tr>
+<td>AI cost to us</td>
+<td><strong>$0.</strong> AI runs on-device (Apple Intelligence, Vision, Speech). Groq is optional and uses the buyer's own key.</td>
+</tr>
+<tr>
+<td>Fixed costs to start</td>
+<td>Apple Developer Program, $99 a year (about ₹8,700 in India, <a href="https://developer.apple.com/forums/thread/746357">forum report</a>). A domain and static hosting for the site and the Sparkle update feed. Lemon Squeezy has no monthly fee.</td>
+</tr>
+<tr>
+<td>Blockers to fix before selling</td>
+<td>(1) <strong>Face Unlock's ArcFace weights are licensed for non-commercial use only.</strong> (2) The app is signed with a self-signed identity, which only works for local development. It needs a Developer ID certificate and notarization. (3) There is no licensing code in the app yet. (4) UI Audit and Browser Flows need Node.js installed on the buyer's Mac.</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="2-what-sparkv-actually-contains-from-the-code">2. What SparkV actually contains (from the code)</h2>
+<p>This list comes from <code>Sources/</code>, <code>Sources/Labs/*</code>, the <code>Tab</code> enum in <code>NotchState.swift</code> and the tiles in <code>AgentsHubView.swift</code>. These names are used in every pricing table below.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Feature (code location)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Notch core</td>
+<td>Media for any app with scrubber, artwork glow and bookmarks (<code>MediaEngine</code>, <code>Labs/Media</code>). Volume and brightness HUD (<code>HUDController</code>, <code>SystemKeyInterceptor</code>). Battery and power band (<code>PowerMonitor</code>). Notification mirror (<code>NotificationMonitor</code>). Camera mirror. AirDrop target. Tray, 5 items (<code>TrayView</code>). Two action capsules that run Shortcuts (<code>MacroController</code>, <code>ShortcutRunner</code>). Timer and Pomodoro, plus Today with upcoming meetings (<code>TimerController</code>, <code>TodayView</code>).</td>
+</tr>
+<tr>
+<td>Widgets</td>
+<td>World Clock with changeable time zones, System Gauges, Network Speed, Volume Knob, Habits (<code>Labs/Widgets</code>)</td>
+</tr>
+<tr>
+<td>Wellbeing</td>
+<td>Focus mode with app blocker, muter, edge glow and summary (<code>Labs/Focus</code>). Modes such as Concentration, Study, Relax, Meeting, Presentation and Night (<code>Labs/Modes</code>). Screen Distance (<code>Labs/ScreenDistance</code>).</td>
+</tr>
+<tr>
+<td>Productivity</td>
+<td>Clipboard history and Paste Stack (<code>Labs/Clipboard</code>). Converter, for on-device PDF, image and document conversion (<code>Labs/Converter</code>). File Drop actions (<code>Labs/FileDropActions</code>). Downloads watcher, sorter and rules (<code>Labs/Downloads</code>). Quick Capture to Spaces, and Screenshot to Clipboard (<code>Labs/QuickCapture</code>). Copy Text OCR (<code>Labs/ScreenRegion</code>). Screen Recorder (<code>Labs/ScreenRecorder</code>). Universal Search (<code>Labs/UniversalSearch</code>). Spaces, a knowledge base you can share as <code>.sparkvspace</code> packages (<code>Labs/Spaces</code>). Flow history and Notes (<code>FlowStore</code>).</td>
+</tr>
+<tr>
+<td>AI assistants</td>
+<td>Dictation with hold-fn and AI formatting (<code>DictationController</code>, <code>DictationFormatter</code>). Clicky voice and screen assistant, which points at what to click (<code>Clicky*</code>, <code>VisionClient</code>). Ask Screen (<code>Labs/ScreenRegion</code>). Reply Drafter, ⌃⌥R (<code>Labs/ReplyDrafter</code>). Prompt Refiner (<code>Labs/PromptRefiner</code>). Tray AI actions, OCR and calendar (<code>TrayAI*</code>). Job Search Agent (<code>Labs/JobAgent</code>).</td>
+</tr>
+<tr>
+<td>Meetings</td>
+<td>Meeting recorder, transcriber, summarizer, notes window and capsule (<code>Meeting*</code>). Live Translation band and captions (<code>Labs/LiveTranslation</code>).</td>
+</tr>
+<tr>
+<td>Developer tools</td>
+<td>UI Audit, which runs Playwright and axe-core against your own site (<code>Labs/UIAudit</code>, <code>Vendor/ui-audit</code>). Browser Flows, which records and replays browser tasks (<code>Labs/BrowserRecorder</code>, <code>Vendor/browser-recorder</code>). Flow Canvas, a visual automation planner and runner (<code>Labs/FlowCanvas</code>).</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>Face Unlock (<code>Vendor/glance</code>). <strong>Not sellable as it is.</strong> See section 8.</td>
+</tr>
+<tr>
+<td>Setup</td>
+<td>Onboarding and the permissions window (<code>Labs/Onboarding</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="3-comparable-products-and-prices">3. Comparable products and prices</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Product</th>
+<th>What it is</th>
+<th>Price</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NotchNook</td>
+<td>Notch hub (media, tray)</td>
+<td>$25 one-time or $3 a month, 2-day trial. Sold direct and through Setapp. Not on the App Store because it uses private APIs.</td>
+<td><a href="https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny">iMore</a>, <a href="https://lowyat.net/2024/327211/notchnook-dynamic-island-macbooks-us25">Lowyat</a>, <a href="https://www.smartworld.it/app/notchnook-app-mac-dynamic-island.html">Smartworld</a></td>
+</tr>
+<tr>
+<td>boring.notch</td>
+<td>Open-source notch app</td>
+<td>Free, GPL-3.0, about 11.1k GitHub stars. Not notarized ("unidentified developer" warning).</td>
+<td><a href="https://github.com/TheBoredTeam/boring.notch">GitHub</a>, <a href="https://korben.info/en/boring-notch-macbook-notch-finally-useful.html">Korben</a></td>
+</tr>
+<tr>
+<td>Alcove</td>
+<td>Dynamic Island for the Mac</td>
+<td>About $13.99 one-time, 72-hour trial</td>
+<td><a href="https://www.appgefahren.de/alcove-bringt-die-dynamic-island-auf-den-mac-394469.html">appgefahren</a>, <a href="https://www.slashgear.com/2175261/macos-apps-give-features-apple-doesnt-include/">SlashGear</a></td>
+</tr>
+<tr>
+<td>Raycast Pro</td>
+<td>Launcher with AI</td>
+<td>$10 a month, or $8 a month billed yearly. 14-day trial. Pro+ is $20 a month.</td>
+<td><a href="https://tech-insider.org/raycast-vs-alfred-2026/">tech-insider</a>, <a href="https://www.raycast.com/blog/changing-how-raycast-ai-is-priced">Raycast blog</a></td>
+</tr>
+<tr>
+<td>CleanShot X</td>
+<td>Screenshots and recording</td>
+<td>$29 one-time with 1 year of updates, then $19 a year (optional). Cloud Pro is $8–10 a month.</td>
+<td><a href="https://toolradar.com/tools/cleanshot/pricing">toolradar</a>, <a href="https://trustradius.com/products/cleanshot-x/pricing">TrustRadius</a></td>
+</tr>
+<tr>
+<td>Wispr Flow</td>
+<td>AI dictation</td>
+<td>Pro is $15 a month, or $144 a year. Teams from $10 per user per month. Students pay $6 a month.</td>
+<td><a href="https://www.getvoibe.com/resources/wispr-flow-pricing/">getvoibe</a>, <a href="https://spokenly.app/blog/wispr-flow-pricing">spokenly</a></td>
+</tr>
+<tr>
+<td>Granola</td>
+<td>AI meeting notes</td>
+<td>Business is $14 per user per month. Enterprise from $35.</td>
+<td><a href="https://granola.ai/blog/granola-pricing-plans-features-roi">Granola</a>, <a href="https://www.read.ai/it/articles/granola-ai-pricing-alternatives">Read AI</a></td>
+</tr>
+<tr>
+<td>Paste</td>
+<td>Clipboard manager</td>
+<td>$3.99 a month, $29.99 a year, or $89.99 lifetime</td>
+<td><a href="https://apps.apple.com/app/id967805235">App Store</a></td>
+</tr>
+<tr>
+<td>Setapp</td>
+<td>App subscription bundle</td>
+<td>Mac plan about $14.99 a month, or about $8.99 a month billed yearly (prices rose June 2026)</td>
+<td><a href="https://pricingsaas.com/companies/setapp/diffs/2026W25">PricingSaaS</a>, <a href="https://setapp.com/app-reviews/setapp-pricing-explained">Setapp</a></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What this means for us:</strong> SparkV does the work of a notch app, a clipboard manager, a dictation app, a meeting recorder and a screenshot tool in one app. Paying for those separately costs a buyer well over $300 a year. Pure notch apps sell for $14–25 one-time, so a <strong>$39 one-time Pro</strong> is easy to justify, and it is still cheaper than two months of Wispr Flow and Granola together. Because we pay nothing for AI, we can charge once instead of monthly, and that is a selling point against Wispr, Granola and Raycast.</p>
+<hr />
+<h2 id="4-payment-and-licensing-platforms">4. Payment and licensing platforms</h2>
+<p>A merchant of record (MoR) is the legal seller. It collects and pays VAT, GST and US sales tax around the world, which a solo Indian seller should not try to do alone.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Fee</th>
+<th>MoR?</th>
+<th>License keys</th>
+<th>Notes</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lemon Squeezy</strong> (owned by Stripe)</td>
+<td>5% + 50¢. About +1.5% on non-US orders and +0.5% on subscriptions.</td>
+<td>Yes</td>
+<td><strong>Built in</strong>, with a License API to activate, validate and deactivate keys</td>
+<td>Built-in affiliates and file delivery. Payouts to US banks are free, international payouts cost 1%.</td>
+<td><a href="https://dodopayments.com/blogs/lemonsqueezy-review">Dodo review</a>, <a href="https://fungies.io/lemon-squeezy-stripe-acquisition-saas-founders-2026/">fungies</a>, <a href="https://docs.lemonsqueezy.com/api/license-api">LS License API</a></td>
+</tr>
+<tr>
+<td>Paddle</td>
+<td>5% + 50¢</td>
+<td>Yes</td>
+<td>Not a full licensing system. Pair it with Keygen.</td>
+<td>Mature, used by many Mac indie apps</td>
+<td><a href="https://dodopayments.com/blogs/paddle-fees-explained">Dodo</a>, <a href="https://spendflo.com/vendors/paddle">Spendflo</a></td>
+</tr>
+<tr>
+<td>Gumroad</td>
+<td>10% + 50¢ (30% through Discover), plus card fees. Keeps its fee on refunds.</td>
+<td>Yes, since January 2025</td>
+<td>Basic keys</td>
+<td>Easiest to start, most expensive</td>
+<td><a href="https://schoolmaker.com/blog/gumroad-pricing">schoolmaker</a>, <a href="https://ecomm.design/gumroad-review/">ecomm.design</a></td>
+</tr>
+<tr>
+<td>FastSpring</td>
+<td>Quote-based, about 5.9% + 95¢ (third-party estimate)</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Aimed at larger software vendors</td>
+<td><a href="https://dodopayments.com/blogs/fastspring-pricing-explained/">Dodo</a></td>
+</tr>
+<tr>
+<td>Stripe + Keygen</td>
+<td>Stripe India: 3% on foreign cards, plus 2% for currency conversion. <strong>Not an MoR</strong>, so we would file taxes ourselves. Keygen: free self-hosted CE, or cloud from about $24–49 a month.</td>
+<td>No</td>
+<td>Keygen</td>
+<td>Most control, most work</td>
+<td><a href="https://stripe.com/ja-in/pricing">Stripe India</a>, <a href="https://keygen.sh/pricing">Keygen</a>, <a href="https://apis.io/plans/keygen/keygen-plans-pricing/">apis.io</a></td>
+</tr>
+<tr>
+<td>Setapp (extra channel, not checkout)</td>
+<td>70% of usage-based revenue, up to 90% with the partner fee</td>
+<td>—</td>
+<td>Setapp's SDK</td>
+<td>Reach, not control. Consider it after launch.</td>
+<td><a href="https://docs.setapp.com/docs/setapp-membership-revenue">Setapp docs</a></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Example: what we keep from a $39 Pro sale.</strong> Lemon Squeezy or Paddle: 39 − (1.95 + 0.50) = <strong>about $36.55</strong>, or about $36 with the international surcharge. Gumroad: 39 − 4.40 = $34.60, before card fees.</p>
+<p><strong>Recommendation: Lemon Squeezy.</strong> It is an MoR, it issues license keys, it has a public License API the app can call without a secret, and it has affiliates built in. One merchant account covers the whole plan. Before signing up, confirm in its dashboard that it supports payouts to your country and bank. Fall back to Paddle with Keygen if Lemon Squeezy rejects the account.</p>
+<hr />
+<h2 id="5-apple-requirements-for-selling-outside-the-app-store">5. Apple requirements for selling outside the App Store</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>What to do</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Apple Developer Program</td>
+<td>$99 a year (about ₹8,700). Enrol as an individual, or as an organization with a D-U-N-S number if you want the company name shown. Indian users have reported checkout errors; the Apple Developer iPhone app with UPI or net banking has worked for some.</td>
+<td><a href="https://developer.apple.com/forums/thread/832616">Apple forums</a>, <a href="https://developer.apple.com/forums/thread/746357">renewal thread</a></td>
+</tr>
+<tr>
+<td>Developer ID Application certificate</td>
+<td>Only the team's Account Holder can create it. <strong>It replaces "NotchIsland Developer".</strong> That self-signed identity is only for local builds. Gatekeeper on buyers' Macs will not trust it.</td>
+<td><a href="https://developer.apple.com/developer-id/">Apple Developer ID</a></td>
+</tr>
+<tr>
+<td>Hardened Runtime and secure timestamp</td>
+<td><code>build.sh</code> already signs with the Hardened Runtime. Add <code>--timestamp</code>, and sign every nested binary (MediaRemoteAdapter.framework, helpers, <code>.node</code> binaries if any).</td>
+<td><a href="https://flaviocopes.com/macos-open-anyway/">Flavio Copes</a></td>
+</tr>
+<tr>
+<td>Notarization</td>
+<td><code>xcrun notarytool submit SparkV.dmg --wait</code>, then <code>xcrun stapler staple</code>. It is an automated scan, not a human review.</td>
+<td><a href="https://developer.apple.com/developer-id/">Apple Developer ID</a>, <a href="https://kb.4d.com/TN/2025/25-01_Notarization.pdf">4D KB</a></td>
+</tr>
+<tr>
+<td>Why it matters</td>
+<td>Since macOS Sequoia, a user can no longer right-click and choose Open on an app that isn't notarized. They have to approve it in System Settings › Privacy &amp; Security, and most paying buyers will treat that as a red flag.</td>
+<td><a href="https://eclecticlight.co/2024/08/10/gatekeeper-and-notarization-in-sequoia/">Eclectic Light</a>, <a href="https://www.cultofmac.com/?p=864843">Cult of Mac</a></td>
+</tr>
+<tr>
+<td>TCC grants for buyers</td>
+<td>With one stable Developer ID, Accessibility, Screen Recording, Camera and Microphone grants survive updates, as the self-signed identity does today.</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="why-not-the-mac-app-store">Why not the Mac App Store</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>SparkV needs</th>
+<th>App Store problem</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accessibility (dictation insert, Reply Drafter, Clicky, notification mirror)</td>
+<td>Apple's DTS says Accessibility APIs are <strong>not compatible with the App Sandbox</strong>, and points to Developer ID distribution instead</td>
+<td><a href="https://developer.apple.com/forums/thread/749494">Apple forums</a>, <a href="https://blakecrosley.com/blog/window-manager-mac-app-store-sandbox">Blake Crosley</a></td>
+</tr>
+<tr>
+<td>Posting key events (<code>CGEvent.post</code> for paste and insert) and event taps for fn and media keys (<code>SystemKeyInterceptor</code>)</td>
+<td>Clipboard managers have been rejected for <code>CGEvent.post</code></td>
+<td><a href="https://developer.apple.com/forums/thread/820594">Apple forums</a></td>
+</tr>
+<tr>
+<td>Private <code>DisplayServices</code> loaded with <code>dlopen</code> (HUD, Modes)</td>
+<td>Guideline 2.5.1 allows public APIs only</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Now Playing through <code>mediaremote-adapter</code> running under <code>/usr/bin/perl</code></td>
+<td>A private MediaRemote workaround. NotchNook stays off the App Store for this same reason.</td>
+<td><a href="https://www.smartworld.it/app/notchnook-app-mac-dynamic-island.html">Smartworld</a></td>
+</tr>
+<tr>
+<td>Starting Node and Playwright, <code>/usr/bin/shortcuts</code>, and a visible Chromium</td>
+<td>Not allowed in a sandbox</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Decision:</strong> sell directly. Setapp can be added later as a second channel. It allows non-sandboxed apps.</p>
+<h3 id="auto-updates-sparkle-2">Auto-updates: Sparkle 2</h3>
+<ul>
+<li>Sparkle checks updates against <strong>EdDSA signatures</strong> and Apple code signing, and reads an RSS <strong>appcast</strong> from static hosting. <code>generate_appcast</code> builds the feed and the delta updates. (<a href="https://github.com/sparkle-project/Sparkle">Sparkle</a>, <a href="https://sparkle-project.org/documentation/upgrading/">upgrade notes</a>)</li>
+<li>License: MIT. Its bundled bsdiff, sais and ed25519 code has its own notices, which must ship with the app (<a href="https://github.com/sparkle-project/Sparkle/blob/2.x/LICENSE">LICENSE</a>).</li>
+<li>Add the framework as a vendored binary, because CLT-only builds have no SwiftPM GUI. Call <code>SPUStandardUpdaterController</code> from AppKit code, with no SwiftUI macros. Add a "Check for Updates…" item to the gear menu.</li>
+</ul>
+<hr />
+<h2 id="6-pricing">6. Pricing</h2>
+<h3 id="6a-recommended-three-plans">6a. Recommended: three plans</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Free</strong></th>
+<th><strong>Pro</strong> (recommended)</th>
+<th><strong>Team</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>USD</td>
+<td>$0</td>
+<td><strong>$39 one-time</strong>, launch price $29. Includes 12 months of updates. Renewal is optional at $19 a year; the app keeps working forever.</td>
+<td><strong>$8 per seat per month, billed yearly</strong> ($96 per seat per year). Minimum 3 seats.</td>
+</tr>
+<tr>
+<td>INR</td>
+<td>₹0</td>
+<td><strong>₹1,499</strong>, launch price ₹999. Renewal ₹799 a year.</td>
+<td><strong>₹499 per seat per month</strong>, billed yearly</td>
+</tr>
+<tr>
+<td>Macs per license</td>
+<td>1</td>
+<td>2 Macs per person</td>
+<td>1 seat = 1 person, 2 Macs</td>
+</tr>
+<tr>
+<td>Notch core</td>
+<td>Media with scrubber, HUD, battery, notification mirror, camera mirror, AirDrop target, Tray (5 items), 2 Shortcut capsules, Timer and Pomodoro, Today</td>
+<td>Everything</td>
+<td>Everything</td>
+</tr>
+<tr>
+<td>Widgets</td>
+<td>World Clock (time zones changeable), System Gauges</td>
+<td>All widgets (adds Network Speed, Volume Knob, Habits)</td>
+<td>All</td>
+</tr>
+<tr>
+<td>Productivity</td>
+<td>Clipboard history (last 25), Copy Text OCR, Flow history</td>
+<td>Clipboard and Paste Stack (unlimited), Converter, File Drop, Downloads rules, Quick Capture, Screen Recorder, Universal Search, Spaces, Focus, Modes, Screen Distance</td>
+<td>All</td>
+</tr>
+<tr>
+<td>AI assistants</td>
+<td>Dictation without AI formatting</td>
+<td>Dictation with AI formatting, Clicky, Ask Screen, Reply Drafter, Prompt Refiner, Tray AI, Job Agent</td>
+<td>All</td>
+</tr>
+<tr>
+<td>Meetings</td>
+<td>—</td>
+<td>Recorder, transcripts, summaries, Live Translation</td>
+<td>All</td>
+</tr>
+<tr>
+<td>Developer tools</td>
+<td>—</td>
+<td>UI Audit, Browser Flows, Flow Canvas</td>
+<td>All</td>
+</tr>
+<tr>
+<td>Team extras</td>
+<td>—</td>
+<td>—</td>
+<td>One invoice (PO or bank transfer), seat management through the Lemon Squeezy customer portal or Keygen, shared Spaces packages, priority email support (1 business day), a deployment <code>.pkg</code> for MDM</td>
+</tr>
+<tr>
+<td>Trial</td>
+<td>—</td>
+<td><strong>14-day full Pro trial</strong>, no card. After it ends, the app falls back to Free and never locks.</td>
+<td>30-day pilot for up to 5 seats</td>
+</tr>
+</tbody>
+</table></div>
+<p>Why this shape:
+- <strong>Free hooks people.</strong> A useful notch app at $0 takes boring.notch users and lets reviewers and Reddit try it with nothing at stake.
+- <strong>One-time Pro fits our costs.</strong> We pay no AI or server costs per user. Buyers on r/macapps prefer one-time prices, and CleanShot X ($29 plus $19 a year for updates) shows the model works.
+- <strong>Team adds recurring revenue</strong> from companies that need invoices and support. <strong>Be honest about the scope:</strong> shared Spaces today is a file package (<code>SpaceSharing.swift</code>), and live sync does not exist yet, so don't advertise it.</p>
+<h3 id="6b-alternative-price-per-feature-pack">6b. Alternative: price per feature pack</h3>
+<p>Each pack is a one-time purchase on top of Free. The "Everything" bundle equals Pro, so a buyer of two or more packs is pushed toward Pro.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Pack</th>
+<th>Includes (exact SparkV features)</th>
+<th>USD</th>
+<th>INR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Notch &amp; Media</strong></td>
+<td>Media with scrubber, bookmarks and glow; HUD replacement; all Widgets (World Clock, System Gauges, Network Speed, Volume Knob, Habits); Modes; Focus; Screen Distance; unlimited Tray</td>
+<td>$9</td>
+<td>₹499</td>
+</tr>
+<tr>
+<td><strong>Productivity</strong></td>
+<td>Clipboard history and Paste Stack; Converter; File Drop actions; Downloads watcher and rules; Quick Capture; Screenshot to Clipboard; Copy Text; Screen Recorder; Universal Search; Spaces</td>
+<td>$15</td>
+<td>₹799</td>
+</tr>
+<tr>
+<td><strong>AI Assistants</strong></td>
+<td>Dictation with AI formatting; Clicky voice and screen assistant; Ask Screen; Reply Drafter; Prompt Refiner; Tray AI actions; Job Search Agent</td>
+<td>$19</td>
+<td>₹999</td>
+</tr>
+<tr>
+<td><strong>Meetings</strong></td>
+<td>Meeting recorder, transcriber, summarizer and notes window; Live Translation band and captions; calendar join from Today</td>
+<td>$15</td>
+<td>₹799</td>
+</tr>
+<tr>
+<td><strong>Developer Tools</strong></td>
+<td>UI Audit (Playwright and axe-core, for your own sites); Browser Flows recorder and replay; Flow Canvas</td>
+<td>$19</td>
+<td>₹999</td>
+</tr>
+<tr>
+<td><strong>Everything (= Pro)</strong></td>
+<td>All 5 packs</td>
+<td><strong>$39</strong> (packs separately: $77)</td>
+<td><strong>₹1,499</strong> (separately: ₹4,095)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Same trial (14 days, all packs), same student discount, same 2 Macs per license.</p>
+<h3 id="6c-discounts-and-trial">6c. Discounts and trial</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Trial</td>
+<td>14 days, every feature, no card. The start date is kept in the Keychain, so reinstalling doesn't restart it.</td>
+</tr>
+<tr>
+<td>Students and teachers</td>
+<td><strong>50% off</strong> Pro ($19.50, or ₹749). Check a <code>.edu</code> or <code>.ac.in</code> email, or a student ID, through a Lemon Squeezy discount code. Wispr Flow gives students 50% off too (<a href="https://www.getvoibe.com/resources/wispr-flow-pricing/">getvoibe</a>).</td>
+</tr>
+<tr>
+<td>Launch week</td>
+<td>Pro at $29 (₹999) for the first 7 days or the first 500 buyers</td>
+</tr>
+<tr>
+<td>Upgrade from packs</td>
+<td>The price of packs already bought counts toward Pro</td>
+</tr>
+<tr>
+<td>Refunds</td>
+<td>30 days, no questions asked (see section 7)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="6d-recommendation">6d. Recommendation</h3>
+<p><strong>Launch with the three plans (6a). Don't launch with packs.</strong>
+1. One price is easier to explain in a 60-second Product Hunt or YouTube demo, and buyers don't freeze in front of five choices.
+2. Gating code is simpler: three plan checks instead of five packs and their combinations.
+3. Packs can come later as a cheaper entry. For example, a "Meetings only" pack for people who came for meeting notes. Sections 6b and 9 are written so they can be switched on later without breaking existing licenses.</p>
+<hr />
+<h2 id="7-legal-pages-to-publish">7. Legal pages to publish</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Must cover for SparkV</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Privacy policy</strong></td>
+<td>By default everything stays on the Mac: speech, camera, screenshots, clipboard, Spaces, meeting audio. <strong>Groq is optional.</strong> With the buyer's own key, the screenshot under the mouse and the question go to <code>api.groq.com</code>, and only while the buyer is asking. License checks send the key, an anonymous device ID and the app version to Lemon Squeezy. Lemon Squeezy, as MoR, handles payment data. No analytics, unless we add crash reporting, which then has to be opt-in.</td>
+</tr>
+<tr>
+<td><strong>EULA / terms</strong></td>
+<td>License grant (per person, 2 Macs). No resale or reverse engineering. Fallback to Free when a trial or subscription ends. <strong>AI outputs have no warranty.</strong> <strong>UI Audit and Browser Flows may only be used on sites and accounts the user owns or is allowed to test.</strong> Face Unlock disclaimer (if it ever ships). Limit of liability. Governing law (India).</td>
+</tr>
+<tr>
+<td><strong>Refund policy</strong></td>
+<td>30 days, no questions. The MoR runs the refund. Gumroad and FastSpring keep their fee on refunds (<a href="https://schoolmaker.com/blog/gumroad-pricing">schoolmaker</a>, <a href="https://dodopayments.com/blogs/fastspring-pricing-explained/">Dodo</a>), so check the chosen MoR's terms.</td>
+</tr>
+<tr>
+<td><strong>GDPR basics (EU and UK buyers)</strong></td>
+<td>Name the controller and a contact email. Legal basis: contract for licensing, consent for crash reports. Rights: access, deletion, portability. Sign the MoR's data processing agreement. Collect as little as possible. Because our data is on-device, it's easy to promise very little.</td>
+</tr>
+<tr>
+<td><strong>India DPDP Act 2023 and Rules 2025</strong></td>
+<td>Rules notified 13 November 2025. The <strong>notice and consent duties apply from 13 May 2027.</strong> The notice must list the personal data, state the purpose and be written separately in plain language. Name a grievance contact. The older SPDI Rules 2011 apply until then. (<a href="https://webiis08.mondaq.com/india/data-protection/1706890/a-closer-look-at-the-dpdp-rules-2025">Mondaq</a>, <a href="https://www.azbpartners.com/bank/update-indias-digital-personal-data-protection-framework-comes-into-effect/">AZB</a>, <a href="https://static.pib.gov.in/WriteReadData/specificdocs/documents/2025/nov/doc20251117695301.pdf">PIB</a>)</td>
+</tr>
+<tr>
+<td><strong>Trademarks</strong></td>
+<td>Don't use other products' names in marketing ("Wispr-style", "Clicky"). The README already notes that the icons are SF Symbols and not those logos. Consider renaming the Clicky feature before launch, for example to "SparkV Assist".</td>
+</tr>
+</tbody>
+</table></div>
+<p>Get a lawyer to review these pages before launch. This plan is not legal advice.</p>
+<hr />
+<h2 id="8-third-party-code-shipped-in-the-app">8. Third-party code shipped in the app</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Component (in <code>Vendor/</code>)</th>
+<th>License</th>
+<th>What we must do</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>glance</strong> (Face Unlock code), © 2026 Jonathan Zhou</td>
+<td>MIT</td>
+<td>Include the copyright and license text</td>
+<td><code>build.sh</code> already copies it to <code>Resources/glance-LICENSE</code></td>
+</tr>
+<tr>
+<td><strong>ArcFace model</strong> (<code>glance/Models/ArcFace.mlmodelc</code>, InsightFace <code>w600k_mbf</code>)</td>
+<td><strong>Non-commercial research only</strong> (<code>Vendor/glance/PORTING.md</code>; <a href="https://gitee.com/Egrt/insightface">InsightFace README</a>)</td>
+<td><strong>We can't ship it in a paid app.</strong> Either take Face Unlock out of the sold build, buy a commercial license from InsightFace, or replace the model with one whose license allows commercial use. Face Unlock also types the user's password at the lock screen, so leaving it out is also the lower-risk choice.</td>
+<td><strong>Blocker</strong></td>
+</tr>
+<tr>
+<td><strong>mediaremote-adapter</strong>, © 2025 Jonas van den Berg and contributors</td>
+<td>BSD 3-Clause</td>
+<td>Include the copyright, conditions and disclaimer in the docs shipped with the binary. Don't use the authors' names to endorse SparkV.</td>
+<td>The LICENSE file is copied next to the adapter. Also list it on the Acknowledgements screen.</td>
+</tr>
+<tr>
+<td><strong>playwright-core 1.64.1</strong> (browser-recorder, ui-audit)</td>
+<td>Apache-2.0</td>
+<td>Ship the LICENSE <strong>and the NOTICE</strong> file. Mark any files we changed.</td>
+<td>Ship it inside <code>node_modules</code>. If Browser Flows uses Playwright's own downloaded Chromium (<code>chromium.executablePath()</code>), Chromium's licenses apply too. Use the installed Chrome (<code>channel: 'chrome'</code>) by default.</td>
+</tr>
+<tr>
+<td><strong>axe-core 4.14.0</strong> (ui-audit)</td>
+<td>MPL-2.0, plus MIT parts listed in <code>LICENSE-3RD-PARTY.txt</code></td>
+<td>Keep its files unmodified. Include the license, and state where the source is available (<a href="https://github.com/dequelabs/axe-core">github.com/dequelabs/axe-core</a>). MPL is file-level, so SparkV's own code stays closed. (<a href="https://openmrs.atlassian.net/wiki/x/hn_RAQ">OpenMRS FAQ</a>, <a href="https://www.mozilla.org/MPL/2.0/Revision-FAQ.html">Mozilla FAQ</a>)</td>
+<td>Ship the license files as they are</td>
+</tr>
+<tr>
+<td><strong>Sparkle 2</strong> (to add)</td>
+<td>MIT, plus bsdiff, sais and ed25519 notices</td>
+<td>Include its LICENSE</td>
+<td>To do</td>
+</tr>
+<tr>
+<td><code>Vendor/clipboard</code>, <code>Vendor/ui-audit</code>, <code>Vendor/browser-recorder</code> (our code)</td>
+<td>Ours (<code>UNLICENSED</code> / private)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>boring.notch (reference only)</td>
+<td>GPL-3.0</td>
+<td><strong>Don't copy any code from it.</strong> GPL would require us to open SparkV's source.</td>
+<td>Not used</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>To do:</strong> add gear › About › Acknowledgements, which shows every license above. Also bundle <code>Resources/Acknowledgements.txt</code>.</p>
+<p><strong>Runtime dependency:</strong> UI Audit needs Node 20 or later, and Browser Flows needs Node 18 or later. The app looks for Node in <code>~/.local/bin</code>, <code>/opt/homebrew/bin</code> and <code>/usr/local/bin</code>. Either list Node as a requirement for the Developer Tools features, or bundle a signed Node binary. That adds about 40–100 MB, and Node has its own MIT license and notices.</p>
+<hr />
+<h2 id="9-ai-costs">9. AI costs</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Who pays</th>
+<th>Cost to us</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>On-device: Apple Intelligence / Foundation Models, Vision OCR, Speech, Translation</td>
+<td>Nobody</td>
+<td>$0</td>
+</tr>
+<tr>
+<td>Groq (Clicky vision, optional elsewhere)</td>
+<td><strong>The buyer, with their own key</strong> in Clicky's Keychain item. Groq's free tier works. Paid rates for Llama 4 Scout are about $0.11 per million input tokens and $0.34 per million output tokens (<a href="https://anotherwrapper.com/tools/llm-pricing/llama-4-scout-groq/o1">aggregator</a>; check groq.com).</td>
+<td>$0</td>
+</tr>
+</tbody>
+</table></div>
+<p>Our margin per sale is the price minus the MoR fee. The only costs that grow are support time and a little bandwidth for DMG downloads (about 20–60 MB each, cheap on a CDN such as Cloudflare R2). Never ship a shared Groq key in the app.</p>
+<hr />
+<h2 id="10-go-to-market">10. Go-to-market</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>What to do</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Product Hunt</strong></td>
+<td>Launch on a Tuesday or Wednesday at 12:01 AM PT, with a polished 60–90 s demo video and 5 GIF screenshots. Reply to every comment within minutes. Build a waitlist 2–3 weeks before.</td>
+<td><a href="https://screenhance.com/blog/product-hunt-launch-checklist-2026">screenhance</a>, <a href="https://hackernoon.com/lite/i-turned-a-failed-product-hunt-launch-into-a-top-3-win-on-a-budget">HackerNoon</a></td>
+</tr>
+<tr>
+<td><strong>r/macapps</strong></td>
+<td>New developers post in the monthly <strong>"App Pile" megathread</strong> in the PCP format (Problem, Comparison, Pricing). Posting in the main feed needs a trust path (public identity and portfolio, or a GitHub project with history) and 10+ subreddit karma. Self-promotion counts toward a 30-day limit.</td>
+<td><a href="https://redlib.groet-infra.nl/r/macapps">r/macapps mirror</a></td>
+</tr>
+<tr>
+<td><strong>YouTube demos</strong></td>
+<td>One "Your MacBook notch can do THIS" video (2–4 min), plus a 30 s Short for each feature: dictation, Clicky pointing, meetings with translation, Converter, UI Audit. Send free Pro keys to Mac YouTubers with 20k–300k subscribers.</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Affiliates</strong></td>
+<td>Lemon Squeezy's built-in affiliate program. 30% commission, 30-day cookie. Recruit YouTubers and newsletter writers.</td>
+<td><a href="https://fungies.io/lemon-squeezy-stripe-acquisition-saas-founders-2026/">fungies</a></td>
+</tr>
+<tr>
+<td><strong>Show HN / Indie Hackers</strong></td>
+<td>Show HN post for the Developer Tools features. A build-in-public thread on X and LinkedIn, aimed at Indian developers and students.</td>
+<td><a href="https://dev.to/lightningdev123/beyond-product-hunt-a-technical-launch-guide-for-2026-i2j">DEV</a></td>
+</tr>
+<tr>
+<td><strong>Comparison pages</strong></td>
+<td>Pages on our site: "SparkV vs NotchNook", "vs Alcove", "vs boring.notch". Lead with the fact that SparkV replaces five apps.</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Setapp</strong> (month 3 or later)</td>
+<td>Apply once reviews exist</td>
+<td><a href="https://docs.setapp.com/">Setapp docs</a></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Positioning line:</strong> <em>"Your notch, now an AI command center. Dictation, meetings, screen help and 20 more tools. Private by default, pay once."</em></p>
+<hr />
+<h2 id="11-30-day-launch-checklist">11. 30-day launch checklist</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Days</th>
+<th>Tasks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1–3</strong></td>
+<td>Enrol in the Apple Developer Program. Create the Developer ID Application certificate. Sign up for Lemon Squeezy and create the products (Pro, Pro Student, Team, Launch discount) with license keys turned on. Buy the domain.</td>
+</tr>
+<tr>
+<td><strong>4–7</strong></td>
+<td>Take Face Unlock out of the sold build, or settle the ArcFace license. Rename "Clicky" if you decide to. Add Acknowledgements. Write the privacy policy, EULA and refund policy.</td>
+</tr>
+<tr>
+<td><strong>8–12</strong></td>
+<td>Build licensing, trial and gating (section 12). Add Sparkle. Change <code>build.sh</code> to sign with Developer ID plus <code>--timestamp</code>, notarize, staple and build the DMG.</td>
+</tr>
+<tr>
+<td><strong>13–15</strong></td>
+<td>Do a clean-Mac test on a fresh macOS user account: download the DMG, check that Gatekeeper opens it with no warning, walk through onboarding and every permission, start the trial, activate a key, deactivate it, and update through Sparkle from 1.0 to 1.0.1.</td>
+</tr>
+<tr>
+<td><strong>16–18</strong></td>
+<td>Landing page: hero video, feature grid, pricing table (USD, with INR for visitors from India), FAQ, comparison pages, and a waitlist form.</td>
+</tr>
+<tr>
+<td><strong>19–22</strong></td>
+<td>Record the demo video and 5 Shorts. Prepare the Product Hunt page, gallery and maker comment. Send keys to 10–15 creators and beta users.</td>
+</tr>
+<tr>
+<td><strong>23–25</strong></td>
+<td>Private beta with 30–50 users from the waitlist. Fix crashes. Collect 5 testimonials.</td>
+</tr>
+<tr>
+<td><strong>26</strong></td>
+<td>Ship 1.0. Turn on the launch price.</td>
+</tr>
+<tr>
+<td><strong>27 (Tue/Wed)</strong></td>
+<td>Launch on Product Hunt. Post in the r/macapps App Pile. Post on X and LinkedIn. Email the waitlist.</td>
+</tr>
+<tr>
+<td><strong>28–30</strong></td>
+<td>Reply to every comment and support email. Ship 1.0.1 through Sparkle. Show HN. Open the affiliate program. Write a short retrospective covering conversion rate, refunds and the top requests.</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="12-engineering-plan-adding-licensing">12. Engineering plan: adding licensing</h2>
+<p>Don't use <code>@State</code>, <code>#Preview</code> or <code>@Entry</code>. Use <code>@StateObject</code> and <code>ViewFlag</code>. Put the new files in <code>Sources/Labs/Licensing/</code> and add <code>cp Sources/Labs/Licensing/*.swift "$WORK/src/"</code> to <code>build.sh</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Model</td>
+<td><code>enum SparkVPlan { free, trial, pro, team }</code> and <code>enum SparkVFeature</code> (one case per row in section 2). <code>struct Entitlements { func allows(_ f: SparkVFeature) -&gt; Bool }</code> maps plan to features from one table, so packs (6b) can be added later as a set of <code>SparkVPack</code> values.</td>
+</tr>
+<tr>
+<td>2. LicenseManager</td>
+<td><code>@MainActor final class LicenseManager: ObservableObject</code> (shared). It <strong>activates</strong> a key with Lemon Squeezy's <code>POST /v1/licenses/activate</code> (key plus instance name), <strong>validates</strong> it on launch and every 7 days, and <strong>deactivates</strong> it from the gear menu so the buyer can move Macs. It stores the key, instance ID and last validation date in the <strong>Keychain</strong>, in its own item, separate from the Groq key.</td>
+</tr>
+<tr>
+<td>3. Offline grace</td>
+<td>If a check fails because there is no network, keep Pro for <strong>14 days</strong> after the last successful validation. Never lock someone out because they are offline.</td>
+</tr>
+<tr>
+<td>4. Trial</td>
+<td>Put the first-run date in the Keychain, plus a marker file in Application Support. Trial = first run + 14 days. Show "Trial: N days left" in the gear menu. When it ends, show a soft paywall once and drop to Free. Data is kept.</td>
+</tr>
+<tr>
+<td>5. Gating points</td>
+<td><strong><code>NotchWindowController</code>:</strong> don't create the controllers for gated features (MeetingsController, UIAudit, BrowserRecorder, FlowCanvas, and so on) unless <code>allows(...)</code>. This also saves memory. <strong><code>AgentsHubView</code>:</strong> locked tiles show a small lock badge, and tapping one opens the paywall instead of the feature. <strong><code>NotchNookLayoutView</code>:</strong> hide locked tabs in the header and add <strong>gear › License…</strong> and <strong>gear › Check for Updates…</strong>. <strong>Hotkeys</strong> (⌃⌥R, ⌃⌥ for Clicky, Copy Text): check <code>allows(...)</code> before acting, and show a band saying "Pro feature, start your trial".</td>
+</tr>
+<tr>
+<td>6. Paywall window</td>
+<td>An AppKit <code>NSWindow</code> with SwiftUI content: plan comparison, <strong>Buy Pro</strong> (opens the Lemon Squeezy checkout URL in the browser), a field to paste the key and an <strong>Activate</strong> button, and <strong>Restore / Deactivate</strong>.</td>
+</tr>
+<tr>
+<td>7. Tamper resistance (light)</td>
+<td>Run checks in more than one place and sign the cached validation result with HMAC. Don't go further. Determined pirates won't pay anyway, and heavy DRM hurts the people who do.</td>
+</tr>
+<tr>
+<td>8. Release pipeline</td>
+<td>Read <code>DEVELOPER_ID</code> from an environment variable in <code>build.sh</code>. When it is set, sign everything with <code>--options runtime --timestamp</code>, make the DMG with <code>hdiutil</code>, run <code>notarytool submit --wait</code>, run <code>stapler staple</code>, and run <code>generate_appcast</code>. Keep "NotchIsland Developer" for local builds.</td>
+</tr>
+<tr>
+<td>9. Tests</td>
+<td>Add a harness to <code>Vendor/clipboard/Tests</code>, the existing CLT test setup. Cover the plan-to-feature table, trial dates (including clock changes), the offline grace window, and key-response parsing using recorded Lemon Squeezy responses.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Estimated effort: about 4–6 days for licensing and gating, 1–2 days for Sparkle and notarization, 1 day for the paywall UI.</p>
+<hr />
+<h2 id="13-risks">13. Risks</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A macOS update breaks the private MediaRemote or DisplayServices paths</td>
+<td>The fallbacks already exist (Apple Events or media keys for media). Promise "best effort" in the EULA. Ship fixes quickly through Sparkle.</td>
+</tr>
+<tr>
+<td>Gatekeeper or notarization fails on a new macOS release</td>
+<td>Test every beta in a clean VM. Keep one stable Developer ID.</td>
+</tr>
+<tr>
+<td>Too many permission prompts scare buyers</td>
+<td>Onboarding already walks through each permission. Only ask for one when the feature that needs it is first used.</td>
+</tr>
+<tr>
+<td>Commercial license problems (ArcFace)</td>
+<td>Leave Face Unlock out of 1.0</td>
+</tr>
+<tr>
+<td>Support load from five feature areas</td>
+<td>Docs site, a short video for each feature, and in-app "Report a problem" with logs the user chooses to attach</td>
+</tr>
+</tbody>
+</table></div>
+    </section>
+  </main>
+</div>
+<footer class="gutter">SparkV · Feature guide and business plan generated from the project's docs folder.</footer>

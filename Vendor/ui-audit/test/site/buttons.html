@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Buttons</title>
+<style>body{font-family:sans-serif;margin:20px} button{margin:8px;padding:10px 16px}</style></head><body>
+<h1>Buttons</h1>
+<button id="dead">Learn more</button>
+<button id="works" onclick="this.textContent='Clicked!'">Toggle me</button>
+<button id="remove" onclick="fetch('/account/delete')">Remove account</button>
+<a href="/logout" id="lo">Sign out</a>
+<button id="save" onclick="fetch('/api/contact',{method:'POST',body:'x'}).then(()=>{},()=>{})">Save draft</button>
+<a href="#" id="deadlink">Read the docs</a>
+</body></html>
