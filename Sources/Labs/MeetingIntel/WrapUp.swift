@@ -1295,7 +1295,7 @@ struct MeetingWrapUpView: View {
                 .font(SparkVTheme.caption(11))
                 .foregroundStyle(SparkVTheme.link)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
         }
     }
 
@@ -1344,8 +1344,13 @@ struct MeetingWrapUpView: View {
                 Image(systemName: added ? "checkmark.circle.fill" : (proposal.isSelected ? "checkmark.square.fill" : "square"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(added ? SparkVTheme.success : (proposal.isSelected ? SparkVTheme.accent : SparkVTheme.textTertiary))
+                    // Checkbox: the glyph swaps in place with a snappy spring.
+                    .contentTransition(.symbolEffect(.replace))
+                    .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: proposal.isSelected)
+                    .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: added)
             }
-            .buttonStyle(.plain)
+
+            .buttonStyle(SparkVPressStyle())
             .disabled(added)
             .accessibilityLabel(proposal.isSelected ? "Selected" : "Not selected")
             VStack(alignment: .leading, spacing: 2) {
@@ -1380,7 +1385,7 @@ struct MeetingWrapUpView: View {
                         Image(systemName: "xmark").font(.system(size: 8.5, weight: .bold))
                             .foregroundStyle(SparkVTheme.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("No due date")
                 }
             } else {
@@ -1388,7 +1393,7 @@ struct MeetingWrapUpView: View {
                     let base = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
                     controller.setDue(Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: base), proposal: proposal.id)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .font(SparkVTheme.caption(10.5))
                 .foregroundStyle(SparkVTheme.link)
             }

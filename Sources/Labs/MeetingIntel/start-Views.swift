@@ -129,7 +129,7 @@ struct MeetingStartPromptBand: View {
         .padding(.horizontal, 4)
         .padding(.vertical, 3)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .animation(.easeOut(duration: 0.2), value: lines)
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: lines)
     }
 }
 
@@ -304,7 +304,7 @@ struct MeetingRememberToggle: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .fixedSize()
         .help("Next time, start this choice on its own after a short countdown you can cancel")
     }
@@ -368,7 +368,7 @@ struct MeetingCountdownBand: View {
                             .overlay(Capsule().strokeBorder(SparkVTheme.stroke))
                             .contentShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .keyboardShortcut(.cancelAction)
                     .fixedSize()
                     .help("Don't start for this call")
@@ -611,7 +611,7 @@ struct MeetingStartTodayRow: View {
                 EmptyView()
             }
         }
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: coordinator.stage)
+        .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: coordinator.stage)
     }
 
     @ViewBuilder private var briefLines: some View {
@@ -664,7 +664,7 @@ struct MeetingStartTodaySlot<Fallback: View>: View {
                 fallback
             }
         }
-        .animation(.easeOut(duration: 0.2), value: coordinator.offeredCall?.key)
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: coordinator.offeredCall?.key)
     }
 }
 

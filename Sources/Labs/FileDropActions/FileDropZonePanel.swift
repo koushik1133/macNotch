@@ -40,6 +40,7 @@ final class FileDropZonePanel: NSPanel {
         orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.16
+            context.timingFunction = .sparkVEaseOut
             animator().alphaValue = 1
         }
     }
@@ -51,7 +52,8 @@ final class FileDropZonePanel: NSPanel {
             return
         }
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
+            context.duration = 0.16
+            context.timingFunction = .sparkVEaseOut
             animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
@@ -143,8 +145,8 @@ private struct FileDropBucket: View {
                 .strokeBorder(active ? (SparkVTheme.isApple ? instant.tint.opacity(0.85) : SparkVTheme.red) : SparkVTheme.stroke,
                               style: StrokeStyle(lineWidth: active ? 1.5 : 1, dash: active && !SparkVTheme.isApple ? [4, 3] : []))
         )
-        .scaleEffect(active ? 1.04 : 1)
-        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: active)
+        .scaleEffect(active && !SparkVMotion.reduceMotion ? 1.04 : 1)
+        .animation(SparkVMotion.snappy, value: active)
         .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         .onDrop(of: FileDropController.acceptedTypes, isTargeted: $targeted.isOn) { providers in
             controller.hideZone(after: .milliseconds(120))
@@ -248,12 +250,13 @@ struct FileDropTile: View {
                     .strokeBorder(active ? SparkVTheme.accent : SparkVTheme.stroke,
                                   style: StrokeStyle(lineWidth: active ? 1.5 : 1, dash: active && !SparkVTheme.isApple ? [4, 3] : []))
             )
-            .scaleEffect(active ? 1.05 : 1)
-            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: active)
+            .scaleEffect(active && !SparkVMotion.reduceMotion ? 1.05 : 1)
+            .animation(SparkVMotion.snappy, value: active)
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hovered.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hovered.isOn)
         .onDrop(of: FileDropController.acceptedTypes, isTargeted: $targeted.isOn) { providers in
             controller.accept(providers, then: .actions)
         }

@@ -848,7 +848,7 @@ struct MeetingCaptionBand: View {
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(SparkVTheme.textSecondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("Bookmark this moment")
                     Button {
                         assist.captionsVisible = false
@@ -857,7 +857,7 @@ struct MeetingCaptionBand: View {
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(SparkVTheme.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("Hide captions (recording continues)")
                 }
                 if assist.showsTalkMeter {
@@ -927,7 +927,7 @@ struct MeetingFlagToast: View {
 
             MeetingIntelLiveBadge(compact: true)
             Button("Undo", action: onUndo)
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .font(SparkVTheme.caption(11))
                 .foregroundStyle(SparkVTheme.textSecondary)
         }
@@ -997,7 +997,8 @@ struct MeetingFlagTimeline: View {
                     } label: {
                         row(flag, isFirst: index == 0, isLast: index == items.count - 1)
                     }
-                    .buttonStyle(.plain)
+                    // Large row: a lighter press than a button.
+                    .buttonStyle(SparkVPressStyle(scale: 0.99))
                 }
             }
         }

@@ -249,7 +249,7 @@ private struct BRFlowChip: View {
                         .frame(width: 20, height: 20)
                         .background(Circle().fill(SparkVTheme.accent.opacity(isBusy ? 0.3 : 1)))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .disabled(isBusy)
                 .help("Replay")
             }
@@ -264,6 +264,7 @@ private struct BRFlowChip: View {
             RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous)
                 .strokeBorder(hover.isOn ? SparkVTheme.choose(apple: Color.white.opacity(0.18), sparkv: SparkVTheme.brandRed.opacity(0.45)) : SparkVTheme.stroke)
         )
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .contentShape(Rectangle())
         .onHover { hover.isOn = $0 }
         .onTapGesture(count: 2, perform: onOpen)
@@ -296,7 +297,8 @@ struct BRCompactButton: View {
             .background(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).fill(tint))
             .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(tint == SparkVTheme.recording || tint == SparkVTheme.accent ? Color.clear : SparkVTheme.stroke))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
+
     }
 }
 

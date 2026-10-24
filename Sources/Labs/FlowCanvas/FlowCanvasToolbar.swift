@@ -40,7 +40,7 @@ struct FCPromptBar: View {
                             .padding(.vertical, 5)
                             .background(Capsule().fill(editor.goal.trimmingCharacters(in: .whitespaces).isEmpty ? palette.tertiary : palette.edge))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .disabled(editor.goal.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -82,7 +82,7 @@ struct FCPlanBar: View {
             }
             Spacer(minLength: 6)
             Button("Discard") { editor.discardPlan() }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(palette.secondary)
             Button {
@@ -95,7 +95,7 @@ struct FCPlanBar: View {
                     .padding(.vertical, 5)
                     .background(Capsule().fill(palette.accent))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -137,7 +137,7 @@ struct FCToolbar: View {
                         .foregroundStyle(palette.text)
                         .background(Capsule().fill(palette.cardRaised))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
             } else {
                 Button {
                     editor.runAll()
@@ -149,7 +149,7 @@ struct FCToolbar: View {
                         .foregroundStyle(.white)
                         .background(Capsule().fill(palette.edge))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("Run every AI step in order (⌘↩)")
             }
             separator
@@ -163,7 +163,7 @@ struct FCToolbar: View {
                     .frame(width: 44, height: 28)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Fit all (⌘0)")
             tool(symbol: "plus.magnifyingglass", help: "Zoom in (⌘+)") { editor.zoom(by: 1.2) }
         }
@@ -186,7 +186,7 @@ struct FCToolbar: View {
                 .background(Capsule().fill(active ? palette.accent : Color.clear))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .disabled(!enabled)
         .help(help)
     }
@@ -290,6 +290,7 @@ struct FCToast: View {
             .background(Capsule().fill(palette.chrome))
             .overlay(Capsule().strokeBorder(palette.border))
             .shadow(color: palette.shadow, radius: 10, y: 3)
-            .transition(.opacity.combined(with: .move(edge: .top)))
+            // Drops 4 pt from 96 % (not its whole height); Reduce Motion: fade.
+            .transition(.sparkVEnter)
     }
 }

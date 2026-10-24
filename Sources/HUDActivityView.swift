@@ -164,7 +164,9 @@ struct HUDLevelBar: View {
                     .fill(fill)
                     .frame(width: min(width, filled))
             }
-            .animation(.easeOut(duration: 0.12), value: level)
+            // Key-press feedback: a 100 ms ease-out keeps it snappy (the band
+            // itself is rebuilt per post, so repeated presses don't queue).
+            .animation(SparkVMotion.easeOut(SparkVMotion.Duration.press), value: level)
         }
     }
 }

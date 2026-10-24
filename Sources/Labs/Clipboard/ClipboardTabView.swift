@@ -28,6 +28,8 @@ private enum ClipLayout {
 struct ClipboardTabView: View {
     @EnvironmentObject private var clipboard: ClipboardController
     @StateObject private var ui = ClipboardTabUI()
+    /// Off until the tab is on screen, so the cards fade in in turn.
+    @StateObject private var appeared = ViewFlag()
 
     var body: some View {
         GeometryReader { proxy in
@@ -44,6 +46,8 @@ struct ClipboardTabView: View {
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)
         }
         .padding(.vertical, 2)
+        .onAppear { appeared.isOn = true }
+        .onDisappear { appeared.isOn = false }
     }
 
     @ViewBuilder
@@ -75,8 +79,9 @@ struct ClipboardTabView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: ClipLayout.cardSpacing) {
-                        ForEach(shown) { item in
+                        ForEach(Array(shown.enumerated()), id: \.element.id) { index, item in
                             ClipboardCard(item: item, height: cardHeight)
+                                .sparkVStaggeredEntrance(appeared.isOn, index: index)
                         }
                     }
                     .padding(ClipLayout.wellPadding)
@@ -140,7 +145,7 @@ private struct ClipboardTabHeader: View {
                         Image(systemName: "xmark.circle.fill").font(.system(size: 9))
                             .foregroundStyle(SparkVTheme.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                 }
             }
             .padding(.horizontal, 6)
@@ -194,8 +199,9 @@ private struct ClipboardIconButton: View {
                 .background(Capsule().fill(isActive ? SparkVTheme.activeTabFill : (hover.isOn ? SparkVTheme.hoverFill : Color.clear)))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
         .accessibilityLabel(help)
     }
@@ -290,7 +296,7 @@ private struct ClipboardNotice: View {
                         .background(Capsule().fill(SparkVTheme.red))
                         .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
             }
         }
         .padding(.horizontal, 16)
@@ -409,8 +415,8 @@ private struct ClipboardCard: View {
                 .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: 0.12), value: hovered)
-        .animation(.easeOut(duration: 0.15), value: flashed)
+        .animation(SparkVMotion.hover(), value: hovered)
+        .animation(SparkVMotion.easeOut(SparkVMotion.Duration.hover), value: flashed)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.kind.rawValue): \(item.displayTitle)")
         .accessibilityAddTraits(.isButton)
@@ -656,8 +662,9 @@ private struct ClipboardCardButton: View {
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
         .accessibilityLabel(help)
     }

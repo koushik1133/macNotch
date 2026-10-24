@@ -235,8 +235,11 @@ struct FanPresetButtonStyle: ButtonStyle {
                     .strokeBorder(selected ? Color.clear : SparkVTheme.stroke)
             )
             .contentShape(Rectangle())
+            .animation(SparkVMotion.hover(), value: selected)
+            .modifier(FanPressFeedback(isPressed: configuration.isPressed))
     }
 }
+
 
 // MARK: - One fan
 

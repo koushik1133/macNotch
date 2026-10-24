@@ -289,6 +289,7 @@ private struct SmallIconButton: View {
     var size: CGFloat = 11
     var isOn = false
     let action: () -> Void
+    @StateObject private var hover = ViewFlag()
 
     init(systemImage: String, help: String, isOn: Bool = false, tint: Color = SparkVTheme.textSecondary, size: CGFloat = 11, action: @escaping () -> Void) {
         self.systemImage = systemImage
@@ -305,9 +306,11 @@ private struct SmallIconButton: View {
                 .font(.system(size: size, weight: .semibold))
                 .foregroundStyle(isOn ? SparkVTheme.activeGlyph : tint)
                 .frame(width: 18, height: 18)
+                .sparkVHoverFill(hover.isOn, cornerRadius: 5)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
+        .onHover { hover.isOn = $0 }
         .help(help)
     }
 }
@@ -330,7 +333,7 @@ private struct TextButton: View {
                 .overlay(Capsule().strokeBorder(isPrimary || SparkVTheme.isApple ? Color.clear : SparkVTheme.stroke))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .fixedSize()
     }
 }

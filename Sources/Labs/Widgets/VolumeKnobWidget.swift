@@ -405,8 +405,9 @@ struct VolumeKnob: View {
             }
             .frame(width: side, height: side)
             .position(center)
-            .scaleEffect(drag.isDragging ? 1.04 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: drag.isDragging)
+            // Grabbed: the knob lifts slightly (a picked-up dial, not a press).
+            .scaleEffect(drag.isDragging && !SparkVMotion.reduceMotion ? 1.04 : 1)
+            .animation(SparkVMotion.snappy, value: drag.isDragging)
             .contentShape(Circle())
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .local)

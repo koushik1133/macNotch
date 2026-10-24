@@ -57,7 +57,45 @@ struct OnboardingPrimaryButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
                     .strokeBorder(isEnabled ? Color.clear : SparkVTheme.stroke)
             )
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .modifier(OnboardingPressFeedback(isPressed: configuration.isPressed && isEnabled))
+    }
+}
+
+/// Emil: pressables shrink to 0.97 fast (100 ms) and release a touch slower
+/// (160 ms), strong ease-out; Reduce Motion keeps only the color change.
+private struct OnboardingPressFeedback: ViewModifier {
+    let isPressed: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !SparkVMotion.reduceMotion ? SparkVMotion.pressedScale : 1)
+            .animation(
+                SparkVMotion.easeOut(isPressed ? SparkVMotion.Duration.press : SparkVMotion.Duration.release),
+                value: isPressed
+            )
+    }
+}
+
+/// Fades the item at `index` in from 8 pt below with a 50 ms stagger the
+/// first time a page appears (onboarding is a rare moment, so it may take a
+/// little delight). Reduce Motion: fade only, no stagger.
+private final class OnboardingAppearance: ObservableObject {
+    @Published var shown = false
+}
+
+private struct OnboardingStaggeredEntrance: ViewModifier {
+    let index: Int
+    let shown: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown || SparkVMotion.reduceMotion ? 0 : 8)
+            .animation(
+                SparkVMotion.respecting(SparkVMotion.easeOut(0.4))
+                    .delay(SparkVMotion.reduceMotion ? 0 : 0.08 + Double(index) * 0.05),
+                value: shown
+            )
     }
 }
 
@@ -78,6 +116,7 @@ struct OnboardingSecondaryButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
                     .strokeBorder(SparkVTheme.stroke)
             )
+            .modifier(OnboardingPressFeedback(isPressed: configuration.isPressed))
     }
 }
 
@@ -105,7 +144,9 @@ struct OnboardingRootView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.spring(response: 0.42, dampingFraction: 0.88), value: controller.step)
+            // A rare, first-run moment: the page slide keeps its spring
+            // (interruptible when Back/Next are clicked quickly).
+            .animation(SparkVMotion.respecting(.spring(response: 0.42, dampingFraction: 0.88)), value: controller.step)
             OnboardingFooter(controller: controller)
         }
         .frame(minWidth: OnboardingStyle.windowSize.width, maxWidth: .infinity, minHeight: OnboardingStyle.windowSize.height, maxHeight: .infinity)
@@ -127,7 +168,8 @@ struct OnboardingRootView: View {
     }
 
     private var pageTransition: AnyTransition {
-        .asymmetric(
+        if SparkVMotion.reduceMotion { return .opacity }
+        return .asymmetric(
             insertion: .opacity.combined(with: .offset(x: 28)),
             removal: .opacity.combined(with: .offset(x: -28))
         )
@@ -244,6 +286,8 @@ private struct OnboardingWelcomePage: View {
         Highlight(symbol: "square.grid.2x2.fill", title: "Agents & Spaces", detail: "Clipboard, search, capture and AI helpers.", tint: .teal),
     ]
 
+    @StateObject private var appearance = OnboardingAppearance()
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 12)
@@ -259,7 +303,7 @@ private struct OnboardingWelcomePage: View {
                 .foregroundStyle(SparkVTheme.textSecondary)
                 .padding(.top, 6)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
-                ForEach(highlights) { item in
+                ForEach(Array(highlights.enumerated()), id: \.element.id) { index, item in
                     VStack(alignment: .leading, spacing: 8) {
                         // Apple: a System Settings icon in the feature's
                         // color; SparkV Red: a monochrome tile.
@@ -281,12 +325,14 @@ private struct OnboardingWelcomePage: View {
                     .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
                     .background(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).fill(OnboardingStyle.card))
                     .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).strokeBorder(OnboardingStyle.cardBorder))
+                    .modifier(OnboardingStaggeredEntrance(index: index, shown: appearance.shown))
                 }
             }
             .padding(.top, 30)
             .padding(.horizontal, 44)
             Spacer(minLength: 12)
         }
+        .onAppear { appearance.shown = true }
     }
 }
 
@@ -390,7 +436,7 @@ private struct OnboardingPermissionsPage: View {
                 VStack(alignment: .leading, spacing: 14) {
                     if controller.showsStaleCard {
                         OnboardingStaleGrantCard(controller: controller)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.sparkVEnter)
                     }
                     ForEach(OnboardingPermission.Group.allCases) { group in
                         VStack(alignment: .leading, spacing: 6) {
@@ -412,7 +458,7 @@ private struct OnboardingPermissionsPage: View {
                     OnboardingSigningNote(controller: controller)
                 }
                 .padding(.vertical, 2)
-                .animation(.easeInOut(duration: 0.25), value: controller.showsStaleCard)
+                .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: controller.showsStaleCard)
             }
             .padding(.top, 16)
             .padding(.bottom, 12)
@@ -434,7 +480,9 @@ private struct OnboardingProgressRing: View {
                 .trim(from: 0, to: fraction)
                 .stroke(OnboardingStyle.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeOut(duration: 0.5), value: fraction)
+                // Progress fill, not UI chrome: a slower strong ease-out
+                // reads as "filling", and happens a handful of times.
+                .animation(SparkVMotion.respecting(SparkVMotion.easeOut(0.5)), value: fraction)
             VStack(spacing: 0) {
                 Text("\(granted)/\(total)")
                     .font(.system(size: 14, weight: .bold).monospacedDigit())
@@ -622,8 +670,11 @@ private struct OnboardingStaleGrantCard: View {
                     controller.hideStaleCard()
                 } label: {
                     Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                        .frame(width: 18, height: 18)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
+
                 .foregroundStyle(.secondary)
                 .help("Hide")
             }

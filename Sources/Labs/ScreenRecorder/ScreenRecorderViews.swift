@@ -311,24 +311,28 @@ final class ScreenRecorderResultPanel {
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
         model.hovering = false
-        let view = ScreenRecorderResultView(controller: controller, recording: recording, model: model) { [weak self] in self?.close() }
+        let view = ScreenRecorderResultView(controller: controller, recording: recording, model: model) { [weak self] in self?.close(animated: true) }
         let hosting = NSHostingView(rootView: view)
         hosting.frame = NSRect(origin: .zero, size: Self.size)
         panel.contentView = hosting
         panel.alphaValue = 0
         panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.18
-            panel.animator().alphaValue = 1
-        }
+        // A toast in the corner: fade in with a small rise, strong ease-out.
+        LiveBandMotion.fadeIn(panel, duration: SparkVMotion.Duration.standard, rise: 8)
         self.panel = panel
         scheduleClose()
     }
 
-    func close() {
+    /// `animated`: a short ease-out fade (the user's close, the timeout).
+    /// Replacing it with a new result closes instantly.
+    func close(animated: Bool = false) {
         closeTask?.cancel()
         closeTask = nil
-        panel?.orderOut(nil)
+        if animated, let panel {
+            LiveBandMotion.fadeOut(panel)
+        } else {
+            panel?.orderOut(nil)
+        }
         panel = nil
     }
 
@@ -341,7 +345,7 @@ final class ScreenRecorderResultPanel {
                 try? await Task.sleep(for: .seconds(1))
             }
             guard !Task.isCancelled else { return }
-            self?.close()
+            self?.close(animated: true)
         }
     }
 }
@@ -404,7 +408,7 @@ struct ScreenRecorderResultView: View {
                     .background(Circle().fill(SparkVTheme.surfaceHover))
                     .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .padding(7)
             .help("Close")
         }
@@ -433,6 +437,6 @@ private struct ScreenRecorderResultButton: View {
             .overlay(Capsule().strokeBorder(isPrimary ? Color.clear : SparkVTheme.stroke))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }

@@ -281,7 +281,7 @@ struct WorldClockWidget: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 
@@ -454,9 +454,10 @@ struct WidgetChip: View {
             .frame(height: 20)
             .background(Capsule().fill(isOn ? SparkVTheme.choose(apple: Color.white.opacity(0.18), sparkv: SparkVTheme.red) : (hover.isOn && !isDisabled ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
             .overlay(Capsule().strokeBorder(isOn ? Color.clear : LabsBStyle.chipStroke, lineWidth: 1))
+            .animation(SparkVMotion.hover(), value: hover.isOn)
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle(scale: isDisabled ? 1 : SparkVMotion.pressedScale))
         .disabled(isDisabled)
         .onHover { hover.isOn = $0 }
         .help(help ?? title)
@@ -481,7 +482,7 @@ struct WidgetSearchField: View {
                 Button { text = "" } label: {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 9)).foregroundStyle(SparkVTheme.textTertiary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
             }
         }
         .padding(.horizontal, 7)

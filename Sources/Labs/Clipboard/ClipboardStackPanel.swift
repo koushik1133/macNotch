@@ -161,12 +161,10 @@ final class ClipboardStackPanelController {
         let panel = panel ?? makePanel()
         self.panel = panel
         relayout(force: true)
-        panel.alphaValue = 0
+        // ⌘⇧V opens it instantly (keyboard-triggered: no fade), and it
+        // already closes instantly.
+        panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.1
-            panel.animator().alphaValue = 1
-        }
         onOpenChange?(true)
         AppLog.log("Clipboard: stack opened (\(clipboard.items.count) item(s), \(caretAX == nil ? "at pointer" : "at caret"))")
     }

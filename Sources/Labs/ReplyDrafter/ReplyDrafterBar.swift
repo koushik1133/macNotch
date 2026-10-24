@@ -59,10 +59,8 @@ final class ReplyDrafterBarController {
         if !panel.isVisible {
             panel.alphaValue = 0
             panel.orderFrontRegardless()
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.14
-                panel.animator().alphaValue = 1
-            }
+            // Shortcut-triggered: a quick ease-out fade, no movement.
+            LiveBandMotion.fadeIn(panel, duration: 0.14)
         }
     }
 
@@ -310,8 +308,9 @@ struct ReplyActionButton: View {
             )
             .overlay(Capsule().strokeBorder(isPrimary ? Color.clear : (hover.isOn && isEnabled ? SparkVTheme.choose(apple: Color.white.opacity(0.18), sparkv: SparkVTheme.brandRed.opacity(0.45)) : SparkVTheme.stroke)))
             .contentShape(Capsule())
+            .animation(SparkVMotion.hover(), value: hover.isOn)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(title)
     }
@@ -333,8 +332,9 @@ struct ReplyIconButton: View {
                 .frame(width: 24, height: 22)
                 .background(Circle().fill(hover.isOn && isEnabled ? SparkVTheme.surfaceHover : Color.clear))
                 .contentShape(Rectangle())
+                .animation(SparkVMotion.hover(), value: hover.isOn)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
     }

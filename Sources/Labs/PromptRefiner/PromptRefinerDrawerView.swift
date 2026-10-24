@@ -59,7 +59,7 @@ struct PromptRefinerDrawerView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Button("Copy again") { controller.copyLast() }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(SparkVTheme.link)
                 } else {
@@ -105,7 +105,7 @@ private struct DrawerIconButton: View {
                 .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
     }
 }

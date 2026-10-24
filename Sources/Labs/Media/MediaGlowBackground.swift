@@ -32,8 +32,10 @@ struct MediaGlowBackground: View {
             }
         }
         .opacity(media.isPlaying ? 1 : 0.5)
-        .animation(.easeInOut(duration: 0.9), value: tint.map(Self.key))
-        .animation(.easeInOut(duration: 0.6), value: media.isPlaying)
+        // Color changes take the plain `ease` curve; slow on purpose, since
+        // this is ambient light following the track, not a UI response.
+        .animation(SparkVMotion.hover(0.9), value: tint.map(Self.key))
+        .animation(SparkVMotion.hover(0.6), value: media.isPlaying)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }

@@ -100,47 +100,64 @@ struct AgentsHubView: View {
         ]
     }
 
+    /// Off until the grid is on screen, so the rows can fade in one after another.
+    @StateObject private var appeared = ViewFlag()
+
     var body: some View {
         LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: AgentHubMetrics.spacing), count: Self.columns),
             spacing: AgentHubMetrics.spacing
         ) {
-            ForEach(cells) { cell in
-                switch cell {
-                case .agent(let agent):
-                    AgentTile(title: agent.title, systemImage: agent.systemImage, tint: agent.tint, help: agent.help) {
-                        if let open = agent.open {
-                            open()
-                        } else if let tab = agent.tab {
-                            withAnimation(.easeOut(duration: 0.15)) { state.select(tab) }
-                        }
-                    }
-                case .focus:
-                    FocusHubTile(onOpen: { withAnimation(.easeOut(duration: 0.15)) { state.select(.focus) } })
-                case .translate:
-                    TranslateHubTile()
-                case .modes:
-                    // One click lists the modes; pick one to switch, or Stop / Edit Modes…
-                    ModesHubTile()
-                case .record:
-                    RecordHubTile()
-                case .smartMoments:
-                    if let smartMoments = SmartMomentsWiring.current {
-                        SmartMomentsHubTile(settings: smartMoments.settings)
-                    }
-                case .fans:
-                    FanHubTile(onOpen: { withAnimation(.easeOut(duration: 0.15)) { state.select(.fans) } })
-                case .ambientLight:
-                    // Click: on/off. Right-click: modes, edges, settings.
-                    AmbientLightHubTile()
-                case .clipboard:
-                    // The "C" capsule: one click pastes what's on the clipboard.
-                    ClipboardButton(maxWidth: 58, height: 24)
-                        .frame(maxWidth: .infinity, minHeight: AgentHubMetrics.tileHeight)
-                }
+            ForEach(Array(cells.enumerated()), id: \.element.id) { index, cell in
+                tile(for: cell)
+                    // Rows arrive 40 ms apart; tiles stay clickable while they settle.
+                    .sparkVStaggeredEntrance(appeared.isOn, index: index / Self.columns)
             }
         }
+        .onAppear { appeared.isOn = true }
+        .onDisappear { appeared.isOn = false }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Opening an agent's page: a short strong ease-out (Reduce Motion: fade).
+    private func openTab(_ tab: NotchState.Tab) {
+        withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { state.select(tab) }
+    }
+
+    @ViewBuilder
+    private func tile(for cell: Cell) -> some View {
+        switch cell {
+        case .agent(let agent):
+            AgentTile(title: agent.title, systemImage: agent.systemImage, tint: agent.tint, help: agent.help) {
+                if let open = agent.open {
+                    open()
+                } else if let tab = agent.tab {
+                    openTab(tab)
+                }
+            }
+        case .focus:
+            FocusHubTile(onOpen: { openTab(.focus) })
+        case .translate:
+            TranslateHubTile()
+        case .modes:
+            // One click lists the modes; pick one to switch, or Stop / Edit Modes…
+            ModesHubTile()
+        case .record:
+            RecordHubTile()
+        case .smartMoments:
+            if let smartMoments = SmartMomentsWiring.current {
+                SmartMomentsHubTile(settings: smartMoments.settings)
+            }
+        case .fans:
+            FanHubTile(onOpen: { openTab(.fans) })
+        case .ambientLight:
+            // Click: on/off. Right-click: modes, edges, settings.
+            AmbientLightHubTile()
+        case .clipboard:
+            // The "C" capsule: one click pastes what's on the clipboard.
+            ClipboardButton(maxWidth: 58, height: 24)
+                .frame(maxWidth: .infinity, minHeight: AgentHubMetrics.tileHeight)
+        }
     }
 }
 
@@ -227,7 +244,7 @@ private struct AgentTile: View {
                 sparkvFace(shape)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help ?? title)
     }
@@ -254,7 +271,7 @@ private struct AgentTile: View {
             shape.strokeBorder(isHighlighted ? tint.opacity(0.45) : Color.clear, lineWidth: 1)
         )
         .contentShape(shape)
-        .animation(.easeOut(duration: 0.12), value: hover.isOn)
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 
     /// SparkV Red: monochrome tiles lit red (sparkv.si).
@@ -279,5 +296,6 @@ private struct AgentTile: View {
             shape.strokeBorder(lit ? SparkVTheme.red.opacity(isHighlighted ? 0.55 : 0.35) : SparkVTheme.stroke, lineWidth: 1)
         )
         .contentShape(shape)
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 }

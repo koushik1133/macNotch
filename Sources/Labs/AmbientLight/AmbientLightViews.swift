@@ -149,8 +149,9 @@ struct AmbientLightSettingsView: View {
             .padding(6)
             .background(RoundedRectangle(cornerRadius: 8).fill(selected ? SparkVTheme.surfaceHover : SparkVTheme.surface))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? SparkVTheme.accent.opacity(0.6) : SparkVTheme.stroke))
+            .animation(SparkVMotion.hover(), value: selected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 
     private var footer: some View {
@@ -225,8 +226,11 @@ private struct AmbientModeCard: View {
             .background(shape.fill(isSelected ? SparkVTheme.accentSoft : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
             .overlay(shape.strokeBorder(isSelected ? SparkVTheme.accent.opacity(0.55) : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(shape)
+            .animation(SparkVMotion.hover(), value: hover.isOn)
+            .animation(SparkVMotion.hover(), value: isSelected)
         }
-        .buttonStyle(.plain)
+        // Large card: a lighter press than a button.
+        .buttonStyle(SparkVPressStyle(scale: 0.98))
         .onHover { hover.isOn = $0 }
     }
 }
@@ -332,8 +336,9 @@ struct AmbientLightHubTile: View {
             .frame(maxWidth: .infinity, minHeight: AgentHubMetrics.tileHeight)
             .background(LabsBHubTileBackground(isActive: on, isHovered: hover.isOn, tint: tint))
             .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous))
+            .animation(SparkVMotion.hover(), value: hover.isOn)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .contextMenu { AmbientLightMenuItems() }
         .help(on ? "Ambient Light (\(settings.mode.title)) is on. Click to turn off, right-click for modes."

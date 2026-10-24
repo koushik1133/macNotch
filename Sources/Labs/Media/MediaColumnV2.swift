@@ -182,7 +182,7 @@ struct MediaColumnV2: View {
                     .frame(width: 18, height: 18)
                     .background(Circle().fill(SparkVTheme.accent))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Save bookmark")
         }
         .padding(.leading, 7)
@@ -234,27 +234,32 @@ struct MediaArtworkView: View {
 
     var body: some View {
         let badge = max(14, side * 0.34)
-        ZStack(alignment: .bottomTrailing) {
-            artwork
-                .frame(width: side, height: side)
-                .clipShape(RoundedRectangle(cornerRadius: side * 0.18, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: side * 0.18, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-                )
-                .scaleEffect(hover.isOn && media.sourceBundleID != nil ? 1.04 : 1)
-                .shadow(color: glowColor.opacity(0.45), radius: 6)
+        Button(action: openSourceApp) {
+            ZStack(alignment: .bottomTrailing) {
+                artwork
+                    .frame(width: side, height: side)
+                    .clipShape(RoundedRectangle(cornerRadius: side * 0.18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: side * 0.18, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .scaleEffect(hover.isOn && media.sourceBundleID != nil && !SparkVMotion.reduceMotion ? 1.03 : 1)
+                    .shadow(color: glowColor.opacity(0.45), radius: 6)
 
-            badgeView
-                .frame(width: badge, height: badge)
-                .overlay(Circle().stroke(Color.black, lineWidth: 1.5))
-                .offset(x: badge * 0.28, y: badge * 0.28)
+                badgeView
+                    .frame(width: badge, height: badge)
+                    .overlay(Circle().stroke(Color.black, lineWidth: 1.5))
+                    .offset(x: badge * 0.28, y: badge * 0.28)
+            }
+            .frame(width: side, height: side)
+            .contentShape(Rectangle())
         }
-        .frame(width: side, height: side)
-        .contentShape(Rectangle())
+        // A click presses the art down to 97 %; hover lifts it with a plain
+        // ease (no spring wobble on something passed over many times a day).
+        // Nothing to open without a source app, so no press either.
+        .buttonStyle(SparkVPressStyle(scale: media.sourceBundleID == nil ? 1 : SparkVMotion.pressedScale))
         .onHover { hover.isOn = $0 }
-        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: hover.isOn)
-        .onTapGesture { openSourceApp() }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(media.sourceBundleID == nil ? "" : "Open the playing app")
         .accessibilityLabel(media.artwork == nil ? "No artwork" : "Artwork for \(media.title)")
     }
@@ -327,9 +332,10 @@ struct MediaControlButton: View {
                 .foregroundStyle(hover.isOn ? LabsBStyle.hoverGlyph : SparkVTheme.text)
                 .frame(width: 26, height: 20)
                 .background(Circle().fill(hover.isOn ? LabsBStyle.hoverFill : Color.clear).frame(width: 22, height: 22))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
         .accessibilityLabel(help)

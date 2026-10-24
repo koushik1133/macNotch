@@ -447,10 +447,11 @@ private struct MeetingDetail: View {
                     .background(Capsule().fill(SparkVTheme.background.opacity(0.95)))
                     .overlay(Capsule().stroke(MeetingPalette.cardStroke))
                     .padding(.bottom, 18)
-                    .transition(.opacity)
+                    .transition(.labsToastRise)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: model.toast)
+        // Toast enters and leaves: strong ease-out (was ease-in-out 0.2 s).
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: model.toast)
     }
 
     private func tabTitle(_ tab: MeetingNotesWindowModel.DetailTab) -> String {
@@ -488,7 +489,7 @@ private struct MeetingDetail: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .help("Rename")
                     }
                 }
@@ -568,7 +569,7 @@ private struct MeetingDetail: View {
                 .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.stroke))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
         .accessibilityLabel(help)
     }
@@ -870,9 +871,17 @@ private struct MeetingTranscriptTab: View {
                 .onAppear { proxy.scrollTo(MeetingTranscriptTab.bottomID, anchor: .bottom) }
                 .onChange(of: record.segments.last?.text) { _, _ in
                     guard isLive else { return }
-                    withAnimation(.easeOut(duration: 0.15)) {
+                    // Follows a live transcript that updates every few
+                    // seconds: a short strong ease-out keeps up without
+                    // lagging; Reduce Motion jumps.
+                    if SparkVMotion.reduceMotion {
                         proxy.scrollTo(MeetingTranscriptTab.bottomID, anchor: .bottom)
+                    } else {
+                        withAnimation(SparkVMotion.easeOut(SparkVMotion.Duration.hover)) {
+                            proxy.scrollTo(MeetingTranscriptTab.bottomID, anchor: .bottom)
+                        }
                     }
+
                 }
             }
         }

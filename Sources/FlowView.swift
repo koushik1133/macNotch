@@ -103,7 +103,7 @@ private enum FlowConfirm {
             alert.buttons.first?.hasDestructiveAction = true
             NSApp.activate(ignoringOtherApps: true)
             guard alert.runModal() == .alertFirstButtonReturn else { return }
-            withAnimation(.easeOut(duration: 0.15)) { perform() }
+            withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut())) { perform() }
         }
     }
 
@@ -190,7 +190,7 @@ private struct FlowSectionSwitch: View {
     private func item(_ section: FlowViewModel.Section, title: String, systemImage: String, count: Int) -> some View {
         let selected = model.section == section
         return Button {
-            withAnimation(.easeOut(duration: 0.15)) { model.section = section }
+            withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { model.section = section }
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: systemImage)
@@ -216,7 +216,7 @@ private struct FlowSectionSwitch: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 
@@ -242,6 +242,7 @@ private struct FlowHistoryStrip: View {
                     }
                 }
             }
+            .modifier(FlowEdgeFade())
         }
     }
 
@@ -303,11 +304,11 @@ private struct FlowHistoryCard: View {
             .background(FlowCardBackground(highlighted: hover.isOn || copied))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) { hover.isOn = hovering }
+            withAnimation(SparkVMotion.hover()) { hover.isOn = hovering }
         }
-        .animation(.easeOut(duration: 0.15), value: copied)
+        .animation(SparkVMotion.easeOut(SparkVMotion.Duration.hover), value: copied)
         .help(entry.text)
         .contextMenu {
             Button("Copy") {
@@ -382,6 +383,7 @@ private struct FlowNotesStrip: View {
                     }
                 }
             }
+            .modifier(FlowEdgeFade())
         }
     }
 }
@@ -419,7 +421,7 @@ private struct FlowNoteMicButton: View {
         let model = model
         let started = dictation.startNoteDictation { text in
             if let text {
-                withAnimation(.easeOut(duration: 0.2)) { _ = store.addNote(text) }
+                withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut())) { _ = store.addNote(text) }
                 return
             }
             // A failure is published right after the completion runs.
@@ -516,9 +518,9 @@ private struct FlowNoteChip: View {
             .background(FlowCardBackground(highlighted: hover.isOn))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) { hover.isOn = hovering }
+            withAnimation(SparkVMotion.hover()) { hover.isOn = hovering }
         }
         .help(note.text)
         .contextMenu {
@@ -528,7 +530,7 @@ private struct FlowNoteChip: View {
             Divider()
             Button("Delete…", role: .destructive) {
                 if isEmpty {
-                    withAnimation(.easeOut(duration: 0.15)) { store.deleteNote(note) }
+                    withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut())) { store.deleteNote(note) }
                 } else {
                     FlowConfirm.ask("Delete this note?", detail: "\(FlowConfirm.quoted(note.text)) will be deleted.") {
                         store.deleteNote(note)
@@ -672,8 +674,51 @@ private struct FlowWordsStrip: View {
                         }
                     }
                 }
+                .modifier(FlowEdgeFade())
             }
         }
+    }
+}
+
+/// Which ends of a horizontal strip have cards scrolled out of view.
+private struct FlowEdges: Equatable {
+    var leading = false
+    var trailing = false
+}
+
+private final class FlowEdgesBox: ObservableObject {
+    @Published var edges = FlowEdges()
+}
+
+/// Fades a horizontal strip's edge only while cards are clipped there, so
+/// the strip reads as scrollable without dimming a card that fits. Updates
+/// only when the scroll position or content size changes (no polling).
+private struct FlowEdgeFade: ViewModifier {
+    @StateObject private var box = FlowEdgesBox()
+    private let width: CGFloat = 14
+
+    func body(content: Content) -> some View {
+        let edges = box.edges
+        content
+            .onScrollGeometryChange(for: FlowEdges.self) { geometry in
+                let x = geometry.contentOffset.x
+                return FlowEdges(
+                    leading: x > 1,
+                    trailing: geometry.contentSize.width - x - geometry.containerSize.width > 1
+                )
+            } action: { _, new in
+                box.edges = new
+            }
+            .mask(
+                HStack(spacing: 0) {
+                    LinearGradient(colors: [Color.black.opacity(edges.leading ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: width)
+                    Color.black
+                    LinearGradient(colors: [.black, Color.black.opacity(edges.trailing ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: width)
+                }
+                .animation(SparkVMotion.hover(), value: edges)
+            )
     }
 }
 
@@ -720,9 +765,9 @@ private struct FlowVocabularyChip: View {
             .background(FlowCardBackground(highlighted: hover.isOn))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) { hover.isOn = hovering }
+            withAnimation(SparkVMotion.hover()) { hover.isOn = hovering }
         }
         .help(help)
         .contextMenu {
@@ -915,8 +960,9 @@ private struct FlowSmallButton: View {
             .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 }
 
@@ -939,8 +985,9 @@ private struct FlowIconButton: View {
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }

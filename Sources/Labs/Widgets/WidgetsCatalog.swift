@@ -337,7 +337,8 @@ struct WidgetRing<Center: View>: View {
                 .trim(from: 0, to: max(0.001, min(1, fraction)))
                 .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeOut(duration: 0.45), value: fraction)
+                // Data tween between samples (seconds apart), not a UI response.
+                .animation(SparkVMotion.easeOut(0.45), value: fraction)
             center
         }
         .padding(lineWidth / 2)

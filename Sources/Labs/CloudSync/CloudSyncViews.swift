@@ -138,7 +138,7 @@ struct CloudSyncSettingsView: View {
         }
         Spacer(minLength: 0)
         Button("Turn Off") { controller.setEnabled(false) }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .font(SparkVTheme.caption(11))
             .foregroundStyle(SparkVTheme.textTertiary)
     }
@@ -300,7 +300,9 @@ struct CloudSyncToggleRow: View {
             Image(systemName: systemImage)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(isOn ? SparkVTheme.red : SparkVTheme.textTertiary)
+                .animation(SparkVMotion.hover(), value: isOn)
                 .frame(width: 22)
+
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(SparkVTheme.headline(12.5))
                 Text(detail)

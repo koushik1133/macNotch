@@ -26,7 +26,7 @@ struct FileDropActionStrip: View {
                 }
             }
         }
-        .animation(.easeOut(duration: 0.15), value: spread.isOn)
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)), value: spread.isOn)
         .onChange(of: controller.mode) { _, _ in spread.isOn = false }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
@@ -99,7 +99,7 @@ struct FileDropActionStrip: View {
                         .truncationMode(.tail)
                     if controller.canUndo {
                         Button("Undo") { controller.undo() }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SparkVPressStyle())
                             .font(.system(size: 10.5, weight: .semibold))
                             .foregroundStyle(SparkVTheme.red)
                             .help("Undo the last action")
@@ -123,7 +123,7 @@ struct FileDropActionStrip: View {
                     .frame(width: 18, height: 18)
                     .background(Circle().fill(SparkVTheme.surfaceHover))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Clear (files stay where they are)")
         }
     }
@@ -217,7 +217,7 @@ private struct FileDropRenameRow: View {
                                 .frame(width: 22, height: 22)
                                 .background(Circle().fill(SparkVTheme.surface))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .disabled(draft?.isSuggesting == true)
                         .help("Suggest another name")
                     }
@@ -278,7 +278,7 @@ private struct FileDropSpaceRow: View {
                     .frame(width: 22, height: 44)
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(SparkVTheme.surface))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Back")
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
@@ -335,8 +335,9 @@ private struct FileDropSpaceChip: View {
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(hover.isOn ? FileDropStyle.hoverStroke : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }
@@ -571,9 +572,10 @@ private struct FileDropActionButton: View {
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(hover.isOn && enabled ? FileDropStyle.hoverStroke : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .disabled(!enabled)
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(action.help)
         .accessibilityLabel(action.title)
     }
@@ -607,8 +609,9 @@ struct FileDropPill: View {
             .overlay(Capsule().strokeBorder(prominent ? Color.clear : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 }
 

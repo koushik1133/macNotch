@@ -94,7 +94,7 @@ struct ClipboardButton: View {
                 onHoverChange: { hover.isOn = $0 }
             )
         )
-        .animation(.easeOut(duration: 0.12), value: hover.isOn)
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Clipboard: \(previewText)")
         .accessibilityHint("Click to paste, hold for history")

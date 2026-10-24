@@ -112,7 +112,8 @@ struct MediaScrubber: View {
                     .frame(width: labelWidth, alignment: .trailing)
             }
         }
-        .animation(.easeOut(duration: 0.18), value: active)
+        // Hover thickens the bar and brings in the knob: strong ease-out, 180 ms.
+        .animation(SparkVMotion.easeOut(SparkVMotion.Duration.small), value: active)
     }
 
     private func trailingLabel(timing: PlaybackTiming, position: TimeInterval, hours: Bool) -> String {
@@ -154,7 +155,11 @@ struct MediaScrubber: View {
                         .frame(width: Self.knobSize, height: Self.knobSize)
                         .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
                         .position(x: min(max(Self.knobSize / 2, width * fraction), width - Self.knobSize / 2), y: midY)
-                        .transition(.scale(scale: 0.3).combined(with: .opacity))
+                        // Grows out of the bar's own thickness (5 of 9 pt),
+                        // not from a dot; fade only under Reduce Motion.
+                        .transition(SparkVMotion.reduceMotion
+                            ? .opacity
+                            : .scale(scale: Self.activeBarHeight / Self.knobSize).combined(with: .opacity))
                 }
             }
             .frame(width: width, height: geometry.size.height)
@@ -164,9 +169,19 @@ struct MediaScrubber: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard media.canSeek else { return }
-                        interaction.dragFraction = Self.fraction(
+                        let fraction = Self.fraction(
                             atX: value.location.x, width: width, duration: timing.duration, ticks: ticks
                         )
+                        if interaction.dragFraction == nil {
+                            // A click jumps the knob with a quick ease-out;
+                            // the drag that may follow tracks the pointer 1:1
+                            // and retargets that motion at once.
+                            withAnimation(SparkVMotion.reduceMotion ? nil : SparkVMotion.easeOut(SparkVMotion.Duration.hover)) {
+                                interaction.dragFraction = fraction
+                            }
+                        } else {
+                            interaction.dragFraction = fraction
+                        }
                     }
                     .onEnded { value in
                         guard media.canSeek else { return }

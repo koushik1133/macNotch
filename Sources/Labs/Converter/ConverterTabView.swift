@@ -94,7 +94,7 @@ private struct ConverterDropZone: View {
                 style: StrokeStyle(lineWidth: 1, dash: [5, 4])
             )
         )
-        .animation(.easeOut(duration: 0.15), value: isTargeted)
+        .animation(SparkVMotion.hover(), value: isTargeted)
     }
 }
 
@@ -154,7 +154,7 @@ private struct ConverterInputChip: View {
                     .font(.system(size: 7, weight: .bold))
                     .foregroundStyle(hover.isOn ? (SparkVTheme.isApple ? SparkVTheme.text : SparkVTheme.red) : SparkVTheme.textTertiary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Remove \(input.name)")
         }
         .foregroundStyle(SparkVTheme.text)
@@ -163,6 +163,7 @@ private struct ConverterInputChip: View {
         .background(Capsule().fill(SparkVTheme.surface))
         .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(input.url.path)
         .contextMenu {
             // Merge and Images → PDF follow this order.
@@ -292,8 +293,9 @@ private struct ConverterTargetButton: View {
             .overlay(Capsule().strokeBorder(hover.isOn || SparkVTheme.isApple ? Color.clear : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(op.help)
     }
 }
@@ -469,6 +471,7 @@ private struct ConverterResultsWell: View {
                     ConverterErrorBanner(message: message)
                 }
             }
+            .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: converter.errorMessage)
         }
         .clipShape(shape)
         .background(shape.fill(isTargeted ? SparkVTheme.redSoft : SparkVTheme.surface))
@@ -478,7 +481,7 @@ private struct ConverterResultsWell: View {
                 style: StrokeStyle(lineWidth: 1, dash: isTargeted ? [5, 4] : [])
             )
         )
-        .animation(.easeOut(duration: 0.15), value: isTargeted)
+        .animation(SparkVMotion.hover(), value: isTargeted)
     }
 }
 
@@ -510,7 +513,7 @@ private struct ConverterJobCard: View {
                     .font(.system(size: 12))
                     .foregroundStyle(SparkVTheme.textTertiary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Cancel")
         }
         .padding(.horizontal, 9)
@@ -594,7 +597,9 @@ private struct ConverterResultCard: View {
             .padding(.trailing, 5)
             .opacity(hover.isOn ? 1 : 0.55)
         }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .clipShape(shape)
+
     }
 
     @ViewBuilder
@@ -654,7 +659,7 @@ private struct ConverterErrorBanner: View {
             Button { converter.dismissError() } label: {
                 Image(systemName: "xmark").foregroundStyle(SparkVTheme.textSecondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
         }
         .font(.system(size: 10, weight: .medium))
         .padding(.horizontal, 10)
@@ -663,7 +668,8 @@ private struct ConverterErrorBanner: View {
         .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.stroke, lineWidth: 1))
         .padding(6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .transition(.opacity)
+        .transition(.labsToastRise)
+
     }
 }
 
@@ -692,8 +698,9 @@ private struct ConverterPill: View {
             .overlay(Capsule().strokeBorder(prominent ? Color.clear : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 }
 
@@ -713,8 +720,9 @@ private struct ConverterIconButton: View {
                 .overlay(Circle().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }
@@ -735,8 +743,9 @@ private struct ConverterCardButton: View {
                 .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 0.5))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }

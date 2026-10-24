@@ -446,8 +446,10 @@ struct SmartMomentChip: View {
                 }
             }
             .contentShape(shape)
+            .animation(SparkVMotion.hover(), value: hover.isOn)
+            .animation(SparkVMotion.hover(), value: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
         .accessibilityLabel(action.title)
@@ -499,6 +501,7 @@ struct SmartMomentLinkButton: View {
     var help: String? = nil
     let action: () -> Void
     @StateObject private var hover = ViewFlag()
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
@@ -509,8 +512,10 @@ struct SmartMomentLinkButton: View {
                 .frame(height: 18)
                 .background(Capsule(style: .continuous).fill(hover.isOn ? SparkVTheme.hoverFill : Color.clear))
                 .contentShape(Capsule(style: .continuous))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
+                .opacity(isEnabled ? 1 : 0.5)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help ?? title)
     }
@@ -519,6 +524,7 @@ struct SmartMomentLinkButton: View {
 struct SmartMomentCloseButton: View {
     let action: () -> Void
     @StateObject private var hover = ViewFlag()
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
@@ -528,8 +534,10 @@ struct SmartMomentCloseButton: View {
                 .frame(width: 18, height: 18)
                 .background(Circle().fill(hover.isOn ? SparkVTheme.hoverFill : Color.clear))
                 .contentShape(Circle())
+                .animation(SparkVMotion.hover(), value: hover.isOn)
+                .opacity(isEnabled ? 1 : 0.5)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help("Close")
     }
@@ -555,6 +563,7 @@ struct SmartMomentDoItButtonStyle: ButtonStyle {
                 .background(shape.fill(configuration.isPressed ? SparkVTheme.accentPressed : SparkVTheme.accent).opacity(isEnabled ? 1 : 0.4))
                 .contentShape(shape)
                 .fixedSize()
+                .modifier(LiveBandPressEffect(isPressed: configuration.isPressed && isEnabled))
         }
     }
 }
@@ -572,6 +581,7 @@ struct SmartMomentQuietButtonStyle: ButtonStyle {
             .overlay(shape.strokeBorder(SparkVTheme.stroke, lineWidth: 0.75))
             .contentShape(shape)
             .fixedSize()
+            .modifier(LiveBandPressEffect(isPressed: configuration.isPressed))
     }
 }
 
@@ -599,7 +609,7 @@ struct SmartMomentsHubTile: View {
         } label: {
             face
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .contextMenu { SmartMomentsMenuItems(settings: settings) }
         .help(settings.isEnabled
@@ -639,7 +649,7 @@ struct SmartMomentsHubTile: View {
             shape.strokeBorder(apple ? Color.clear : (hover.isOn ? SparkVTheme.red.opacity(0.35) : SparkVTheme.stroke), lineWidth: 1)
         )
         .contentShape(shape)
-        .animation(.easeOut(duration: 0.12), value: hover.isOn)
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 }
 

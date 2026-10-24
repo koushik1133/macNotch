@@ -13,16 +13,39 @@ struct NotchActivityView: View {
     @EnvironmentObject private var activities: ActivityCenter
 
     var body: some View {
-        if dictation.phase != .idle {
-            DictationActivityView()
-        } else if clicky.phase != .idle {
-            ClickyActivityView()
-        } else if let activity = activities.current {
-            // HUDs, battery, timer, meetings and notifications.
-            activity.view()
-                .id(activities.revision)
-                .padding(.horizontal, 16)
+        // One band replacing another crossfades with a light blur (Sonner-like
+        // swap, interruptible). Key-driven owners (the HUD, dictation, Clicky)
+        // swap instantly: they repeat many times a day.
+        ZStack {
+            if dictation.phase != .idle {
+                DictationActivityView()
+                    .transition(.sparkVCrossfade)
+            } else if clicky.phase != .idle {
+                ClickyActivityView()
+                    .transition(.sparkVCrossfade)
+            } else if let activity = activities.current {
+                // HUDs, battery, timer, meetings and notifications.
+                activity.view()
+                    .padding(.horizontal, 16)
+                    .id(activities.revision)
+                    .transition(.sparkVCrossfade)
+            }
         }
+        .animation(swapAnimation, value: owner)
+    }
+
+    /// Who draws in the band; a change of owner is a band swap.
+    private var owner: String {
+        if dictation.phase != .idle { return "dictation" }
+        if clicky.phase != .idle { return "clicky" }
+        return activities.current?.id ?? ""
+    }
+
+    private var swapAnimation: Animation? {
+        guard dictation.phase == .idle, clicky.phase == .idle,
+              let activity = activities.current, !activity.kind.isLiveFeedback
+        else { return nil }
+        return SparkVMotion.respecting(SparkVMotion.easeOut())
     }
 
     /// Height of the band below the notch, or nil when nothing is expanded.
@@ -77,6 +100,8 @@ enum IslandWingsSource: Equatable {
 /// the notch.
 struct ClosedIslandContent: View {
     @EnvironmentObject private var activities: ActivityCenter
+    @EnvironmentObject private var dictation: DictationController
+    @EnvironmentObject private var clicky: ClickyController
     @EnvironmentObject private var media: MediaEngine
     let layout: IslandClosedLayout
     let restingHeight: CGFloat
@@ -92,11 +117,27 @@ struct ClosedIslandContent: View {
                 NotchActivityView()
                     .frame(height: band)
                     .padding(.top, restingHeight)
-                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
+                    .transition(bandTransition)
             }
         }
         .frame(width: layout.size.width, height: layout.size.height, alignment: .top)
     }
+
+    /// The band grows out of the notch: 96 % + fade, anchored at the top.
+    /// Key-driven bands (volume / brightness HUD, hold-to-talk dictation and
+    /// Clicky) only fade, so they feel instant.
+    private var bandTransition: AnyTransition {
+        if NotchActivityView.isBandHeld(dictation: dictation, clicky: clicky) { return .opacity }
+        if let activity = activities.current, activity.kind.isLiveFeedback { return .opacity }
+        return .sparkVEnter
+    }
+}
+
+/// Compact content swapping in the wings: blur-masked fade from 90 % (never
+/// from a speck). Reduce Motion: fade only.
+private var wingSwapTransition: AnyTransition {
+    if SparkVMotion.reduceMotion { return .opacity }
+    return AnyTransition.sparkVCrossfade.combined(with: .scale(scale: 0.9))
 }
 
 /// Leading content right of the left wing's edge, trailing content left of
@@ -146,7 +187,7 @@ private struct IslandWingsRow: View {
             if let activity = activities.compact {
                 CompactLeadingView(activity: activity)
                     .id(activity.id)
-                    .transition(.opacity.combined(with: .scale(scale: 0.6)))
+                    .transition(wingSwapTransition)
             }
         case .nowPlaying:
             NowPlayingCompactLeading()
@@ -168,11 +209,11 @@ private struct IslandWingsRow: View {
                     )
                     if let other = activities.secondary {
                         MinimalActivityView(activity: other)
-                            .transition(.opacity.combined(with: .scale(scale: 0.6)))
+                            .transition(wingSwapTransition)
                     }
                 }
                 .id(activity.id)
-                .transition(.opacity.combined(with: .scale(scale: 0.6)))
+                .transition(wingSwapTransition)
             }
         case .nowPlaying:
             NowPlayingCompactTrailing()
@@ -405,7 +446,8 @@ struct CompactLevelBars: View {
     let isAnimating: Bool
 
     var body: some View {
-        if isAnimating {
+        // Decorative: Reduce Motion rests the bars instead of bouncing them.
+        if isAnimating && !SparkVMotion.reduceMotion {
             TimelineView(.periodic(from: .now, by: 0.25)) { context in
                 bars(tick: Int(context.date.timeIntervalSinceReferenceDate * 4))
             }

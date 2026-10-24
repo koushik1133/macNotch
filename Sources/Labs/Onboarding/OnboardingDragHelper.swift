@@ -54,7 +54,11 @@ final class OnboardingDragHelper: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.isReleasedWhenClosed = false
+        // System fade on order-in/out instead of popping (same as the other
+        // SparkV utility panels).
+        panel.animationBehavior = .utilityWindow
         return panel
+
     }
 
     /// Bottom-right of the screen with the mouse, where System Settings'
@@ -129,7 +133,8 @@ struct OnboardingDragCard: View {
                     .frame(width: 18, height: 18)
                     .background(Circle().fill(SparkVTheme.surface))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
+
             .padding(8)
         }
         .environment(\.colorScheme, .dark)

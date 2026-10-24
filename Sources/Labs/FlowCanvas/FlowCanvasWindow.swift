@@ -308,7 +308,7 @@ struct FCCanvasArea: View {
                 FCFullscreenView(editor: editor, nodeID: id)
             }
         }
-        .animation(.easeOut(duration: 0.15), value: editor.flashMessage)
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)), value: editor.flashMessage)
     }
 
     private func chromeButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
@@ -320,7 +320,7 @@ struct FCCanvasArea: View {
                 .background(Circle().fill(palette.chrome))
                 .overlay(Circle().strokeBorder(palette.border))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
     }
 }
@@ -359,7 +359,7 @@ struct FCSidebar: View {
                 } label: {
                     Image(systemName: "sidebar.left").foregroundStyle(palette.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("Hide sidebar")
             }
             .padding(.horizontal, 14)
@@ -384,7 +384,7 @@ struct FCSidebar: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                 }
                 .padding(8)
             }
@@ -425,7 +425,7 @@ struct FCSidebar: View {
                 .background(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).fill(isCurrent ? LabsTint.selectionFill : Color.clear))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .contextMenu {
                 Button("Rename") {
                     editor.renameDraft = name
@@ -454,7 +454,7 @@ struct FCSidebar: View {
             .padding(.vertical, 5)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .contextMenu {
             if !template.isBuiltIn {
                 Button("Delete template") { library.deleteTemplate(template.id) }
@@ -481,8 +481,9 @@ struct FlowCanvasNotchButton: View {
                 .background(Capsule().fill(hover.isOn ? SparkVTheme.choose(apple: SparkVTheme.hoverFill, sparkv: SparkVTheme.accentSoft) : Color.clear))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }

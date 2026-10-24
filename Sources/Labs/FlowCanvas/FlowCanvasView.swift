@@ -243,7 +243,7 @@ struct FCSelectionPill: View {
             .padding(.vertical, 5)
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 
@@ -294,7 +294,7 @@ struct FCEmptyState: View {
                         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(palette.border))
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                 }
             }
             .frame(width: 420)

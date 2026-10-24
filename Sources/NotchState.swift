@@ -51,7 +51,15 @@ enum NotchMetrics {
     static var panelSize: CGSize { panelSize(for: .nook) }
     /// Grace period before the drawer closes after the pointer leaves it.
     static let collapseDelay: Duration = .milliseconds(500)
-    static let hoverAnimation: Animation = .spring(response: 0.35, dampingFraction: 0.8)
+    /// The island's open/close and hover spring: Apple-style, interruptible
+    /// (it keeps its velocity when the pointer reverses mid-motion), bounce
+    /// about 0.2. Kept at response 0.35 / damping 0.8 rather than
+    /// `SparkVMotion.island` so it stays in step with the Core Animation
+    /// spring of the Ambient Light outline and `NotchThemeTiming.islandSpring`.
+    /// Reduce Motion: a short ease-out with no overshoot.
+    static var hoverAnimation: Animation {
+        SparkVMotion.respecting(.spring(response: 0.35, dampingFraction: 0.8))
+    }
     /// Expanded live activity (the band under the notch) while the drawer is closed.
     static let activityWidth: CGFloat = 400
     static let activityBandHeight: CGFloat = 30
@@ -91,8 +99,14 @@ enum NotchMetrics {
     /// How long the closed island's now-playing wing shows a new track's
     /// title before slimming back to the level bars.
     static let nowPlayingTitlePeek: Duration = .seconds(8)
-    /// Crossfade between drawer tabs.
-    static let tabAnimation: Animation = .spring(response: 0.32, dampingFraction: 0.86)
+    /// Crossfade between drawer tabs (enter/exit: strong ease-out, 220 ms).
+    /// The drawer's height still follows `hoverAnimation`.
+    static var tabAnimation: Animation { SparkVMotion.easeOut(SparkVMotion.Duration.standard) }
+    /// The selection pill sliding between header tabs (on-screen movement:
+    /// strong ease-in-out). Reduce Motion: no slide, the pill just moves.
+    static var tabPillAnimation: Animation? {
+        SparkVMotion.reduceMotion ? nil : SparkVMotion.easeInOut(SparkVMotion.Duration.standard)
+    }
     /// The panel shrinks to a shorter tab only after the drawer's height
     /// animation has played, so it isn't cut off.
     static let tabShrinkDelay: Duration = .milliseconds(420)

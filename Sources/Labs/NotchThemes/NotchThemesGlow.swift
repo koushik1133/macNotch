@@ -258,6 +258,9 @@ struct RedRimNotchLayer: View {
         let rm = context.reduceMotion
         let rt = context.reduceTransparency
         let fade = Animation.easeOut(duration: 0.15)
+        // Leaving is quicker than arriving and never eases in: a strong
+        // ease-out, so the glow answers the pointer leaving at once.
+        let leave = SparkVMotion.easeOut(SparkVMotion.Duration.standard)
 
         // rrGrad / rrSpec are userSpaceOnUse: x ±170 and ±110 from the centre.
         let w = geo.size.width
@@ -290,7 +293,7 @@ struct RedRimNotchLayer: View {
                 outline
                     .stroke(glowRed, lineWidth: 16)
                     .blur(radius: 14)
-                    .animation(rm ? fade : (on ? .easeInOut(duration: 0.55).delay(0.14) : .easeInOut(duration: 0.35))) {
+                    .animation(rm ? fade : (on ? .easeInOut(duration: 0.55).delay(0.14) : leave)) {
                         $0.opacity(on ? (open ? 0.42 : 0.8) : 0)
                     }
             }
@@ -303,7 +306,7 @@ struct RedRimNotchLayer: View {
                     outline.stroke(glowHex(0xFF2A33), lineWidth: 4).blur(radius: 3)
                 }
             }
-            .animation(rm ? fade : (on ? .easeInOut(duration: 0.4).delay(0.1) : .easeInOut(duration: 0.35))) {
+            .animation(rm ? fade : (on ? .easeInOut(duration: 0.4).delay(0.1) : leave)) {
                 $0.opacity(on ? (rt ? 1 : (open ? 0.7 : 0.9)) : 0)
             }
 
@@ -316,15 +319,15 @@ struct RedRimNotchLayer: View {
                     outline
                         .trim(from: 0.5 - 0.5 * trace, to: 0.5 + 0.5 * trace)
                         .stroke(Color.white, style: StrokeStyle(lineWidth: 24, lineCap: .butt, lineJoin: .round))
-                        .animation(on ? .timingCurve(0.25, 0.8, 0.25, 1, duration: 0.46) : .timingCurve(0.5, 0, 0.75, 0, duration: 0.38), value: on)
+                        .animation(on ? .timingCurve(0.25, 0.8, 0.25, 1, duration: 0.46) : SparkVMotion.easeOut(0.3), value: on)
                 )
-                .animation(rm ? fade : (on ? .linear(duration: 0.06) : .easeInOut(duration: 0.25).delay(0.32))) {
+                .animation(rm ? fade : (on ? .linear(duration: 0.06) : SparkVMotion.easeOut(SparkVMotion.Duration.small).delay(0.12))) {
                     $0.opacity(on ? 1 : 0)
                 }
 
             // .rr-spec: 0.8 pt white-hot core, brightest at the bottom centre.
             NotchGlowBand(shape: outline, style: specGradient, inner: 0.45, outer: 1.25)
-                .animation(rm ? fade : (on ? .easeInOut(duration: 0.35).delay(0.32) : .easeInOut(duration: 0.2))) {
+                .animation(rm ? fade : (on ? .easeInOut(duration: 0.35).delay(0.32) : SparkVMotion.easeOut(SparkVMotion.Duration.small))) {
                     $0.opacity(on ? (open ? 0.6 : 1) : 0)
                 }
         }

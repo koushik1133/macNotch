@@ -21,7 +21,7 @@ struct MeetingCapsuleView: View {
                     .background(Capsule().fill(SparkVTheme.surfaceHover))
                     .overlay(Capsule().strokeBorder(SparkVTheme.isApple ? Color.clear : SparkVTheme.stroke))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Open meeting notes")
         }
         .padding(.leading, 4)
@@ -54,7 +54,8 @@ struct MeetingCapsuleView: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
+        .opacity(assistant.phase == .summarizing ? 0.5 : 1)
         .disabled(assistant.phase == .summarizing)
         .help(assistant.phase == .recording ? "Stop and write notes" : "Record a meeting")
     }

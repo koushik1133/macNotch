@@ -140,8 +140,9 @@ struct ClipboardSmartChip: View {
             .overlay(Capsule().strokeBorder(hover.isOn ? Color.clear : SparkVTheme.stroke, lineWidth: 0.5))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(action.title)
         .accessibilityLabel(action.title)
     }

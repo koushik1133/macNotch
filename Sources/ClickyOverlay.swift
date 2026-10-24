@@ -85,20 +85,32 @@ final class ClickyOverlay {
         model.reset(start: startLocal, target: targetLocal, label: label, size: screenFrame.size)
         panel.orderFrontRegardless()
 
-        // Let the first frame render at the start position, then fly.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, self.generation == current else { return }
-                withAnimation(.timingCurve(0.25, 0.85, 0.3, 1, duration: ClickyPointerModel.flightDuration)) {
-                    self.model.progress = 1
+        if SparkVMotion.reduceMotion {
+            // Reduce Motion: no flight or ripple; the pointer and its label
+            // fade in at the target.
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { model.progress = 1 }
+            withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut())) { model.arrived = true }
+        } else {
+            // Let the first frame render at the start position, then fly.
+            // Moving across the screen: strong ease-in-out.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.generation == current else { return }
+                    withAnimation(SparkVMotion.easeInOut(ClickyPointerModel.flightDuration)) {
+                        self.model.progress = 1
+                    }
                 }
             }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03 + ClickyPointerModel.flightDuration * 0.85) { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, self.generation == current else { return }
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { self.model.arrived = true }
-                withAnimation(.easeOut(duration: 1.3).repeatForever(autoreverses: false)) { self.model.pulse = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.03 + ClickyPointerModel.flightDuration * 0.85) { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.generation == current else { return }
+                    // The label pops in like a tooltip: ease-out, 180 ms.
+                    withAnimation(SparkVMotion.easeOut(SparkVMotion.Duration.small)) { self.model.arrived = true }
+                    // Constant ripple: ease-out reads as a wave spreading.
+                    withAnimation(.easeOut(duration: 1.3).repeatForever(autoreverses: false)) { self.model.pulse = true }
+                }
             }
         }
 
@@ -124,7 +136,8 @@ final class ClickyOverlay {
             return
         }
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
+            context.duration = SparkVMotion.Duration.small
+            context.timingFunction = LiveBandMotion.easeOutTiming
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
@@ -192,7 +205,8 @@ final class ClickyOverlay {
 
 @MainActor
 final class ClickyPointerModel: ObservableObject {
-    static let flightDuration: TimeInterval = 0.9
+    /// Explanatory motion (rare, across the screen), so longer than UI motion.
+    static let flightDuration: TimeInterval = 0.7
 
     @Published var start: CGPoint = .zero
     @Published var target: CGPoint = .zero
@@ -232,7 +246,7 @@ private struct ClickyPointerView: View {
                 LabelBubble(text: model.label)
                     .fixedSize()
                     .modifier(BubblePlacement(target: model.target, area: model.size))
-                    .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
+                    .transition(.sparkVEnter)
             }
 
             FlyingPointer(progress: model.progress, start: model.start, target: model.target)

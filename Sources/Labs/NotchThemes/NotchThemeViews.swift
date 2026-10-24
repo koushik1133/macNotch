@@ -410,9 +410,9 @@ private struct NotchThemeCard: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.15)) { model.isHovered = hovering }
+            withAnimation(SparkVMotion.hover()) { model.isHovered = hovering }
             if !hovering { model.pointer = nil }
         }
         .accessibilityLabel(theme.title + (theme == .plain ? ", default" : ""))
@@ -583,9 +583,10 @@ struct NotchThemeAppearanceTile: View {
                 RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
                     .fill(hover.isHovered ? SparkVTheme.surfaceHover : SparkVTheme.surface)
             )
+            .animation(SparkVMotion.hover(), value: hover.isHovered)
             .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isHovered = $0 }
         .help("Choose how the notch lights up on hover")
     }

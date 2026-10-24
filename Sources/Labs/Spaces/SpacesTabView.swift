@@ -106,7 +106,7 @@ struct SpacesTabView: View {
                     }
                 }
                 .frame(height: rowHeight)
-                .animation(.easeOut(duration: 0.15), value: ui.toast)
+                .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)), value: ui.toast)
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)
         }
@@ -284,7 +284,7 @@ private struct SpacesTabHeader: View {
                             .font(.system(size: 9))
                             .foregroundStyle(SparkVTheme.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                 }
             }
             .padding(.horizontal, 7)
@@ -318,7 +318,7 @@ private struct SpacesTabHeader: View {
                 .background(Capsule().fill(SparkVTheme.red))
                 .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Open the Spaces window")
         }
     }
@@ -377,12 +377,14 @@ private struct SpacesTabCard: View {
                     .strokeBorder(isTargeted ? targetColor.opacity(0.9) : (hover.isOn ? SpacesPalette.hoverStroke : SpacesPalette.stroke),
                                   lineWidth: isTargeted ? 1.5 : 1)
             )
-            .scaleEffect(isTargeted ? 1.03 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isTargeted)
+            .scaleEffect(isTargeted && !SparkVMotion.reduceMotion ? 1.03 : 1)
+            // A drag can leave mid-grow: a spring retargets with its velocity.
+            .animation(SparkVMotion.snappy, value: isTargeted)
             .contentShape(RoundedRectangle(cornerRadius: SpacesTabLayout.corner, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help("Open \(title) · drop files, links or text to file them here")
     }
 
@@ -445,8 +447,9 @@ private struct SpacesTabNewCard: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: SpacesTabLayout.corner, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help("Create a Space for an organization, client or project")
     }
 }
@@ -524,7 +527,8 @@ private struct SpacesTabResultCard: View {
             .contentShape(RoundedRectangle(cornerRadius: SpacesTabLayout.corner, style: .continuous))
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 }

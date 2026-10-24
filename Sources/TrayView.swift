@@ -1050,6 +1050,8 @@ struct TrayView: View {
     @EnvironmentObject private var tray: TrayStore
     // Drops are handled by the whole drawer in NotchNookLayoutView.
     @EnvironmentObject private var state: NotchState
+    /// Off until the shelf is on screen, so the cards can fade in in turn.
+    @StateObject private var appeared = ViewFlag()
 
     var body: some View {
         GeometryReader { proxy in
@@ -1072,11 +1074,15 @@ struct TrayView: View {
                         TrayWell(isTargeted: state.isDropTargeted) {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: TrayLayout.cardSpacing) {
-                                    ForEach(tray.items) { item in
+                                    ForEach(Array(tray.items.enumerated()), id: \.element.id) { index, item in
                                         TrayCardView(item: item, side: side)
+                                            .sparkVStaggeredEntrance(appeared.isOn, index: index)
+                                            .transition(.opacity.combined(with: .scale(scale: SparkVMotion.enterScale)))
                                     }
                                 }
                                 .padding(TrayLayout.wellPadding)
+                                // New and removed cards slide the row instead of jumping.
+                                .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: tray.items.map(\.id))
                             }
                         }
                         .frame(height: wellHeight)
@@ -1089,6 +1095,8 @@ struct TrayView: View {
             .frame(width: size.width, height: size.height, alignment: .bottom)
         }
         .padding(.vertical, 2)
+        .onAppear { appeared.isOn = true }
+        .onDisappear { appeared.isOn = false }
     }
 }
 
@@ -1114,7 +1122,7 @@ private struct TrayWell<Content: View>: View {
                     style: StrokeStyle(lineWidth: 1, dash: isTargeted ? [5, 4] : [])
                 )
             )
-            .animation(.easeOut(duration: 0.15), value: isTargeted)
+            .animation(SparkVMotion.hover(), value: isTargeted)
     }
 }
 
@@ -1218,7 +1226,7 @@ private struct TrayClearButton: View {
                 .help("Clear tray")
             }
         }
-        .animation(.easeOut(duration: 0.12), value: armed.isOn)
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.hover)), value: armed.isOn)
         .onDisappear {
             disarm.task?.cancel()
             armed.isOn = false
@@ -1261,8 +1269,9 @@ private struct TrayActionButton: View {
             .overlay(Capsule().strokeBorder(tint == nil && !SparkVTheme.isApple ? SparkVTheme.stroke : Color.clear, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 }
 
@@ -1344,7 +1353,7 @@ private struct TrayAirDropColumn: View {
                 .frame(width: size.width, height: size.height)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(count == 0
               ? "Drop files, images or links here to send them with AirDrop"
               : "Click to AirDrop \(count == 1 ? "the item" : "all \(count) items") · drop files here to AirDrop them")
@@ -1398,6 +1407,7 @@ private struct TrayCardView: View {
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(SparkVTheme.success)
                     )
+                    .transition(.opacity)
             }
         }
         .contentShape(shape)
@@ -1422,7 +1432,7 @@ private struct TrayCardView: View {
             if hovered {
                 TrayRemoveButton { tray.remove(item) }
                     .padding(6)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .topLeading)))
+                    .transition(.opacity.combined(with: .scale(scale: SparkVMotion.enterScale, anchor: .topLeading)))
             }
         }
         // Drawn above the drag source, whose top-trailing corner lets the
@@ -1431,11 +1441,12 @@ private struct TrayCardView: View {
             if hovered {
                 TrayAIButton { askAI() }
                     .padding(6)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .topTrailing)))
+                    .transition(.opacity.combined(with: .scale(scale: SparkVMotion.enterScale, anchor: .topTrailing)))
             }
         }
-        .animation(.easeOut(duration: 0.12), value: hovered)
-        .animation(.easeOut(duration: 0.12), value: selected)
+        .animation(SparkVMotion.hover(), value: hovered)
+        .animation(SparkVMotion.hover(), value: selected)
+        .animation(SparkVMotion.easeOut(SparkVMotion.Duration.hover), value: copied.isOn)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -1587,17 +1598,18 @@ private struct TrayRemoveButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .font(.system(size: 8.5, weight: .heavy))
+                .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(SparkVTheme.text)
-                .frame(width: 20, height: 20)
+                .frame(width: 22, height: 22)
                 .background(Circle().fill(hover.isOn
                                           ? SparkVTheme.choose(apple: Color.black.opacity(0.82), sparkv: SparkVTheme.red)
                                           : SparkVTheme.choose(apple: Color.black.opacity(0.62), sparkv: SparkVTheme.background.opacity(0.72))))
                 .overlay(Circle().strokeBorder(hover.isOn && !SparkVTheme.isApple ? Color.clear : SparkVTheme.choose(apple: Color.white.opacity(0.22), sparkv: SparkVTheme.stroke), lineWidth: 0.5))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help("Remove from Tray")
     }
 }
@@ -1619,8 +1631,9 @@ private struct TrayAIButton: View {
                 .overlay(Circle().strokeBorder(SparkVTheme.isApple ? Color.white.opacity(0.22) : (hover.isOn ? Color.clear : SparkVTheme.red.opacity(0.45)), lineWidth: 0.5))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help("Ask AI about this")
     }
 }

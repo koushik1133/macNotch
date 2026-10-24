@@ -75,12 +75,13 @@ struct NotchNookLayoutView: View {
                         // nothing important is drawn under the physical notch.
                         .frame(height: state.collapsedSize.height)
 
-                    // Crossfade between tabs (opacity, a slight scale and
-                    // blur) while the drawer's height springs to the new tab.
+                    // Crossfade between tabs (opacity and a light 2 pt blur
+                    // that hides the double exposure) while the drawer's
+                    // height springs to the new tab.
                     ZStack {
                         tabContent
                             .id(state.tab)
-                            .transition(.tabCrossfade)
+                            .transition(.sparkVCrossfade)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .animation(NotchMetrics.tabAnimation, value: state.tab)
@@ -107,7 +108,14 @@ struct NotchNookLayoutView: View {
                     tray.accept(providers)
                     return true
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .top)))
+                // Grows out of the notch: from 96 % at the top edge with a
+                // fade (fade only under Reduce Motion). On close the content
+                // fades out quickly, so it is gone before the body shrinks
+                // over it, and a fast re-hover retargets the spring.
+                .transition(.asymmetric(
+                    insertion: .sparkVEnter,
+                    removal: .opacity.animation(SparkVMotion.easeOut(SparkVMotion.Duration.press))
+                ))
             } else if let closed {
                 // Compact wings beside the camera housing, inside the menu
                 // bar, plus the band under the notch only when expanded.
@@ -171,32 +179,13 @@ struct NotchNookLayoutView: View {
     }
 }
 
-// MARK: - Tab transition
-
-/// Fades a tab's content with a slight scale and blur, so switching tabs
-/// reads as one surface changing rather than a hard swap.
-private struct TabCrossfadeModifier: ViewModifier {
-    let progress: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(1 - progress)
-            .scaleEffect(1 - 0.03 * progress, anchor: .top)
-            .blur(radius: 5 * progress)
-    }
-}
-
-extension AnyTransition {
-    /// Drawer tab crossfade (see `TabCrossfadeModifier`).
-    static var tabCrossfade: AnyTransition {
-        .modifier(active: TabCrossfadeModifier(progress: 1), identity: TabCrossfadeModifier(progress: 0))
-    }
-}
-
 // MARK: - Header
 
 private struct HeaderRow: View {
     @EnvironmentObject private var assistant: MeetingAssistant
+    @EnvironmentObject private var state: NotchState
+    /// The active tab's pill is one shape that slides between icons.
+    @Namespace private var pill
 
     var body: some View {
         // Each side of the camera housing has 161.5 pt (508 pt header, 185 pt
@@ -207,24 +196,27 @@ private struct HeaderRow: View {
         HStack(spacing: 2) {
             // Places on the left, actions on the right; the camera cutout sits
             // in the gap between them. Icons only, each with a tooltip.
-            IconTab(systemImage: "house.fill", tab: .nook, help: "Home: media, shortcuts and mirror")
-            IconTab(systemImage: "rectangle.3.group.fill", tab: .widgets, help: "Widgets: world clocks, volume, habits, system and network")
-            IconTab(systemImage: "tray.full.fill", tab: .tray, help: "Tray: screenshots, text and files")
-            IconTab(systemImage: "calendar", tab: .today, help: "Today: meetings and timer")
-            IconTab(systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard", tab: .converter, help: "Convert: drop a file, pick a format")
-            IconTab(systemImage: "square.stack.3d.up.fill", tab: .spaces, help: "Spaces: knowledge folders per organization")
+            IconTab(systemImage: "house.fill", tab: .nook, help: "Home: media, shortcuts and mirror", pill: pill)
+            IconTab(systemImage: "rectangle.3.group.fill", tab: .widgets, help: "Widgets: world clocks, volume, habits, system and network", pill: pill)
+            IconTab(systemImage: "tray.full.fill", tab: .tray, help: "Tray: screenshots, text and files", pill: pill)
+            IconTab(systemImage: "calendar", tab: .today, help: "Today: meetings and timer", pill: pill)
+            IconTab(systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard", tab: .converter, help: "Convert: drop a file, pick a format", pill: pill)
+            IconTab(systemImage: "square.stack.3d.up.fill", tab: .spaces, help: "Spaces: knowledge folders per organization", pill: pill)
             Spacer(minLength: 0)
             if assistant.phase != .recording {
                 FocusHeaderButton()
             }
             RecordMeetingButton()
             IconTab(systemImage: "square.grid.2x2.fill", tab: .agents, help: "Agents: search, focus, capture, reply, screen, prompts, clipboard, files, downloads and more",
-                    activeFor: NotchState.Tab.agentTabs)
+                    activeFor: NotchState.Tab.agentTabs, pill: pill)
             // Original SF Symbols, not the Wispr Flow or Clicky logos.
-            IconTab(systemImage: "waveform", tab: .flow, help: "Flow: dictation history and notes")
-            IconTab(systemImage: "cursorarrow.rays", tab: .clicky, help: "Clicky: ask about your screen")
+            IconTab(systemImage: "waveform", tab: .flow, help: "Flow: dictation history and notes", pill: pill)
+            IconTab(systemImage: "cursorarrow.rays", tab: .clicky, help: "Clicky: ask about your screen", pill: pill)
             SettingsMenu()
         }
+        // The pill slides with a strong ease-in-out (on-screen movement),
+        // overriding the island spring the drawer uses for its height.
+        .animation(NotchMetrics.tabPillAnimation, value: state.tab)
     }
 }
 
@@ -236,27 +228,34 @@ private struct IconTab: View {
     let help: String
     /// Tabs that also light this icon (the Agents hub's pages).
     var activeFor: Set<NotchState.Tab> = []
+    /// Shared with the other header tabs so the active pill slides between them.
+    let pill: Namespace.ID
 
     @StateObject private var hover = ViewFlag()
 
     var body: some View {
         let isActive = state.tab == tab || activeFor.contains(state.tab)
         Button {
-            withAnimation(.easeOut(duration: 0.15)) { state.select(tab) }
+            // HeaderRow animates the pill; the drawer animates its own height.
+            state.select(tab)
         } label: {
             Image(systemName: systemImage)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(isActive ? SparkVTheme.activeGlyph : (hover.isOn ? SparkVTheme.text : SparkVTheme.inactiveGlyph))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
                 .frame(width: 24, height: 22)
-                .background(
-                    Capsule().fill(isActive ? SparkVTheme.activeTabFill : (hover.isOn ? SparkVTheme.hoverFill : Color.clear))
-                )
-                .overlay(
-                    Capsule().strokeBorder(isActive ? SparkVTheme.activeTabStroke : Color.clear, lineWidth: 0.5)
-                )
+                .sparkVHoverFill(hover.isOn && !isActive, cornerRadius: 11)
+                .background {
+                    if isActive {
+                        Capsule()
+                            .fill(SparkVTheme.activeTabFill)
+                            .overlay(Capsule().strokeBorder(SparkVTheme.activeTabStroke, lineWidth: 0.5))
+                            .matchedGeometryEffect(id: "activeTabPill", in: pill)
+                    }
+                }
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
     }
@@ -266,6 +265,7 @@ private struct IconTab: View {
 /// turns into a blinking dot with the elapsed time while recording.
 private struct RecordMeetingButton: View {
     @EnvironmentObject private var assistant: MeetingAssistant
+    @StateObject private var hover = ViewFlag()
 
     var body: some View {
         let isRecording = assistant.phase == .recording
@@ -303,9 +303,11 @@ private struct RecordMeetingButton: View {
             .frame(minWidth: 24, minHeight: 22)
             .background(Capsule().fill(SparkVTheme.choose(apple: Color.red.opacity(isRecording ? 0.22 : 0),
                                                           sparkv: SparkVTheme.redSoft.opacity(isRecording ? 1.4 : 0))))
+            .sparkVHoverFill(hover.isOn && !isRecording, cornerRadius: 11)
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
+        .onHover { hover.isOn = $0 }
         .help(isRecording ? "Stop recording and write meeting notes" : "Record this meeting (transcript, tasks and minutes)")
     }
 
@@ -350,6 +352,7 @@ private struct SettingsMenu: View {
     @EnvironmentObject private var screenRecorder: ScreenRecorderController
     @ObservedObject private var flowCanvasSettings = FCSettingsModel.shared
     @StateObject private var loginItem = LaunchAtLogin()
+    @StateObject private var hover = ViewFlag()
 
     var body: some View {
         Menu {
@@ -521,15 +524,22 @@ private struct SettingsMenu: View {
             Divider()
             Button("Quit SparkV") { NSApp.terminate(nil) }
         } label: {
+            // Same 12 pt semibold glyph, 24x22 hit area and hover fill as
+            // the tab icons beside it.
             Image(systemName: "gearshape.fill")
-                .font(.system(size: 12))
-                .foregroundStyle(SparkVTheme.inactiveGlyph)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(hover.isOn ? SparkVTheme.text : SparkVTheme.inactiveGlyph)
+                .animation(SparkVMotion.hover(), value: hover.isOn)
+                .frame(width: 24, height: 22)
+                .sparkVHoverFill(hover.isOn, cornerRadius: 11)
+                .contentShape(Capsule())
         }
         // .borderlessButton ignores the label's font and color.
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
+        .onHover { hover.isOn = $0 }
         .onAppear { loginItem.reload() }
     }
 }
@@ -700,6 +710,7 @@ private struct MacroCapsule: View {
                 } label: {
                     capsule
                 }
+                .buttonStyle(SparkVPressStyle())
                 .disabled(status == .running)
                 .contextMenu {
                     ShortcutPickerItems(slot: slot)
@@ -733,6 +744,7 @@ private struct MacroCapsule: View {
                                    ? SparkVTheme.choose(apple: Color.red.opacity(0.35), sparkv: SparkVTheme.red)
                                    : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
         .overlay(Capsule().strokeBorder(isLiveDictation || SparkVTheme.isApple ? Color.clear : (hover.isOn ? SparkVTheme.red.opacity(0.45) : SparkVTheme.stroke), lineWidth: 1))
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .contentShape(Capsule())
     }
 
@@ -838,7 +850,7 @@ private struct MirrorColumn: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help(camera.errorMessage ?? "Toggle camera mirror")
 
             Text(caption)
@@ -846,7 +858,7 @@ private struct MirrorColumn: View {
                 .foregroundStyle(captionColor)
                 .lineLimit(1)
         }
-        .animation(.easeOut(duration: 0.2), value: camera.isRunning)
+        .animation(SparkVMotion.easeOut(SparkVMotion.Duration.standard), value: camera.isRunning)
         // Leaving the Nook tab (or closing the drawer) removes the preview,
         // so the camera must not keep capturing behind it.
         .onDisappear { camera.stop() }

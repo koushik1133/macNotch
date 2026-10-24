@@ -20,7 +20,7 @@ struct FCInspector: View {
                 } label: {
                     Image(systemName: "sidebar.right").foregroundStyle(palette.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("Hide inspector")
             }
             .padding(.horizontal, 14)
@@ -79,7 +79,7 @@ struct FCFullscreenView: View {
                         } label: {
                             Image(systemName: "xmark.circle.fill").font(.system(size: 16)).foregroundStyle(palette.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 50)
@@ -286,7 +286,7 @@ struct FCNodeDetail: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
             }
         }
     }

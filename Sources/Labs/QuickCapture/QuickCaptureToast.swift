@@ -201,7 +201,7 @@ struct QuickCaptureToastView: View {
                 .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 0.5))
                 .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Change Space")
             .accessibilityLabel("Change Space, now \(model.spaceName)")
 
@@ -249,8 +249,9 @@ private struct QuickCaptureStripButton: View {
             .background(Capsule().fill(hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .accessibilityLabel(title)
     }
 }

@@ -117,25 +117,50 @@ struct LabsBadge: View {
 }
 
 /// SparkVPrimaryButtonStyle that also dims when disabled (the theme styles
-/// draw the same either way).
+/// draw the same either way) and gives press feedback.
 struct LabsPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        LabsEnabledDimmer(content: SparkVPrimaryButtonStyle().makeBody(configuration: configuration))
+        LabsEnabledDimmer(content: SparkVPrimaryButtonStyle().makeBody(configuration: configuration), isPressed: configuration.isPressed)
     }
 }
 
-/// SparkVSecondaryButtonStyle that also dims when disabled.
+/// SparkVSecondaryButtonStyle that also dims when disabled and gives press
+/// feedback.
 struct LabsSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        LabsEnabledDimmer(content: SparkVSecondaryButtonStyle().makeBody(configuration: configuration))
+        LabsEnabledDimmer(content: SparkVSecondaryButtonStyle().makeBody(configuration: configuration), isPressed: configuration.isPressed)
     }
 }
 
+/// Emil: a pressed button shrinks to 0.97 in 100 ms and releases in 160 ms
+/// (strong ease-out, asymmetric). Disabled buttons don't move; Reduce
+/// Motion keeps only the fill change the theme style already draws.
 private struct LabsEnabledDimmer<Content: View>: View {
     @Environment(\.isEnabled) private var isEnabled
     let content: Content
+    var isPressed = false
 
     var body: some View {
-        content.opacity(isEnabled ? 1 : 0.4)
+        let pressed = isPressed && isEnabled && !SparkVMotion.reduceMotion
+        content
+            .opacity(isEnabled ? 1 : 0.4)
+            .scaleEffect(pressed ? SparkVMotion.pressedScale : 1)
+            .animation(
+                SparkVMotion.easeOut(isPressed ? SparkVMotion.Duration.press : SparkVMotion.Duration.release),
+                value: isPressed
+            )
     }
 }
+
+extension AnyTransition {
+    /// Bottom toast / message pill in a lab window: fades in from 96 % with
+    /// a 6 pt rise from its bottom edge, reverses on exit (pair with
+    /// `SparkVMotion.easeOut()`). Reduce Motion: fade only.
+    static var labsToastRise: AnyTransition {
+        if SparkVMotion.reduceMotion { return .opacity }
+        return .opacity
+            .combined(with: .scale(scale: SparkVMotion.enterScale, anchor: .bottom))
+            .combined(with: .offset(y: 6))
+    }
+}
+

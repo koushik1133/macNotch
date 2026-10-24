@@ -97,24 +97,28 @@ struct WidgetsTabView: View {
             let page = min(ui.page, max(0, pages.count - 1))
             HStack(spacing: WidgetStyle.spacing) {
                 ZStack(alignment: .topLeading) {
+                    // Content swaps crossfade with a light blur, so the two
+                    // pages never read as a double exposure.
                     if ui.isEditing {
                         WidgetsEditPage(settings: settings, ui: ui, models: models)
-                            .transition(.opacity)
+                            .transition(.sparkVCrossfade)
                     } else if pages.isEmpty {
-                        emptyState.transition(.opacity)
+                        emptyState.transition(.sparkVCrossfade)
                     } else {
                         gridPage(pages[page], grid: grid)
                             .id(page)
-                            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                            .transition(.sparkVCrossfade)
                     }
                 }
                 .frame(width: area.width, height: area.height, alignment: .topLeading)
                 WidgetsRail(ui: ui, pageCount: ui.isEditing ? 0 : pages.count, page: page)
                     .frame(width: WidgetStyle.railWidth, height: area.height)
             }
-            .animation(.easeInOut(duration: 0.2), value: ui.isEditing)
-            .animation(.easeInOut(duration: 0.2), value: page)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: settings.enabled)
+            // Swaps: strong ease-out (enter/exit). Reflowing widgets move on
+            // screen with an interruptible spring (toggles can come fast).
+            .animation(SparkVMotion.easeOut(SparkVMotion.Duration.standard), value: ui.isEditing)
+            .animation(SparkVMotion.easeOut(SparkVMotion.Duration.standard), value: page)
+            .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: settings.enabled)
         }
     }
 
@@ -122,12 +126,15 @@ struct WidgetsTabView: View {
         let free = WidgetGridLayout.freeCells(placements, columns: grid.columns, rows: grid.rows)
         let hidden = WidgetKind.allCases.filter { !settings.isEnabled($0) }
         return ZStack(alignment: .topLeading) {
-            ForEach(placements, id: \.kind) { placement in
+            ForEach(Array(placements.enumerated()), id: \.element.kind) { index, placement in
                 let frame = grid.frame(placement)
                 widget(placement.kind, size: placement.size)
                     .frame(width: frame.width, height: frame.height)
+                    // Cards come in one after another (40 ms apart) when the
+                    // page appears; renders (fixed date) draw them settled.
+                    .modifier(WidgetStaggeredEntrance(index: index, isEnabled: models.fixedDate == nil))
                     .offset(x: frame.minX, y: frame.minY)
-                    .transition(.opacity)
+                    .transition(.sparkVEnter)
             }
             if let cell = free.first, !hidden.isEmpty {
                 let frame = grid.frame(column: cell.column, row: cell.row)
@@ -173,7 +180,31 @@ struct WidgetsTabView: View {
             .overlay(RoundedRectangle(cornerRadius: WidgetStyle.cornerRadius, style: .continuous).strokeBorder(WidgetStyle.cardStroke))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
+    }
+}
+
+/// Staggered entrance for one grid card: fades up from 96 % (fade only under
+/// Reduce Motion), `SparkVMotion.stagger(index)` after the page appears. It
+/// is decorative, so the card takes clicks while it plays.
+private struct WidgetStaggeredEntrance: ViewModifier {
+    let index: Int
+    let isEnabled: Bool
+    @StateObject private var shown = ViewFlag()
+
+    func body(content: Content) -> some View {
+        let visible = shown.isOn || !isEnabled
+        let still = SparkVMotion.reduceMotion
+        content
+            .opacity(visible ? 1 : 0)
+            .scaleEffect(visible || still ? 1 : SparkVMotion.enterScale, anchor: .top)
+            .offset(y: visible || still ? 0 : -4)
+            .onAppear {
+                guard isEnabled, !shown.isOn else { return }
+                withAnimation(SparkVMotion.easeOut(SparkVMotion.Duration.standard).delay(SparkVMotion.stagger(index))) {
+                    shown.isOn = true
+                }
+            }
     }
 }
 
@@ -224,9 +255,10 @@ private struct RailButton: View {
                 .frame(width: WidgetStyle.railWidth, height: WidgetStyle.railWidth)
                 .background(Circle().fill(isActive ? SparkVTheme.accent : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
                 .overlay(Circle().strokeBorder(isActive ? Color.clear : LabsBStyle.chipStroke, lineWidth: 1))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
     }
@@ -258,6 +290,7 @@ private struct AddWidgetTile: View {
                 RoundedRectangle(cornerRadius: WidgetStyle.cornerRadius, style: .continuous)
                     .strokeBorder(hover.isOn ? SparkVTheme.choose(apple: Color.white.opacity(0.4), sparkv: SparkVTheme.red.opacity(0.6)) : Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
             )
+            .animation(SparkVMotion.hover(), value: hover.isOn)
             .contentShape(Rectangle())
         }
         .menuStyle(.button)
@@ -353,6 +386,7 @@ private struct WidgetToggleTile: View {
                 RoundedRectangle(cornerRadius: WidgetStyle.cornerRadius, style: .continuous)
                     .strokeBorder(SparkVTheme.isApple ? Color.clear : (on ? kind.tint.opacity(0.5) : SparkVTheme.stroke), lineWidth: 1)
             )
+            .animation(SparkVMotion.hover(), value: hover.isOn)
             .overlay(alignment: .topTrailing) {
                 ZStack {
                     Circle().fill(on ? kind.tint : Color.white.opacity(0.12))
@@ -365,7 +399,7 @@ private struct WidgetToggleTile: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(on ? "Hide \(kind.title)" : "Show \(kind.title)")
     }

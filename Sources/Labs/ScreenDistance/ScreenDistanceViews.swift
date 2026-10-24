@@ -357,7 +357,7 @@ struct ScreenDistanceChipButton: View {
             .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 
@@ -374,7 +374,8 @@ struct ScreenDistanceSwitch: View {
                 Circle().fill(Color.white).padding(2)
             }
             .frame(width: 30, height: 18)
-            .animation(.easeOut(duration: 0.15), value: isOn)
+            // Knob slide: the interruptible snappy spring for toggles.
+            .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: isOn)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

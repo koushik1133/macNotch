@@ -540,7 +540,7 @@ struct FCChatCard: View {
                                 .background(Capsule().fill(palette.cardRaised))
                                 .overlay(Capsule().strokeBorder(palette.border))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .foregroundStyle(palette.text)
                         .disabled(inputs.isEmpty || isGhost)
                     }
@@ -581,7 +581,7 @@ struct FCChatCard: View {
                         .frame(width: 26, height: 26)
                         .background(Circle().fill(palette.edge))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .disabled(editor.runningIDs.contains(node.id))
             }
             .disabled(isGhost)
@@ -625,7 +625,7 @@ struct FCChatBubble: View {
                                     .padding(.vertical, 2)
                                     .background(Capsule().fill(palette.edge.opacity(0.14)))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SparkVPressStyle())
                             .help("Used \(node.citationLabel)")
                         }
                     }
@@ -709,7 +709,7 @@ struct FCCardButton: View {
                 .background(Capsule().fill(prominent ? palette.edge : palette.cardRaised))
                 .overlay(Capsule().strokeBorder(prominent ? Color.clear : palette.border))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 

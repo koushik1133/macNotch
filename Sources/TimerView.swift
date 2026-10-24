@@ -154,13 +154,17 @@ private struct TimerControlButton: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 10, weight: .bold))
+                // Play and pause morph into each other instead of swapping.
+                .contentTransition(.symbolEffect(.replace))
+                .animation(SparkVMotion.easeOut(SparkVMotion.Duration.small), value: symbol)
                 .foregroundStyle(isProminent ? SparkVTheme.choose(apple: Color.black, sparkv: Color.white) : SparkVTheme.text)
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(isProminent ? prominentFill : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
                 .overlay(Circle().strokeBorder(isProminent || SparkVTheme.isApple ? Color.clear : SparkVTheme.stroke))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
     }

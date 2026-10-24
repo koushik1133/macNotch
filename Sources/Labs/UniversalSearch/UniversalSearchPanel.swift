@@ -37,7 +37,9 @@ final class UniversalSearchPanel: NSPanel {
         hidesOnDeactivate = false
         becomesKeyOnlyIfNeeded = false
         isReleasedWhenClosed = false
-        animationBehavior = .utilityWindow
+        // ⌥Space opens and closes it instantly, like Raycast: a shortcut used
+        // dozens of times a day must not wait on a fade.
+        animationBehavior = .none
         title = "SparkV Search"
         appearance = NSAppearance(named: .darkAqua)
         // SparkV is an agent app that is never active; without this the
@@ -87,18 +89,12 @@ final class UniversalSearchPanelController: NSObject {
         guard let controller else { return }
         let panel = panel ?? makePanel(controller)
         self.panel = panel
-        let wasVisible = panel.isVisible
-        if !wasVisible {
+        if !panel.isVisible {
             panel.setFrame(initialFrame(), display: false)
-            panel.alphaValue = 0
         }
+        // No fade: keyboard-opened, so it appears at once (Raycast).
+        panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
-        if !wasVisible {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.12
-                panel.animator().alphaValue = 1
-            }
-        }
         installRecordMonitor()
     }
 

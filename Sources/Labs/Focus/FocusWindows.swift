@@ -35,6 +35,7 @@ final class FocusSummaryWindowController {
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.2
+            ctx.timingFunction = .sparkVEaseOut
             panel.animator().alphaValue = 1
         }
     }
@@ -44,6 +45,7 @@ final class FocusSummaryWindowController {
         let shownGeneration = generation
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
+            ctx.timingFunction = .sparkVEaseOut
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
@@ -285,7 +287,7 @@ struct FocusSettingsView: View {
                             .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(selected ? LabsBStyle.selectedStroke : LabsBStyle.chipStroke))
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                 }
             }
             Stepper("Focus: \(controller.settings.focusMinutes) min", value: binding.focusMinutes, in: 5...180, step: 5)
@@ -540,7 +542,7 @@ struct FocusChips: View {
                         Button { onRemove(item.id) } label: {
                             Image(systemName: "xmark.circle.fill").font(.system(size: 10))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .foregroundStyle(SparkVTheme.textTertiary)
                     }
                     .padding(.horizontal, 9)

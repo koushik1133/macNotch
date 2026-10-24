@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Something shown briefly (or persistently) by the closed island: a volume
@@ -497,5 +498,67 @@ final class ActivityCenter: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.recompute()
         }
+    }
+}
+
+// MARK: - Motion helpers for bands, overlays and their panels
+
+/// Small helpers on top of `SparkVMotion` for the live bands and the
+/// floating panels they open (AppKit windows can't take a SwiftUI curve).
+enum LiveBandMotion {
+    /// `SparkVMotion.easeOut`'s curve, cubic-bezier(0.23, 1, 0.32, 1), for AppKit.
+    static var easeOutTiming: CAMediaTimingFunction {
+        CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+    }
+
+    /// Fades a panel (ordered front at alpha 0, or mid fade-out) to full
+    /// opacity with a strong ease-out, rising `rise` points into place
+    /// (Reduce Motion: fade only).
+    @MainActor
+    static func fadeIn(_ window: NSWindow, duration: Double = SparkVMotion.Duration.small, rise: CGFloat = 0) {
+        let target = window.frame
+        let lift = SparkVMotion.reduceMotion ? 0 : rise
+        if lift != 0 { window.setFrame(target.offsetBy(dx: 0, dy: -lift), display: false) }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = easeOutTiming
+            window.animator().alphaValue = 1
+            if lift != 0 { window.animator().setFrame(target, display: true) }
+        }
+    }
+
+    /// Fades a panel out (ease-out, a touch faster than it came in), then
+    /// orders it out and restores its alpha, unless it was shown again
+    /// meanwhile (a fade-in set its alpha back to 1).
+    @MainActor
+    static func fadeOut(_ window: NSWindow, duration: Double = SparkVMotion.Duration.hover, completion: (@MainActor () -> Void)? = nil) {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = duration
+            context.timingFunction = easeOutTiming
+            window.animator().alphaValue = 0
+        }, completionHandler: {
+            MainActor.assumeIsolated {
+                guard window.alphaValue < 0.01 else { return }
+                window.orderOut(nil)
+                window.alphaValue = 1
+                completion?()
+            }
+        })
+    }
+}
+
+/// Press feedback for custom `ButtonStyle`s that draw their own fill:
+/// 0.97 on press (100 ms), back a little slower (160 ms), no scale with
+/// Reduce Motion. Same feel as `SparkVPressStyle`.
+struct LiveBandPressEffect: ViewModifier {
+    let isPressed: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !SparkVMotion.reduceMotion ? SparkVMotion.pressedScale : 1)
+            .animation(
+                SparkVMotion.easeOut(isPressed ? SparkVMotion.Duration.press : SparkVMotion.Duration.release),
+                value: isPressed
+            )
     }
 }

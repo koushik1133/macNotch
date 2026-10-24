@@ -107,8 +107,9 @@ struct UniversalSearchMicButton: View {
                 )
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(controller.isDictating ? "Stop dictating" : "Dictate your search")
         .accessibilityLabel(controller.isDictating ? "Stop dictating" : "Dictate search")
     }
@@ -138,8 +139,9 @@ private struct UniversalSearchAskToggle: View {
             .overlay(Capsule().strokeBorder(on ? Color.clear : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(on ? "Back to search (Tab)" : "Ask a question about your results (Tab)")
     }
 }
@@ -223,8 +225,9 @@ private struct UniversalSearchChip: View {
             .overlay(Capsule().strokeBorder(isOn ? Color.clear : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }
@@ -282,7 +285,7 @@ private struct UniversalSearchSectionHeader: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(UniversalSearchPalette.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("Show all \(source.title) results")
             }
         }

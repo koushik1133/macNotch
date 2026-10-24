@@ -1,3 +1,4 @@
+import QuartzCore
 import SwiftUI
 
 /// Colors and type for both looks (`AppearanceStyle`). Every token resolves
@@ -133,55 +134,108 @@ enum SparkVTheme {
 }
 
 /// A filled primary button: system blue in Apple, red in SparkV Red
-/// (sparkv.si "Start a Project").
+/// (sparkv.si "Start a Project"). Hover brightens the fill (ease, 150 ms);
+/// press darkens it and scales to 0.97 (100 ms in, 160 ms out).
 struct SparkVPrimaryButtonStyle: ButtonStyle {
     /// Fill other than the accent, e.g. `SparkVTheme.recording` for Record
     /// and Stop (red in both looks).
     var tint: Color? = nil
 
     func makeBody(configuration: Configuration) -> some View {
-        let apple = SparkVTheme.isApple
-        let shape = RoundedRectangle(cornerRadius: apple ? 7 : SparkVTheme.cornerSmall, style: .continuous)
-        configuration.label
-            .font(apple ? .system(size: 12, weight: .medium) : SparkVTheme.headline(12))
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, apple ? 5 : 6)
-            .background(
-                shape.fill(configuration.isPressed
-                           ? (apple ? (tint ?? SparkVTheme.accent).opacity(0.78) : SparkVTheme.accentPressed)
-                           : (tint ?? SparkVTheme.accent))
-            )
-            .overlay(
-                // The faint top highlight macOS puts on default buttons.
-                shape.strokeBorder(
-                    LinearGradient(colors: [Color.white.opacity(apple ? 0.22 : 0), Color.white.opacity(0)], startPoint: .top, endPoint: .bottom),
-                    lineWidth: 0.5
-                )
-            )
-            .contentShape(shape)
+        SparkVStyledButtonBody(configuration: configuration, primary: true, tint: tint)
     }
 }
 
 /// A secondary button: a grey macOS bordered button in Apple, frosted with a
-/// hairline in SparkV Red (sparkv.si "Explore What We Build").
+/// hairline in SparkV Red (sparkv.si "Explore What We Build"). Same hover and
+/// press feedback as the primary style.
 struct SparkVSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        SparkVStyledButtonBody(configuration: configuration, primary: false, tint: nil)
+    }
+}
+
+/// Shared body for the two filled styles: a view (not a style) so it can own
+/// its hover flag without `@State`.
+private struct SparkVStyledButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let primary: Bool
+    let tint: Color?
+    @StateObject private var hover = ViewFlag()
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
         let apple = SparkVTheme.isApple
+        let pressed = configuration.isPressed
+        let hovering = hover.isOn && isEnabled
         let shape = RoundedRectangle(cornerRadius: apple ? 7 : SparkVTheme.cornerSmall, style: .continuous)
         configuration.label
             .font(apple ? .system(size: 12, weight: .medium) : SparkVTheme.headline(12))
-            .foregroundStyle(SparkVTheme.text)
+            .foregroundStyle(primary ? Color.white : SparkVTheme.text)
             .padding(.horizontal, 12)
             .padding(.vertical, apple ? 5 : 6)
-            .background(
-                shape.fill(configuration.isPressed
-                           ? (apple ? Color.white.opacity(0.24) : SparkVTheme.surfaceHover)
-                           : (apple ? Color.white.opacity(0.14) : SparkVTheme.surface))
-            )
+            .background(shape.fill(fill(apple: apple, pressed: pressed, hovering: hovering)))
+            // Hover lifts a filled button a touch, like the macOS default button.
+            .overlay(shape.fill(Color.white.opacity(primary && hovering && !pressed ? 0.08 : 0)))
             .overlay(
-                shape.strokeBorder(apple ? Color.white.opacity(0.06) : SparkVTheme.stroke)
+                Group {
+                    if primary {
+                        // The faint top highlight macOS puts on default buttons.
+                        shape.strokeBorder(
+                            LinearGradient(colors: [Color.white.opacity(apple ? 0.22 : 0), Color.white.opacity(0)], startPoint: .top, endPoint: .bottom),
+                            lineWidth: 0.5
+                        )
+                    } else {
+                        shape.strokeBorder(apple ? Color.white.opacity(0.06) : SparkVTheme.stroke)
+                    }
+                }
             )
             .contentShape(shape)
+            .scaleEffect(pressed && !SparkVMotion.reduceMotion ? SparkVMotion.pressedScale : 1)
+            .animation(SparkVMotion.hover(), value: hovering)
+            .animation(
+                SparkVMotion.easeOut(pressed ? SparkVMotion.Duration.press : SparkVMotion.Duration.release),
+                value: pressed
+            )
+            .onHover { hover.isOn = $0 }
+    }
+
+    private func fill(apple: Bool, pressed: Bool, hovering: Bool) -> AnyShapeStyle {
+        if primary {
+            let base = tint ?? SparkVTheme.accent
+            if pressed { return AnyShapeStyle(apple || tint != nil ? base.opacity(0.78) : SparkVTheme.accentPressed) }
+            return AnyShapeStyle(base)
+        }
+        if pressed { return AnyShapeStyle(apple ? Color.white.opacity(0.24) : SparkVTheme.surfaceHover) }
+        if hovering { return AnyShapeStyle(apple ? Color.white.opacity(0.19) : SparkVTheme.surfaceHover) }
+        return AnyShapeStyle(apple ? Color.white.opacity(0.14) : SparkVTheme.surface)
+    }
+}
+
+// MARK: - AppKit window fades
+
+extension CAMediaTimingFunction {
+    /// `SparkVMotion.easeOut`'s curve, cubic-bezier(0.23, 1, 0.32, 1), for
+    /// `NSAnimationContext` window fades (whose default curve is weaker).
+    static var sparkVEaseOut: CAMediaTimingFunction {
+        CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+    }
+}
+
+// MARK: - Staggered entrance
+
+extension View {
+    /// One item of a staggered entrance: fades in with a 4 pt rise (strong
+    /// ease-out, 180 ms), 40 ms after the item before it (capped at 8), once
+    /// `shown` turns on. Hit testing is untouched, so nothing waits on it.
+    /// Reduce Motion: a plain fade, no delay.
+    func sparkVStaggeredEntrance(_ shown: Bool, index: Int) -> some View {
+        opacity(shown ? 1 : 0)
+            .offset(y: shown || SparkVMotion.reduceMotion ? 0 : 4)
+            .animation(
+                SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))
+                    .delay(shown ? SparkVMotion.stagger(index) : 0),
+                value: shown
+            )
     }
 }

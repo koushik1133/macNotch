@@ -566,11 +566,13 @@ final class PromptRefinerController: ObservableObject {
 
     func flash(_ text: String) {
         toastTask?.cancel()
-        withAnimation(.easeOut(duration: 0.15)) { toast = text }
+        // Enter and exit both use the strong ease-out (never ease-in).
+        withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { toast = text }
         toastTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.6))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeIn(duration: 0.2)) { self?.toast = nil }
+            withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { self?.toast = nil }
+
         }
     }
 

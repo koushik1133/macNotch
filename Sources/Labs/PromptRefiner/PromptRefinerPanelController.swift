@@ -39,8 +39,11 @@ final class PromptRefinerPanelController: NSObject {
         panel.makeKeyAndOrderFront(nil)
         if !wasVisible {
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.16
+                context.duration = SparkVMotion.Duration.release
+                // Strong ease-out (cubic-bezier(0.23, 1, 0.32, 1)).
+                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
                 panel.animator().alphaValue = 1
+
             }
         }
         installKeyMonitor()

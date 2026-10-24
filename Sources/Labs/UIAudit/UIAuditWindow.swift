@@ -200,7 +200,7 @@ struct UIAuditWindowView: View {
                     .help("This run only. Lets the audit click controls that look like pay, checkout, delete, remove, cancel subscription, transfer or log out. Leave off on real accounts.")
                 Spacer()
                 Button(ui.showAdvanced ? "Hide options" : "More options") { ui.showAdvanced.toggle() }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .font(SparkVTheme.caption(11))
                     .foregroundStyle(SparkVTheme.link)
             }
@@ -594,7 +594,7 @@ struct UIAuditPromptButton: View {
                         .fill(controller.lastReport == nil ? SparkVTheme.surface : SparkVTheme.accent))
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .disabled(controller.lastReport == nil || (controller.lastReport?.issueCount ?? 0) == 0)
             .help("Copy a self-contained fix prompt for a coding agent (grouped by page, with selectors, repro steps, expected vs actual and acceptance criteria)")
         }
@@ -680,7 +680,9 @@ struct UIAuditFindingRow: View {
                         .clipShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.stroke))
                 }
-                .buttonStyle(.plain)
+                // Large thumbnail: a gentler 0.98 so the press doesn't read as a jump.
+                .buttonStyle(SparkVPressStyle(scale: 0.98))
+
                 .help("Open screenshot")
             }
         }

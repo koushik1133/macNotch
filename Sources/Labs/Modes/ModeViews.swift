@@ -86,7 +86,7 @@ struct ModesHubTile: View {
         Group {
             if let onOpen {
                 Button(action: onOpen) { face }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .contextMenu { ModesMenuItems(engine: engine) }
             } else {
                 Menu { ModesMenuItems(engine: engine) } label: { face }
@@ -96,6 +96,7 @@ struct ModesHubTile: View {
             }
         }
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(engine.activeMode.map { "\($0.name) is on. Click to switch or stop." }
               ?? "Modes: one click sets your wallpaper, music, apps and Do Not Disturb")
     }
@@ -196,7 +197,7 @@ struct ModesDrawerView: View {
                         .frame(height: 24)
                         .background(Capsule().fill(SparkVTheme.destructive))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help(active.restoreOnExit ? "Stop \(active.name) and put your setup back" : "Stop \(active.name)")
                 TimelineView(.periodic(from: .now, by: 30)) { context in
                     Text(ModeStatusText.text(since: engine.activeSince, endsAt: engine.endsAt, now: context.date))
@@ -242,8 +243,9 @@ struct ModeChip: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(isActive ? "Turn \(mode.name) off" : "Turn \(mode.name) on")
         .contextMenu {
             Button(isActive ? "Turn Off" : "Turn On", action: action)
@@ -268,8 +270,9 @@ private struct ModeStripIconButton: View {
                 .overlay(Circle().strokeBorder(LabsBStyle.chipStroke, lineWidth: 1))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }

@@ -168,6 +168,7 @@ struct JobAgentRootView: View {
     @ObservedObject var store: JobStore
     @ObservedObject var model: JobAgentWindowModel
     @StateObject private var dropTarget = ViewFlag()
+    @Namespace private var sidebarSelection
 
     var body: some View {
         HStack(spacing: 0) {
@@ -186,15 +187,19 @@ struct JobAgentRootView: View {
         .labsWindowRoot()
         .foregroundStyle(SparkVTheme.text)
         .overlay(alignment: .bottom) {
-            if let toast = model.toast ?? importToast {
-                Text(toast)
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Capsule().fill(SparkVTheme.background))
-                    .background(Capsule().fill(SparkVTheme.surfaceHover))
-                    .overlay(Capsule().strokeBorder(SparkVTheme.stroke))
-                    .padding(.bottom, 16)
+            ZStack {
+                if let toast = model.toast ?? importToast {
+                    Text(toast)
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Capsule().fill(SparkVTheme.background))
+                        .background(Capsule().fill(SparkVTheme.surfaceHover))
+                        .overlay(Capsule().strokeBorder(SparkVTheme.stroke))
+                        .padding(.bottom, 16)
+                        .transition(.labsToastRise)
+                }
             }
+            .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: model.toast ?? importToast)
         }
         .overlay(
             RoundedRectangle(cornerRadius: 8)
@@ -230,25 +235,16 @@ struct JobAgentRootView: View {
                 Text("Job Agent").font(SparkVTheme.title(16)).tracking(-0.3)
             }
             .padding(.top, 40).padding(.bottom, 14).padding(.horizontal, 10)
-            ForEach(JobAgentWindowModel.Tab.allCases) { tab in
-                Button { model.tab = tab } label: {
-                    Label {
-                        Text(tab.rawValue)
-                    } icon: {
-                        // Apple: fixed-width icons so the titles line up, as in a macOS sidebar.
-                        Image(systemName: tab.symbol).frame(width: SparkVTheme.isApple ? 18 : nil)
-                    }
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(model.tab == tab ? SparkVTheme.text : SparkVTheme.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 10).padding(.vertical, 7)
-                        .background(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).fill(model.tab == tab ? LabsTint.selectionFill : Color.clear))
-                        .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(model.tab == tab ? LabsTint.selectionStroke : Color.clear))
-                        .contentShape(Rectangle())
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(JobAgentWindowModel.Tab.allCases) { tab in
+                    JobSidebarRow(tab: tab, isSelected: model.tab == tab, selection: sidebarSelection) { model.tab = tab }
+                        .padding(.horizontal, SparkVTheme.isApple ? 8 : 0)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, SparkVTheme.isApple ? 8 : 0)
             }
+            // The selection pill slides between rows: on-screen movement,
+            // strong ease-in-out under 300 ms (Reduce Motion: a short fade).
+            .animation(SparkVMotion.respecting(SparkVMotion.easeInOut()), value: model.tab)
+
             Spacer()
             VStack(alignment: .leading, spacing: 4) {
                 Text("fn + ⌃ on a posting saves it.").font(.system(size: 11)).foregroundStyle(SparkVTheme.textTertiary)
@@ -929,5 +925,42 @@ struct JobBoardView: View {
                 }
             }
         }
+    }
+}
+
+/// One Job Agent sidebar row: the selection pill is a single shape that
+/// moves between rows (matched geometry), other rows get the soft hover fill.
+private struct JobSidebarRow: View {
+    let tab: JobAgentWindowModel.Tab
+    let isSelected: Bool
+    let selection: Namespace.ID
+    let action: () -> Void
+    @StateObject private var hover = ViewFlag()
+
+    var body: some View {
+        Button(action: action) {
+            Label {
+                Text(tab.rawValue)
+            } icon: {
+                // Apple: fixed-width icons so the titles line up, as in a macOS sidebar.
+                Image(systemName: tab.symbol).frame(width: SparkVTheme.isApple ? 18 : nil)
+            }
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(isSelected ? SparkVTheme.text : SparkVTheme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .sparkVHoverFill(hover.isOn && !isSelected, cornerRadius: SparkVTheme.cornerSmall)
+                .background {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
+                            .fill(LabsTint.selectionFill)
+                            .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(LabsTint.selectionStroke))
+                            .matchedGeometryEffect(id: "selection", in: selection)
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover.isOn = $0 }
     }
 }

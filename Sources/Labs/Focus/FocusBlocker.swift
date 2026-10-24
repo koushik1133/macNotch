@@ -213,6 +213,7 @@ final class FocusOverlayController {
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.2
+            ctx.timingFunction = .sparkVEaseOut
             panel.animator().alphaValue = 1
         }
     }
@@ -223,6 +224,7 @@ final class FocusOverlayController {
         let shownGeneration = generation
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
+            ctx.timingFunction = .sparkVEaseOut
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
@@ -306,7 +308,7 @@ struct FocusOverlayView: View {
                         .foregroundStyle(Color.white)
                         .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 HStack(spacing: 8) {
                     Button(action: actions.snooze) {
                         Text("\(model.snoozeMinutes) More Minutes")
@@ -317,7 +319,7 @@ struct FocusOverlayView: View {
                             .foregroundStyle(SparkVTheme.text)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     Button(action: actions.endFocus) {
                         Text("End Focus")
                             .font(.system(size: 12, weight: .medium))
@@ -327,7 +329,7 @@ struct FocusOverlayView: View {
                             .foregroundStyle(SparkVTheme.text)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                 }
             }
             .frame(width: 280)

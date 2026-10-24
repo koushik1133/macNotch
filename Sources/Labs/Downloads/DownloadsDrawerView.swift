@@ -15,6 +15,8 @@ private enum DLLayout {
 /// then a horizontally scrolling row of download cards, newest first.
 struct DownloadsDrawerView: View {
     @ObservedObject var controller: DownloadsController
+    /// Off until the drawer is on screen, so the cards fade in in turn.
+    @StateObject private var appeared = ViewFlag()
 
     var body: some View {
         GeometryReader { proxy in
@@ -36,6 +38,8 @@ struct DownloadsDrawerView: View {
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)
         }
         .padding(.vertical, 2)
+        .onAppear { appeared.isOn = true }
+        .onDisappear { appeared.isOn = false }
     }
 
     @ViewBuilder
@@ -66,9 +70,10 @@ struct DownloadsDrawerView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: DLLayout.cardSpacing) {
-                        ForEach(controller.items) { item in
+                        ForEach(Array(controller.items.enumerated()), id: \.element.id) { index, item in
                             DownloadCard(controller: controller, item: item)
                                 .frame(width: DLLayout.cardWidth, height: cardHeight)
+                                .sparkVStaggeredEntrance(appeared.isOn, index: index)
                         }
                     }
                     .padding(DLLayout.wellPadding)
@@ -160,7 +165,7 @@ struct DownloadsHeaderButton: View {
             .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
     }
 }
@@ -231,7 +236,7 @@ struct DownloadCard: View {
                     .lineLimit(1)
                 Spacer(minLength: 2)
                 Button("Undo") { controller.undo(item.id) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(DownloadsPalette.accent)
                     .help("Move it back to \(move.from.deletingLastPathComponent().lastPathComponent)")
@@ -263,7 +268,7 @@ struct DownloadCard: View {
                 .overlay(Capsule().strokeBorder(suggestion == nil ? SparkVTheme.stroke : Color.clear, lineWidth: 1))
                 .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help(suggestion.map { "\($0.destination.displayPath) — \($0.reason)" } ?? "Choose a folder")
             Menu {
                 sortMenuItems
@@ -372,9 +377,10 @@ struct DownloadsIconButton: View {
                 .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(hover.isOn && enabled ? SparkVTheme.surfaceHover : Color.clear))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .disabled(!enabled)
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }
@@ -406,7 +412,7 @@ struct DownloadsNotice: View {
             VStack(spacing: 5) {
                 if let button {
                     Button(button.0, action: button.1)
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.white)
                         .padding(.horizontal, 12)
@@ -415,7 +421,7 @@ struct DownloadsNotice: View {
                 }
                 if let secondary {
                     Button(secondary.0, action: secondary.1)
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(SparkVTheme.textSecondary)
                 }

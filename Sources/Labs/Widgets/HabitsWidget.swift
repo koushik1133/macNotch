@@ -221,7 +221,7 @@ struct HabitsWidget: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
             } else if fixedDate != nil {
                 content
             } else {
@@ -251,6 +251,12 @@ struct HabitsWidget: View {
 private struct HabitsTodayView: View {
     @ObservedObject var store: HabitStore
 
+    /// Checking a habit off is a small daily reward, so it keeps a little
+    /// bounce, capped at 0.3 (was response 0.25 / damping 0.6, about 0.4).
+    static var checkSpring: Animation {
+        SparkVMotion.respecting(.spring(duration: 0.28, bounce: 0.3))
+    }
+
     var body: some View {
         VStack(spacing: 3) {
             HStack(spacing: 3) {
@@ -271,7 +277,7 @@ private struct HabitsTodayView: View {
                     ForEach(shown) { habit in
                         let on = store.isDoneToday(habit)
                         let tint = HabitPalette.color(habit.colorIndex)
-                        Button { withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) { store.toggleToday(habit) } } label: {
+                        Button { withAnimation(Self.checkSpring) { store.toggleToday(habit) } } label: {
                             ZStack {
                                 Circle().fill(on ? tint : SparkVTheme.surface)
                                 Circle().strokeBorder(on ? Color.clear : Color.white.opacity(0.16), lineWidth: 1)
@@ -282,7 +288,7 @@ private struct HabitsTodayView: View {
                             .frame(width: side, height: side)
                             .contentShape(Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .help("\(habit.name): \(on ? "done today" : "not yet today")\(store.streak(habit) > 1 ? ", \(store.streak(habit))-day streak" : "")")
                     }
                 }
@@ -410,7 +416,7 @@ private struct HabitRow: View {
             ForEach(days, id: \.self) { day in
                 let on = store.isDone(habit, on: day)
                 let isToday = store.calendar.isDate(day, inSameDayAs: store.now())
-                Button { withAnimation(.easeOut(duration: 0.15)) { store.toggle(habit, on: day) } } label: {
+                Button { withAnimation(SparkVMotion.easeOut(SparkVMotion.Duration.hover)) { store.toggle(habit, on: day) } } label: {
                     RoundedRectangle(cornerRadius: 2.5, style: .continuous)
                         .fill(on ? tint : Color.white.opacity(isToday ? 0.12 : 0.06))
                         .overlay(
@@ -421,7 +427,7 @@ private struct HabitRow: View {
                         .frame(width: box, height: box)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("\(habit.name), \(day.formatted(.dateTime.weekday(.wide).month().day())): \(on ? "done" : "not done")")
             }
             Text(streak > 0 ? "\(streak)" : "-")

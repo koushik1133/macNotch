@@ -195,7 +195,8 @@ final class FocusEdgeGlowLayer {
             flash.values = [0, mood == .celebrate ? 0.75 : 0.55, 0]
             flash.keyTimes = [0, 0.2, 1]
             flash.duration = mood == .celebrate ? 1.5 : 1.1
-            flash.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeIn)]
+            // Decays like light: fast, then slow (never ease-in).
+            flash.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeOut)]
             wash.layer.add(flash, forKey: "flash")
 
             if options.shake {

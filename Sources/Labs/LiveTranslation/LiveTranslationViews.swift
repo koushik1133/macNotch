@@ -91,11 +91,17 @@ final class LiveTranslationCaptionWindowController {
 
     func show() {
         if panel == nil { panel = makePanel() }
-        panel?.orderFrontRegardless()
+        guard let panel else { return }
+        if !panel.isVisible { panel.alphaValue = 0 }
+        panel.orderFrontRegardless()
+        // Opening (or reopened mid fade-out): a short ease-out fade, no
+        // movement since it sits where the user left it.
+        if panel.alphaValue < 1 { LiveBandMotion.fadeIn(panel) }
     }
 
     func close() {
-        panel?.orderOut(nil)
+        guard let panel, panel.isVisible else { return }
+        LiveBandMotion.fadeOut(panel)
     }
 
     private func makePanel() -> NSPanel {
@@ -259,8 +265,9 @@ struct LiveTranslationCaptionView: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 12))
                     .foregroundStyle(hovering.isOn ? SparkVTheme.textSecondary : SparkVTheme.textTertiary)
+                    .animation(SparkVMotion.hover(), value: hovering.isOn)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Hide captions")
         }
     }

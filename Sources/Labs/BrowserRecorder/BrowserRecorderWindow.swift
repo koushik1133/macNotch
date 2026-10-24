@@ -703,7 +703,16 @@ private struct BRLiveRecordingView: View {
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
                 .onChange(of: steps.count) { _, _ in
-                    if let last = steps.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                    // Following the live log is on-screen movement: strong
+                    // ease-in-out, under 300 ms; Reduce Motion jumps.
+                    if let last = steps.last {
+                        if SparkVMotion.reduceMotion {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        } else {
+                            withAnimation(SparkVMotion.easeInOut()) { proxy.scrollTo(last.id, anchor: .bottom) }
+                        }
+                    }
+
                 }
             }
         }

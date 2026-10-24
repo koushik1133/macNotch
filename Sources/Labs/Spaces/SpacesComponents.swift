@@ -463,7 +463,7 @@ struct SpacesChip: View {
                 Button(action: onRemove) {
                     Image(systemName: "xmark").font(.system(size: 7, weight: .bold))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .foregroundStyle(tint.opacity(0.7))
             }
         }
@@ -563,8 +563,9 @@ struct SpacesIconButton: View {
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }

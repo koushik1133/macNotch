@@ -37,7 +37,7 @@ struct MeetingRecordingBand: View {
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(SparkVTheme.textSecondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("Bookmark this moment")
                 }
             }
@@ -173,7 +173,7 @@ struct MeetingLevelMeter: View {
                         .frame(width: 2.5, height: 4 + CGFloat(index) * 2)
                 }
             }
-            .animation(.easeOut(duration: 0.12), value: clamped)
+            .animation(SparkVMotion.easeOut(0.12), value: clamped)
         }
     }
 

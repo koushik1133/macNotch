@@ -47,7 +47,7 @@ struct ReplyDrafterDrawerContent: View {
                     .background(Capsule().fill(SparkVTheme.accent))
                     .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("Reads the window in front and drafts a reply")
                 Menu {
                     ForEach(ReplyDrafterSettings.tonePresets, id: \.title) { preset in
@@ -102,8 +102,10 @@ struct ReplyToggleChip: View {
             .background(Capsule().fill(isOn ? SparkVTheme.accentSoft : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
             .overlay(Capsule().strokeBorder(isOn ? SparkVTheme.accent.opacity(0.4) : SparkVTheme.stroke))
             .contentShape(Capsule())
+            .animation(SparkVMotion.hover(), value: hover.isOn)
+            .animation(SparkVMotion.hover(), value: isOn)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
     }
 }
@@ -122,8 +124,9 @@ struct ReplyDrafterNotchButton: View {
                 .frame(width: 24, height: 22)
                 .background(Capsule().fill(hover.isOn ? SparkVTheme.choose(apple: SparkVTheme.hoverFill, sparkv: SparkVTheme.accentSoft) : Color.clear))
                 .contentShape(Capsule())
+                .animation(SparkVMotion.hover(), value: hover.isOn)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(controller.shortcutLabel.isEmpty ? "Draft a reply" : "Draft a reply  \(controller.shortcutLabel)")
     }
