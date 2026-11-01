@@ -1,5 +1,7 @@
 # Media: wiring steps for the lead
 
+> These steps are already in the app. The current round (heart, ±15 s, More menu, lyrics, swipes) depends on Labs/MediaPlus: see `../MediaPlus/INTEGRATION.md`, step 1 first.
+
 The media upgrade lives in `Sources/MediaEngine.swift` (already edited, compiles on its own) and `Sources/Labs/Media/` (new views and the bookmark store). No other file was touched.
 
 The three steps below were applied by script to a snapshot of the current app (`scratchpad/round3/media/integ.py`) and typechecked clean in Swift 5 and Swift 6.

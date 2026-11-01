@@ -252,6 +252,7 @@ private struct BRFlowChip: View {
                 .buttonStyle(SparkVPressStyle())
                 .disabled(isBusy)
                 .help("Replay")
+                .accessibilityLabel("Replay")
             }
         }
         .padding(compact ? 6 : 8)

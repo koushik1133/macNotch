@@ -179,6 +179,7 @@ struct DownloadsRulesView: View {
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
                     .fixedSize()
+                    .accessibilityLabel("More")
             }
             .buttonStyle(.borderless)
             .padding(8)
@@ -195,6 +196,7 @@ struct DownloadsRulesView: View {
             .labelsHidden()
             .toggleStyle(.checkbox)
             .controlSize(.small)
+            .accessibilityLabel(rule.name.isEmpty ? "Untitled rule" : rule.name)
             VStack(alignment: .leading, spacing: 1) {
                 Text(rule.name.isEmpty ? "Untitled rule" : rule.name)
                     .font(.system(size: 12, weight: .medium))
@@ -223,6 +225,8 @@ struct DownloadsRulesView: View {
         .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(selected && !SparkVTheme.isApple ? SparkVTheme.red.opacity(0.45) : Color.clear, lineWidth: 1))
         .contentShape(Rectangle())
         .onTapGesture { model.selection = rule.id }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.selection = rule.id }
     }
 
     // MARK: Editor
@@ -274,6 +278,7 @@ struct DownloadsRuleEditor: View {
                     }
                     .labelsHidden()
                     .fixedSize()
+                    .accessibilityLabel("If")
                     Text("of these conditions are met:")
                 }
                 ForEach($rule.conditions) { $condition in
@@ -299,6 +304,7 @@ struct DownloadsRuleEditor: View {
                     }
                     .labelsHidden()
                     .fixedSize()
+                    .accessibilityLabel("Then")
                     if case .folder = rule.destination {
                         TextField("~/Downloads/Folder", text: Binding(
                             get: { if case .folder(let path) = rule.destination { path } else { "" } },
@@ -353,22 +359,26 @@ struct DownloadsRuleEditor: View {
             }
             .labelsHidden()
             .frame(width: 140)
+            .accessibilityLabel("Field")
             Picker("", selection: condition.op) {
                 ForEach(condition.wrappedValue.field.operators) { Text($0.title).tag($0) }
             }
             .labelsHidden()
             .frame(width: 130)
+            .accessibilityLabel("Operator")
             switch condition.wrappedValue.field {
             case .kind:
                 Picker("", selection: condition.value) {
                     ForEach(DownloadCategory.allCases) { Text($0.singular).tag($0.rawValue) }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Value")
             case .browser:
                 Picker("", selection: condition.value) {
                     ForEach(DownloadBrowser.allCases, id: \.self) { Text($0.displayName).tag($0.rawValue) }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Category")
             default:
                 TextField(condition.wrappedValue.field.hint, text: condition.value)
                     .textFieldStyle(.roundedBorder)
@@ -380,6 +390,7 @@ struct DownloadsRuleEditor: View {
             }
             .buttonStyle(.borderless)
             .help("Remove condition")
+            .accessibilityLabel("Remove condition")
         }
     }
 

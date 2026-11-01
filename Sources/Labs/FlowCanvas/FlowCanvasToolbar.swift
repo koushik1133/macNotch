@@ -189,6 +189,7 @@ struct FCToolbar: View {
         .buttonStyle(SparkVPressStyle())
         .disabled(!enabled)
         .help(help)
+        .accessibilityLabel(help)
     }
 
     private var addMenu: some View {

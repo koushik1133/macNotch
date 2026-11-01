@@ -46,6 +46,7 @@ struct UniversalSearchDrawerView: View {
                         }
                         .buttonStyle(SparkVPressStyle())
                         .help("Clear")
+                        .accessibilityLabel("Clear")
                     }
                 }
                 .padding(.horizontal, 9)
@@ -73,6 +74,8 @@ struct UniversalSearchDrawerView: View {
                             .frame(height: Self.rowHeight)
                             .onTapGesture(count: 2) { controller.activate(r) }
                             .onTapGesture { controller.select(r.id) }
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { controller.select(r.id) }
                     }
                 }
                 .overlay(alignment: .topTrailing) {

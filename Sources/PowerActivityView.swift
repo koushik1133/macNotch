@@ -16,6 +16,10 @@ enum BatteryTint {
 struct BatteryActivityView: View {
     let reading: BatteryReading
     let mode: BatteryActivityMode
+    /// The charger's wattage, shown while plugging in.
+    var watts: Int? = nil
+    /// Why it isn't charging on power (`.notCharging` only).
+    var hold: BatteryHoldReason? = nil
 
     var body: some View {
         HStack(spacing: 10) {
@@ -24,7 +28,7 @@ struct BatteryActivityView: View {
                 .foregroundStyle(leadingColor)
                 .frame(width: 34, height: 16)
 
-            Text("\(Text(title).foregroundStyle(titleColor))\(Text(detail.map { " · \($0)" } ?? "").foregroundStyle(SparkVTheme.textSecondary))")
+            Text("\(Text(title).foregroundStyle(titleColor))\(Text(detailText).foregroundStyle(SparkVTheme.textSecondary))")
                 .font(.system(size: 12, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -33,22 +37,28 @@ struct BatteryActivityView: View {
             HStack(spacing: 6) {
                 Text("\(reading.level)%")
                     .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(mode == .low ? tint : SparkVTheme.text)
+                    .foregroundStyle(isWarning ? tint : SparkVTheme.text)
                 BatteryGlyph(level: reading.level, isCharging: mode == .charging, tint: tint)
             }
             .fixedSize()
         }
         .padding(.horizontal, 16)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title)\(detailText), battery \(reading.level) percent")
     }
 
-    private var tint: Color { BatteryTint.color(level: reading.level) }
+    private var isWarning: Bool { mode == .low || mode == .critical }
+
+    private var tint: Color {
+        mode == .critical ? SparkVTheme.destructive : BatteryTint.color(level: reading.level)
+    }
 
     private var leadingSymbol: String {
         switch mode {
         case .charging, .charged: "bolt.fill"
-        case .notCharging: "powerplug.fill"
+        case .notCharging: hold == .optimized || hold == .chargeLimit ? "pause.circle.fill" : "powerplug.fill"
         case .onBattery: "bolt.slash.fill"
-        case .low: "exclamationmark.triangle.fill"
+        case .low, .critical: "exclamationmark.triangle.fill"
         }
     }
 
@@ -57,7 +67,7 @@ struct BatteryActivityView: View {
         case .charging, .charged: SparkVTheme.success
         case .notCharging: SparkVTheme.warning
         case .onBattery: SparkVTheme.textSecondary
-        case .low: tint
+        case .low, .critical: tint
         }
     }
 
@@ -65,24 +75,38 @@ struct BatteryActivityView: View {
         switch mode {
         case .charging: "Charging"
         case .charged: "Charged"
-        case .notCharging: "Not charging"
+        case .notCharging: hold == .optimized || hold == .chargeLimit ? "Charging On Hold" : "Not Charging"
         case .onBattery: "On Battery"
         case .low: "Low Battery"
+        case .critical: "Battery Critically Low"
         }
     }
 
     private var titleColor: Color {
-        mode == .low ? tint : SparkVTheme.text
+        isWarning ? tint : SparkVTheme.text
     }
 
-    private var detail: String? {
+    /// " · 67 W · 1h 5m to full", or "" when there is nothing to add.
+    private var detailText: String {
+        details.map { " · \($0)" }.joined()
+    }
+
+    private var details: [String] {
         switch mode {
         case .charging:
-            reading.minutesToFull.map { "\(PowerFormat.duration(minutes: $0)) to full" }
+            [watts.map { "\($0) W" }, reading.minutesToFull.map { "\(PowerFormat.duration(minutes: $0)) to full" }].compactMap { $0 }
+        case .charged:
+            [watts.map { "\($0) W" }].compactMap { $0 }
+        case .notCharging:
+            switch hold {
+            case .optimized: ["Optimized"]
+            case .chargeLimit: ["At charge limit"]
+            case .other, nil: [watts.map { "\($0) W" }].compactMap { $0 }
+            }
         case .onBattery, .low:
-            reading.minutesToEmpty.map { "\(PowerFormat.duration(minutes: $0)) left" }
-        case .charged, .notCharging:
-            nil
+            [reading.minutesToEmpty.map { "\(PowerFormat.duration(minutes: $0)) left" }].compactMap { $0 }
+        case .critical:
+            ["Plug in now"]
         }
     }
 }
@@ -108,6 +132,17 @@ struct AirPodsActivityView: View {
                 .fixedSize()
         }
         .padding(.horizontal, 16)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
+    }
+
+    private var spoken: String {
+        let items = device.batteries.items
+        guard !items.isEmpty else { return "\(device.name), connected" }
+        let parts = items.map { item in
+            (item.label.isEmpty ? "" : item.label + " ") + "\(item.percent) percent" + (item.percent <= 10 ? ", low" : "")
+        }
+        return device.name + ", " + parts.joined(separator: ", ")
     }
 
     @ViewBuilder
@@ -150,6 +185,12 @@ private struct BudBattery: View {
             Text("\(percent)%")
                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(SparkVTheme.text)
+            // Low is said with a shape, not only the red bar.
+            if percent <= 10 {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(SparkVTheme.destructive)
+            }
         }
     }
 }
@@ -172,6 +213,13 @@ struct BatteryGlyph: View {
                 if isCharging {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .shadow(color: .black.opacity(0.6), radius: 0.5)
+                        .frame(maxWidth: .infinity)
+                } else if level <= 20, SparkVTheme.differentiateWithoutColor {
+                    // Low said with a mark, not only the red fill.
+                    Image(systemName: "exclamationmark")
+                        .font(.system(size: 7, weight: .heavy))
                         .foregroundStyle(Color.white)
                         .shadow(color: .black.opacity(0.6), radius: 0.5)
                         .frame(maxWidth: .infinity)

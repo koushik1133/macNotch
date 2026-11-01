@@ -37,6 +37,7 @@ final class ScrubberInteraction: ObservableObject {
 /// Position is interpolated from `MediaEngine.timing` in a 30 fps
 /// `TimelineView` that pauses with playback, so nothing republishes per frame.
 struct MediaScrubber: View {
+    @ObservedObject private var energy = SparkVEnergy.shared
     @EnvironmentObject private var media: MediaEngine
     @ObservedObject var bookmarks: MediaBookmarkStore
     /// Fill color of the elapsed part.
@@ -62,7 +63,7 @@ struct MediaScrubber: View {
         let timing = media.timing
         let ticks = bookmarks.bookmarks(forTrack: media.trackKey).map(\.position)
         let animating = previewDate == nil && timing.rate > 0 && interaction.dragFraction == nil
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !animating)) { context in
+        TimelineView(.animation(minimumInterval: energy.frameInterval(1.0 / 30), paused: !animating || energy.pausesDecoration)) { context in
             let now = previewDate ?? context.date
             let live = timing.position(at: now)
             let position = interaction.dragFraction.map { $0 * timing.duration } ?? live

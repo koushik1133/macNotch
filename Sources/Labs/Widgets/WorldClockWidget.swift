@@ -483,6 +483,7 @@ struct WidgetSearchField: View {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 9)).foregroundStyle(SparkVTheme.textTertiary)
                 }
                 .buttonStyle(SparkVPressStyle())
+                .accessibilityLabel("Clear")
             }
         }
         .padding(.horizontal, 7)

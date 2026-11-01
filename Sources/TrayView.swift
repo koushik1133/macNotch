@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
@@ -6,7 +7,8 @@ import UniformTypeIdentifiers
 /// One thing on the shelf.
 struct TrayItem: Identifiable, Codable, Equatable {
     enum Kind: String, Codable {
-        /// A file left where it is (documents, folders, …).
+        /// A file: left where it is, or a copy the tray keeps itself when it
+        /// came from a temporary folder or a file promise (Mail, Photos…).
         case file
         /// An image copied into the tray's own storage (screenshots, photos).
         case image
@@ -28,12 +30,49 @@ struct TrayItem: Identifiable, Codable, Equatable {
     }
 }
 
-/// Shelf for the last few things dropped on the notch: screenshots, text,
-/// links and files. Holds at most `capacity` items, newest first, and
-/// survives relaunches.
+/// Something the Tray can take back (⌘Z, or the header's Undo chip).
+struct TrayUndo: Equatable {
+    struct Removed: Equatable {
+        let item: TrayItem
+        let index: Int
+        /// Where a tray-made copy went in the Trash, so Undo can bring it back.
+        let trashedURL: URL?
+    }
+
+    enum Action: Equatable {
+        case removed([Removed])
+        case renamed(id: UUID, from: URL, to: URL)
+    }
+
+    let action: Action
+    let title: String
+    /// Set when lowering the Tray size dropped items: Undo also puts the
+    /// size back, so the items fit again.
+    var restoresCapacity: Int? = nil
+
+    /// The empty Tray's button: "Put Back 5", "Put Back", "Undo Rename".
+    var putBackTitle: String {
+        switch action {
+        case .removed(let list): list.count == 1 ? "Put Back" : "Put Back \(list.count)"
+        case .renamed: "Undo Rename"
+        }
+    }
+}
+
+/// A Quick Look entry: the item and the file the preview shows.
+struct TrayPreviewEntry: Equatable {
+    let id: UUID
+    let url: URL
+}
+
+/// Shelf for the things dropped on the notch: screenshots, text, links and
+/// files. Holds up to `capacity` items (5 by default, up to 30), newest
+/// first; survives relaunches unless the user turned that off, and can let
+/// items expire. Tray-made copies go to the Trash, never straight to deletion.
 @MainActor
 final class TrayStore: ObservableObject {
-    static let capacity = 5
+    /// The default size of the shelf; the user picks 5–30 in Settings.
+    static let capacity = ShelfSettings.defaultCapacity
 
     @Published private(set) var items: [TrayItem] = []
     /// Downsampled previews of image items, keyed by item id. Decoding a
@@ -41,25 +80,63 @@ final class TrayStore: ObservableObject {
     @Published private(set) var thumbnails: [UUID: NSImage] = [:]
     private var thumbnailsLoading: Set<UUID> = []
     private static let thumbnailPixelSize = 160
-    /// Cards picked with Cmd-click (Dropover's multi-select): dragging any
-    /// of them drags them all. Not persisted.
+    /// Cards picked with ⌘-click (toggle) or ⇧-click (range), or ⌘A: dragging
+    /// any of them drags them all. Not persisted.
     @Published private(set) var selection: Set<UUID> = []
+    /// The card the keyboard acts on (last clicked or arrowed to).
+    @Published private(set) var focusedID: UUID?
+    /// ⇧-click / ⇧-arrow range anchor.
+    private var anchorID: UUID?
+    /// What ⌘Z (and the header's Undo) puts back.
+    @Published private(set) var undo: TrayUndo?
+    /// The item being renamed in the header.
+    @Published var renamingID: UUID?
+    /// False for one change made from the keyboard: that shows at once.
+    @Published private(set) var animatesChanges = true
+
+    let settings: ShelfSettings
+    /// How many items the shelf keeps.
+    var capacity: Int { settings.capacity }
 
     private static let defaultsKey = "TrayItems.v2"
     private let storage: URL
     private let defaults: UserDefaults
-    private let trash: @Sendable (URL) -> Bool
+    private let trashItem: @Sendable (URL) -> (moved: Bool, location: URL?)
+    private var settingsObservers: Set<AnyCancellable> = []
+    private var undoExpiry: Task<Void, Never>?
+    /// Temporary .txt files for previewing text items, by item id.
+    private var textPreviews: [UUID: URL] = [:]
+    /// The size the Tray was last trimmed to (Undo after lowering it).
+    private var appliedCapacity = ShelfSettings.defaultCapacity
+    /// Storage files a background copy is still writing (names taken).
+    private var pendingCopies: Set<URL> = []
+    /// Files above this size from temporary folders are copied in off the
+    /// main thread, so a big browser export doesn't freeze the drawer.
+    nonisolated static let syncCopyLimit = 4 * 1024 * 1024
 
-    /// `storage`, `defaults` and `trash` are seams for tests; the app uses
-    /// Application Support/SparkV/Tray, the standard defaults and the Trash.
+    /// `storage`, `defaults`, `trash`, `settings` and `trashLocation` are
+    /// seams for tests; the app uses Application Support/SparkV/Tray, the
+    /// standard defaults, the Trash and the shared settings.
+    /// `trashLocation` returns where a file went (Undo can bring it back).
     init(storage: URL? = nil, defaults: UserDefaults = .standard,
-         trash: @escaping @Sendable (URL) -> Bool = { TrayStore.moveToTrash($0) }) {
+         trash: (@Sendable (URL) -> Bool)? = nil, settings: ShelfSettings? = nil,
+         trashLocation: (@Sendable (URL) -> URL?)? = nil) {
         let url = storage ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SparkV/Tray", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         self.storage = url
         self.defaults = defaults
-        self.trash = trash
+        self.settings = settings ?? .shared
+        if let trashLocation {
+            trashItem = { url in
+                let location = trashLocation(url)
+                return (location != nil, location)
+            }
+        } else if let trash {
+            trashItem = { (trash($0), nil) }
+        } else {
+            trashItem = { TrayStore.moveToTrashKeepingLocation($0) }
+        }
         if let data = defaults.data(forKey: Self.defaultsKey),
            let saved = try? JSONDecoder().decode([TrayItem].self, from: data) {
             items = saved.filter { item in
@@ -67,8 +144,29 @@ final class TrayStore: ObservableObject {
                 return item.url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
             }
         }
+        // "Keep items after restart" off: start empty. Done here, not at
+        // quit, so it holds after a crash too; the copies go to the Trash below.
+        if !self.settings.keepAcrossRestarts, !items.isEmpty {
+            AppLog.log("Tray: starting empty (items aren't kept across restarts)")
+            items = []
+        }
         removeUnreferencedStorage()
+        pruneExpired(save: false)
+        trimToCapacity()
+        appliedCapacity = capacity
+        save()
         items.forEach(loadThumbnailIfNeeded)
+        observeSettings()
+    }
+
+    private func observeSettings() {
+        // @Published sends before the new value is stored: act on the next turn.
+        settings.$capacity.removeDuplicates().dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.capacityChanged() } }
+        }.store(in: &settingsObservers)
+        settings.$expiry.removeDuplicates().dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.pruneExpired() } }
+        }.store(in: &settingsObservers)
     }
 
     /// Image copies left behind by a crash, or by items dropped from the saved
@@ -81,12 +179,12 @@ final class TrayStore: ObservableObject {
             at: storage, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
         ) else { return }
         let referenced = Set(items.compactMap { item -> String? in
-            guard item.kind == .image, let url = item.url else { return nil }
-            return url.standardizedFileURL.path
+            guard isOwned(item), let url = item.url else { return nil }
+            return Self.canonicalPath(url)
         })
         var removed = 0
-        for url in contents where !referenced.contains(url.standardizedFileURL.path) {
-            if trash(url) { removed += 1 }
+        for url in contents where !referenced.contains(Self.canonicalPath(url)) {
+            if trashItem(url).moved { removed += 1 }
         }
         if removed > 0 {
             AppLog.log("Tray: moved \(removed) unreferenced file(s) from tray storage to the Trash")
@@ -97,42 +195,75 @@ final class TrayStore: ObservableObject {
     /// destroyed outright: they go to the Trash, where the user can restore them.
     @discardableResult
     nonisolated static func moveToTrash(_ url: URL) -> Bool {
+        moveToTrashKeepingLocation(url).moved
+    }
+
+    /// The same, also returning where the file landed in the Trash (for Undo).
+    nonisolated static func moveToTrashKeepingLocation(_ url: URL) -> (moved: Bool, location: URL?) {
         do {
-            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-            return true
+            var resulting: NSURL?
+            try FileManager.default.trashItem(at: url, resultingItemURL: &resulting)
+            return (true, resulting as URL?)
         } catch {
             AppLog.log("Tray: could not move \(url.lastPathComponent) to the Trash: \(error.localizedDescription)")
-            return false
+            return (false, nil)
         }
+    }
+
+    nonisolated private static func canonicalPath(_ url: URL) -> String {
+        url.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
+    /// True for files the tray made itself (screenshots, images, promised
+    /// and temporary files it copied in): those live in its storage folder
+    /// and go to the Trash when removed.
+    func isOwned(_ item: TrayItem) -> Bool {
+        guard item.kind != .text, let url = item.url else { return false }
+        return isInStorage(url)
+    }
+
+    private func isInStorage(_ url: URL) -> Bool {
+        Self.canonicalPath(url).hasPrefix(Self.canonicalPath(storage) + "/")
     }
 
     // MARK: Adding
 
     /// Takes whatever a drag carries, in order of preference: an image
     /// (including screenshot thumbnails, which are dragged as image data or a
-    /// file promise rather than a file), a file, a link, then plain text.
+    /// file promise rather than a file), a file, a link, a promised file
+    /// (Mail attachments, Affinity and WeChat exports), then plain text.
     func accept(_ providers: [NSItemProvider]) {
         AppLog.log("Tray: drop with \(providers.count) item(s): \(providers.map(\.registeredTypeIdentifiers))")
         for provider in providers {
-            if let imageType = provider.registeredTypeIdentifiers.first(where: Self.isImageType),
-               !provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) || Self.isImageFile(provider) {
-                loadImage(from: provider, type: imageType)
-            } else if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            switch ShelfDropResolver.route(types: provider.registeredTypeIdentifiers, suggestedName: provider.suggestedName) {
+            case .image(let type):
+                loadImage(from: provider, type: type)
+            case .fileURL:
                 loadFile(from: provider)
-            } else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+            case .link:
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
                     guard let url else { return }
                     Task { @MainActor in self.addText(url.absoluteString) }
                 }
-            } else if provider.canLoadObject(ofClass: String.self) {
+            case .promisedFile(let type):
+                loadPromisedFile(from: provider, type: type)
+            case .text:
+                guard provider.canLoadObject(ofClass: String.self) else { continue }
                 _ = provider.loadObject(ofClass: String.self) { text, _ in
                     guard let text else { return }
                     Task { @MainActor in self.addText(text) }
                 }
-            } else {
+            case .nothing:
                 AppLog.log("Tray: nothing usable in \(provider.registeredTypeIdentifiers)")
             }
         }
+    }
+
+    /// File promises read straight from the drag (AppKit's receiver: the
+    /// source app writes each file, the tray keeps it).
+    func acceptPromises(_ receivers: [NSFilePromiseReceiver]) {
+        AppLog.log("Tray: drop with \(receivers.count) promised file(s): \(receivers.flatMap(\.fileTypes))")
+        ShelfDropResolver.receive(receivers) { [weak self] url in self?.addReceivedFile(url) }
     }
 
     /// Adds what's on the clipboard: an image (e.g. a screenshot taken with
@@ -207,12 +338,27 @@ final class TrayStore: ObservableObject {
         // Image files are copied in, so a screenshot still shows after macOS
         // tidies away the original or the user deletes it from the Desktop.
         if let type = UTType(filenameExtension: fileURL.pathExtension), type.conforms(to: .image),
-           let data = try? Data(contentsOf: fileURL) {
+           !isInStorage(fileURL), let data = try? Data(contentsOf: fileURL) {
             addImage(data: data, suggestedName: fileURL.deletingPathExtension().lastPathComponent,
                      fileExtension: fileURL.pathExtension)
             return
         }
         guard !items.contains(where: { $0.url == fileURL }) else { return }
+        // A file in a temporary or cache folder (a browser's drag file, an
+        // app's export) would vanish from the shelf: keep a copy instead.
+        if ShelfDropResolver.isVolatile(fileURL), !isInStorage(fileURL) {
+            // The same temp file dropped twice: the copy is already here.
+            guard !hasOwnedCopy(of: fileURL) else { return }
+            let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            if size <= Self.syncCopyLimit {
+                if let copy = copyIntoStorage(fileURL) {
+                    insert(TrayItem(id: UUID(), kind: .file, url: copy, text: nil, addedAt: Date()))
+                }
+            } else {
+                copyIntoStorageInBackground(fileURL)
+            }
+            return
+        }
         insert(TrayItem(id: UUID(), kind: .file, url: fileURL, text: nil, addedAt: Date()))
     }
 
@@ -222,14 +368,106 @@ final class TrayStore: ObservableObject {
         insert(TrayItem(id: UUID(), kind: .text, url: nil, text: text, addedAt: Date()))
     }
 
-    private func addImage(data: Data, suggestedName: String, fileExtension: String) {
-        let name = Self.storageName(from: suggestedName, fileExtension: fileExtension)
-        var destination = storage.appendingPathComponent(name).appendingPathExtension(fileExtension)
+    /// A file a promise wrote into a staging folder: moved into the tray's
+    /// storage (it's the tray's own copy from now on).
+    func addReceivedFile(_ staged: URL) {
+        let fileManager = FileManager.default
+        let ext = staged.pathExtension
+        let name = Self.storageName(from: staged.lastPathComponent, fileExtension: ext)
+        let destination = uniqueStorageURL(name: name, fileExtension: ext)
+        do {
+            try fileManager.moveItem(at: staged, to: destination)
+        } catch {
+            do {
+                try fileManager.copyItem(at: staged, to: destination)
+            } catch {
+                AppLog.log("Tray: could not keep a received file: \(error.localizedDescription)")
+                return
+            }
+        }
+        // The per-drop staging folder is empty once its files moved in.
+        let folder = staged.deletingLastPathComponent()
+        if folder.path.contains("/SparkV-Incoming/"),
+           (try? fileManager.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
+            try? fileManager.removeItem(at: folder)
+        }
+        let isImage = UTType(filenameExtension: ext)?.conforms(to: .image) ?? false
+        let item = TrayItem(id: UUID(), kind: isImage ? .image : .file, url: destination, text: nil, addedAt: Date())
+        insert(item)
+        loadThumbnailIfNeeded(item)
+    }
+
+    /// An owned copy with the same name and size as `source` (a temp file
+    /// dropped again).
+    private func hasOwnedCopy(of source: URL) -> Bool {
+        let base = Self.storageName(from: source.deletingPathExtension().lastPathComponent, fileExtension: source.pathExtension)
+        let size = (try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -1
+        if pendingCopies.contains(where: { $0.deletingPathExtension().lastPathComponent.hasPrefix(base) }) { return true }
+        return items.contains { item in
+            guard isOwned(item), let url = item.url, url.pathExtension == source.pathExtension,
+                  url.deletingPathExtension().lastPathComponent.hasPrefix(base) else { return false }
+            return ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -2) == size
+        }
+    }
+
+    /// Copies a large temporary file in on a background task, then adds it.
+    private func copyIntoStorageInBackground(_ source: URL) {
+        let ext = source.pathExtension
+        let destination = uniqueStorageURL(name: Self.storageName(from: source.deletingPathExtension().lastPathComponent,
+                                                                  fileExtension: ext), fileExtension: ext)
+        pendingCopies.insert(destination)
+        AppLog.log("Tray: copying \(source.lastPathComponent) in")
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let ok: Bool
+            do {
+                try FileManager.default.copyItem(at: source, to: destination)
+                ok = true
+            } catch {
+                ok = false
+                AppLog.log("Tray: could not copy \(source.lastPathComponent) in: \(error.localizedDescription)")
+            }
+            await self?.finishBackgroundCopy(destination, ok: ok)
+        }
+    }
+
+    private func finishBackgroundCopy(_ destination: URL, ok: Bool) {
+        pendingCopies.remove(destination)
+        if ok { insert(TrayItem(id: UUID(), kind: .file, url: destination, text: nil, addedAt: Date())) }
+    }
+
+    /// Waits for background copies (tests).
+    var isCopying: Bool { !pendingCopies.isEmpty }
+
+    private func copyIntoStorage(_ source: URL) -> URL? {
+        let ext = source.pathExtension
+        let destination = uniqueStorageURL(name: Self.storageName(from: source.deletingPathExtension().lastPathComponent,
+                                                                  fileExtension: ext), fileExtension: ext)
+        do {
+            try FileManager.default.copyItem(at: source, to: destination)
+            return destination
+        } catch {
+            AppLog.log("Tray: could not copy \(source.lastPathComponent) in: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func uniqueStorageURL(name: String, fileExtension: String) -> URL {
+        func make(_ base: String) -> URL {
+            let url = storage.appendingPathComponent(base)
+            return fileExtension.isEmpty ? url : url.appendingPathExtension(fileExtension)
+        }
+        var destination = make(name)
         var counter = 2
-        while FileManager.default.fileExists(atPath: destination.path) {
-            destination = storage.appendingPathComponent("\(name) \(counter)").appendingPathExtension(fileExtension)
+        while FileManager.default.fileExists(atPath: destination.path) || pendingCopies.contains(destination) {
+            destination = make("\(name) \(counter)")
             counter += 1
         }
+        return destination
+    }
+
+    private func addImage(data: Data, suggestedName: String, fileExtension: String) {
+        let name = Self.storageName(from: suggestedName, fileExtension: fileExtension)
+        let destination = uniqueStorageURL(name: name, fileExtension: fileExtension)
         do {
             try data.write(to: destination)
             let item = TrayItem(id: UUID(), kind: .image, url: destination, text: nil, addedAt: Date())
@@ -242,39 +480,182 @@ final class TrayStore: ObservableObject {
 
     private func insert(_ item: TrayItem) {
         items.insert(item, at: 0)
-        while items.count > Self.capacity {
-            discardStorage(of: items.removeLast())
-        }
-        AppLog.log("Tray: added \(item.kind.rawValue) “\(item.displayName.prefix(40))”")
+        pruneExpired(save: false)
+        trimToCapacity()
+        AppLog.log("Tray: added \(item.kind.rawValue) (\(item.displayName.count) chars)")
         save()
         SpaceIngestCenter.tray(item)
+    }
+
+    // MARK: Limits
+
+    /// Drops the oldest items beyond `capacity` (tray copies to the Trash).
+    @discardableResult
+    private func trimToCapacity(saving: Bool = false) -> [TrayUndo.Removed] {
+        var removed: [TrayUndo.Removed] = []
+        while items.count > capacity {
+            let index = items.count - 1
+            let item = items.removeLast()
+            removed.append(TrayUndo.Removed(item: item, index: index, trashedURL: discardStorage(of: item)))
+        }
+        if !removed.isEmpty, saving { save() }
+        return removed
+    }
+
+    /// The Tray size changed in Settings or the gear menu. Lowering it drops
+    /// the oldest items at once, with Undo (which also puts the size back),
+    /// never silently.
+    func capacityChanged() {
+        let previous = appliedCapacity
+        appliedCapacity = capacity
+        let removed = trimToCapacity(saving: true)
+        guard !removed.isEmpty else { return }
+        if let renamingID, removed.contains(where: { $0.item.id == renamingID }) { self.renamingID = nil }
+        if let focusedID, removed.contains(where: { $0.item.id == focusedID }) { self.focusedID = nil }
+        AppLog.log("Tray: size lowered to \(capacity), \(removed.count) item(s) removed (Undo puts them back)")
+        registerUndo(TrayUndo(action: .removed(removed.reversed()),
+                              title: removed.count == 1 ? "Removed" : "Removed \(removed.count)",
+                              restoresCapacity: previous))
+    }
+
+    /// Removes items older than the expiry setting. Runs on launch, when an
+    /// item is added and when the drawer shows the Tray: no timer.
+    func pruneExpired(now: Date = Date(), save shouldSave: Bool = true) {
+        guard let interval = settings.expiry.interval else { return }
+        let cutoff = now.addingTimeInterval(-interval)
+        let expired = items.filter { $0.addedAt < cutoff }
+        guard !expired.isEmpty else { return }
+        let ids = Set(expired.map(\.id))
+        expired.forEach { _ = discardStorage(of: $0) }
+        items.removeAll { ids.contains($0.id) }
+        AppLog.log("Tray: \(expired.count) item(s) expired")
+        if shouldSave { save() }
     }
 
     // MARK: Removing
 
     func remove(_ item: TrayItem) {
-        items.removeAll { $0.id == item.id }
-        discardStorage(of: item)
+        remove(ids: [item.id])
+    }
+
+    /// Removes items; ⌘Z or the header's Undo puts them back (tray copies
+    /// come back out of the Trash).
+    func remove(ids: [UUID]) {
+        let targets = Set(ids)
+        var removed: [TrayUndo.Removed] = []
+        for (index, item) in items.enumerated() where targets.contains(item.id) {
+            removed.append(TrayUndo.Removed(item: item, index: index, trashedURL: discardStorage(of: item)))
+        }
+        guard !removed.isEmpty else { return }
+        let nextFocus = focusedID.flatMap { id -> UUID? in
+            guard targets.contains(id), let index = items.firstIndex(where: { $0.id == id }) else { return id }
+            let rest = items.enumerated().filter { !targets.contains($0.element.id) }
+            return (rest.first { $0.offset > index } ?? rest.last)?.element.id
+        }
+        items.removeAll { targets.contains($0.id) }
+        focusedID = nextFocus
+        if let renamingID, targets.contains(renamingID) { self.renamingID = nil }
         save()
+        registerUndo(TrayUndo(action: .removed(removed), title: removed.count == 1 ? "Removed" : "Removed \(removed.count)"))
     }
 
     func clear() {
-        items.forEach(discardStorage)
-        items.removeAll()
-        save()
+        remove(ids: items.map(\.id))
     }
 
     /// Only copies the tray made itself are touched, and they go to the
-    /// Trash; dropped files stay put.
-    private func discardStorage(of item: TrayItem) {
+    /// Trash; dropped files stay put. Returns where the copy went.
+    private func discardStorage(of item: TrayItem) -> URL? {
         selection.remove(item.id)
         thumbnails[item.id] = nil
         thumbnailsLoading.remove(item.id)
-        guard item.kind == .image, let url = item.url,
-              url.standardizedFileURL.path.hasPrefix(storage.standardizedFileURL.path + "/"),
-              FileManager.default.fileExists(atPath: url.path)
-        else { return }
-        _ = trash(url)
+        if let preview = textPreviews.removeValue(forKey: item.id) { try? FileManager.default.removeItem(at: preview) }
+        guard isOwned(item), let url = item.url, FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return trashItem(url).location
+    }
+
+    // MARK: Undo
+
+    private func registerUndo(_ undo: TrayUndo) {
+        self.undo = undo
+        undoExpiry?.cancel()
+        // The chip and ⌘Z stay for a few seconds, like the Finder's.
+        undoExpiry = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            self?.undo = nil
+        }
+    }
+
+    func undoLast() {
+        guard let undo else { return }
+        self.undo = nil
+        undoExpiry?.cancel()
+        switch undo.action {
+        case .removed(let list):
+            if let size = undo.restoresCapacity, size > capacity {
+                settings.capacity = size
+                appliedCapacity = size
+            }
+            var restored = 0
+            for entry in list.sorted(by: { $0.index < $1.index }) {
+                let item = entry.item
+                guard !items.contains(where: { $0.id == item.id }) else { continue }
+                if let trashed = entry.trashedURL, let original = item.url, !FileManager.default.fileExists(atPath: original.path) {
+                    do {
+                        try FileManager.default.moveItem(at: trashed, to: original)
+                    } catch {
+                        AppLog.log("Tray: could not bring \(original.lastPathComponent) back from the Trash")
+                        continue
+                    }
+                }
+                if item.kind != .text, let url = item.url, !FileManager.default.fileExists(atPath: url.path) { continue }
+                items.insert(item, at: min(entry.index, items.count))
+                loadThumbnailIfNeeded(item)
+                restored += 1
+            }
+            trimToCapacity()
+            save()
+            AppLog.log("Tray: put back \(restored) item(s)")
+        case .renamed(let id, let from, let to):
+            do {
+                try FileDropOps.undoRename(FileDropRename(itemID: id, from: from, to: to))
+                if let index = items.firstIndex(where: { $0.id == id }) { items[index].url = from }
+                save()
+            } catch {
+                AppLog.log("Tray: could not undo the rename: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: Rename
+
+    /// Renames a file or image on disk (a tray copy in the tray's folder, a
+    /// dropped file where it is). Returns an error message, or nil.
+    @discardableResult
+    func rename(_ item: TrayItem, to rawName: String) -> String? {
+        guard item.kind != .text, let url = item.url, let index = items.firstIndex(where: { $0.id == item.id }) else {
+            return "Only files can be renamed"
+        }
+        let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])).map { $0.isDirectory == true && $0.isPackage != true } ?? false
+        let name = FileDropOps.cleanTypedName(rawName, extension: isFolder ? nil : url.pathExtension)
+        guard !name.isEmpty else { return "Type a name first" }
+        let current = isFolder ? url.lastPathComponent : url.deletingPathExtension().lastPathComponent
+        guard name != current else {
+            renamingID = nil
+            return nil
+        }
+        do {
+            let newURL = try FileDropOps.rename(url, toBaseName: name)
+            items[index].url = newURL
+            renamingID = nil
+            save()
+            registerUndo(TrayUndo(action: .renamed(id: item.id, from: url, to: newURL), title: "Renamed"))
+            AppLog.log("Tray: renamed an item")
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
     }
 
     // MARK: Using
@@ -295,12 +676,43 @@ final class TrayStore: ObservableObject {
         }
     }
 
+    /// Several items at once, the way they'd be dragged.
+    func copyToClipboard(_ list: [TrayItem], pasteboard: NSPasteboard = .general) {
+        guard list.count > 1 else {
+            if let item = list.first { copyToClipboard(item, pasteboard: pasteboard) }
+            return
+        }
+        let writers = list.compactMap(\.pasteboardWriter)
+        guard !writers.isEmpty else { return }
+        pasteboard.clearContents()
+        pasteboard.writeObjects(writers)
+    }
+
     func dragProvider(for item: TrayItem) -> NSItemProvider {
         switch item.kind {
         case .text:
             NSItemProvider(object: (item.text ?? "") as NSString)
         case .image, .file:
             item.url.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider()
+        }
+    }
+
+    /// Files for Quick Look, in shelf order. Text items preview as a
+    /// temporary .txt (removed with the item).
+    func quickLookEntries(for list: [TrayItem]) -> [TrayPreviewEntry] {
+        list.compactMap { item -> TrayPreviewEntry? in
+            switch item.kind {
+            case .file, .image:
+                guard let url = item.url, FileManager.default.fileExists(atPath: url.path) else { return nil }
+                return TrayPreviewEntry(id: item.id, url: url)
+            case .text:
+                if let existing = textPreviews[item.id], FileManager.default.fileExists(atPath: existing.path) {
+                    return TrayPreviewEntry(id: item.id, url: existing)
+                }
+                guard let text = item.text, let file = AirDrop.temporaryTextFile(text) else { return nil }
+                textPreviews[item.id] = file
+                return TrayPreviewEntry(id: item.id, url: file)
+            }
         }
     }
 
@@ -346,7 +758,7 @@ final class TrayStore: ObservableObject {
 
     /// A file name for a copied image: no doubled extension ("Shot.png.png")
     /// and no "/" or ":", which aren't allowed in a path component.
-    private static func storageName(from suggestedName: String, fileExtension: String) -> String {
+    static func storageName(from suggestedName: String, fileExtension: String) -> String {
         var name = suggestedName.trimmingCharacters(in: .whitespacesAndNewlines)
         let existing = (name as NSString).pathExtension
         // Only strip a real extension: "Screenshot … at 10.30.45" ends in ".45".
@@ -391,16 +803,16 @@ final class TrayStore: ObservableObject {
         }
     }
 
-    private static func isImageType(_ identifier: String) -> Bool {
-        UTType(identifier)?.conforms(to: .image) ?? false
-    }
-
-    /// A Finder drag of a .png carries both a file URL and an image type.
-    private static func isImageFile(_ provider: NSItemProvider) -> Bool {
-        guard let name = provider.suggestedName,
-              let type = UTType(filenameExtension: (name as NSString).pathExtension)
-        else { return false }
-        return type.conforms(to: .image)
+    /// A promised (or raw data) file: the source app writes it, the tray
+    /// keeps the copy.
+    private func loadPromisedFile(from provider: NSItemProvider, type: String) {
+        Task { @MainActor in
+            guard let staged = await ShelfDropResolver.loadPromisedFile(provider, type: type) else {
+                AppLog.log("Tray: a promised \(type) file never arrived")
+                return
+            }
+            self.addReceivedFile(staged)
+        }
     }
 
     private func save() {
@@ -408,8 +820,38 @@ final class TrayStore: ObservableObject {
             defaults.set(data, forKey: Self.defaultsKey)
         }
     }
-}
 
+    // MARK: Drags out that moved files
+
+    /// After a drag out: a dropped file the destination *moved* (Finder,
+    /// same disk, or ⌘ held) isn't where the tray points any more, so its
+    /// card goes (nothing is trashed: the file is safe where it went).
+    /// Dropped on the Dock's Trash (`.delete`): the file is in the Trash
+    /// now, so the card goes too, Tray copies included.
+    func dragEnded(ids: [UUID], operation: NSDragOperation) {
+        let trashed = operation.contains(.delete)
+        guard trashed || operation.contains(.move) || operation.contains(.generic) else { return }
+        let targets = Set(ids)
+        let gone = items.filter { item in
+            guard targets.contains(item.id), item.kind != .text, trashed || !isOwned(item), let url = item.url else { return false }
+            return !FileManager.default.fileExists(atPath: url.path)
+        }
+        guard !gone.isEmpty else { return }
+        let goneIDs = Set(gone.map(\.id))
+        items.removeAll { goneIDs.contains($0.id) }
+        selection.subtract(goneIDs)
+        if let focusedID, goneIDs.contains(focusedID) { self.focusedID = nil }
+        save()
+        gone.forEach { thumbnails[$0.id] = nil }
+        AppLog.log(trashed ? "Tray: \(gone.count) file(s) dragged to the Trash" : "Tray: \(gone.count) file(s) moved out of the tray")
+    }
+
+    /// Marks the next change as keyboard-made (no animation).
+    func keyboardChange() {
+        animatesChanges = false
+        DispatchQueue.main.async { MainActor.assumeIsolated { self.animatesChanges = true } }
+    }
+}
 
 // MARK: - Dragging out
 
@@ -464,6 +906,9 @@ extension TrayItem {
 struct TrayDragPayload {
     let writer: any NSPasteboardWriting
     let image: NSImage
+    /// A file the Tray only points to (not a tray-made copy): a drag may
+    /// move it (Shelf settings: Copy with ⌘ to move, or like Finder).
+    var canMove = false
 }
 
 extension TrayStore {
@@ -472,7 +917,8 @@ extension TrayStore {
 
     func dragPayload(for item: TrayItem) -> TrayDragPayload? {
         guard let writer = item.pasteboardWriter else { return nil }
-        return TrayDragPayload(writer: writer, image: dragImage(for: item))
+        // Tray-made copies always copy out, or the card would lose its file.
+        return TrayDragPayload(writer: writer, image: dragImage(for: item), canMove: item.kind == .file && !isOwned(item))
     }
 
     /// Payloads for several items, skipping any whose file has gone missing.
@@ -486,17 +932,85 @@ extension TrayStore {
         }
     }
 
-    // MARK: Selection (Cmd-click)
+    // MARK: Selection (⌘-click, ⇧-click, ⌘A) and keyboard focus
 
     func isSelected(_ item: TrayItem) -> Bool { selection.contains(item.id) }
+
+    func isFocused(_ item: TrayItem) -> Bool { focusedID == item.id }
 
     func toggleSelection(_ item: TrayItem) {
         guard items.contains(where: { $0.id == item.id }) else { return }
         if selection.remove(item.id) == nil { selection.insert(item.id) }
+        focusedID = item.id
+        anchorID = item.id
     }
 
     func clearSelection() {
         if !selection.isEmpty { selection.removeAll() }
+    }
+
+    func selectAll() {
+        selection = Set(items.map(\.id))
+        if focusedID == nil { focusedID = items.first?.id }
+    }
+
+    /// A plain click: the card gets the keyboard focus, the multi-selection goes.
+    func focus(_ item: TrayItem) {
+        clearSelection()
+        focusedID = item.id
+        anchorID = item.id
+    }
+
+    /// Quick Look paged to another item.
+    func focus(id: UUID) {
+        guard items.contains(where: { $0.id == id }) else { return }
+        focusedID = id
+    }
+
+    /// ⌘-click toggles one card; ⇧-click selects the run from the last
+    /// clicked card (Finder's list view).
+    func click(_ item: TrayItem, modifiers: NSEvent.ModifierFlags) {
+        if modifiers.contains(.shift), let anchor = anchorID ?? focusedID,
+           let from = items.firstIndex(where: { $0.id == anchor }), let to = items.firstIndex(where: { $0.id == item.id }) {
+            let range = min(from, to)...max(from, to)
+            let run = Set(items[range].map(\.id))
+            selection = modifiers.contains(.command) ? selection.union(run) : run
+            focusedID = item.id
+        } else {
+            toggleSelection(item)
+        }
+    }
+
+    /// ← / →: moves the focus; with ⇧ it extends the selection from the anchor.
+    func moveFocus(forward: Bool, extending: Bool) {
+        guard !items.isEmpty else { return }
+        let current = focusedID.flatMap { id in items.firstIndex { $0.id == id } }
+        let next: Int
+        if let current {
+            next = min(max(current + (forward ? 1 : -1), 0), items.count - 1)
+        } else {
+            next = forward ? 0 : items.count - 1
+        }
+        let target = items[next].id
+        if extending {
+            let anchor = anchorID ?? focusedID ?? target
+            anchorID = anchor
+            if let from = items.firstIndex(where: { $0.id == anchor }) {
+                selection = Set(items[min(from, next)...max(from, next)].map(\.id))
+            }
+        } else {
+            clearSelection()
+            anchorID = target
+        }
+        focusedID = target
+    }
+
+    /// What the keyboard acts on: the selection (in shelf order), else the
+    /// focused card.
+    var keyboardTargets: [TrayItem] {
+        if !selection.isEmpty { return items.filter { selection.contains($0.id) } }
+        guard let focusedID, let item = items.first(where: { $0.id == focusedID }) else { return [] }
+        return [item]
     }
 
     /// What dragging `item` takes along: the whole selection when the item
@@ -520,7 +1034,7 @@ extension TrayStore {
     func dragImage(for item: TrayItem) -> NSImage {
         let size = Self.dragImageSize
         let thumbnail = thumbnails[item.id]
-        let icon: NSImage? = item.kind == .file ? item.url.map { NSWorkspace.shared.icon(forFile: $0.path) } : nil
+        let icon: NSImage? = item.kind == .file ? item.url.map { TrayFileIcons.icon(for: $0) } : nil
         return TrayDragImage.render(size: size) { rect in
             let card = NSBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
             switch item.kind {
@@ -737,6 +1251,18 @@ final class TrayDragSourceView: NSView, NSDraggingSource {
     var onDoubleClick: (() -> Void)?
     /// Cmd- or Shift-click (multi-select). Nil: treated as a plain click.
     var onCommandClick: (() -> Void)?
+    /// Like `onCommandClick`, with the modifiers (⇧ range vs ⌘ toggle);
+    /// used instead of it when set.
+    var onModifiedClick: ((NSEvent.ModifierFlags) -> Void)?
+    /// Any press, before click or drag is known (the Tray takes the keyboard here).
+    var onPress: (() -> Void)?
+    /// A click makes the non-activating panel key, so keys reach the view's
+    /// owner (the Tray's Space / Delete / arrows). Off for other shelves.
+    var takesKeyboardFocus = false
+    /// The Tray item this view stands for: Quick Look zooms from it.
+    var quickLookID: UUID? {
+        didSet { if let quickLookID, quickLookID != oldValue { TrayQuickLook.shared.register(self, for: quickLookID) } }
+    }
     var makeMenu: (() -> NSMenu?)?
     var onDragEnded: ((NSDragOperation) -> Void)?
     /// Pointer entered (true) or left (false) the view. Tracked here rather
@@ -759,6 +1285,8 @@ final class TrayDragSourceView: NSView, NSDraggingSource {
     /// Text never moves anything, so destinations that only take the
     /// generic operation may have it too.
     private var draggingTextOnly = false
+    /// Every dragged file is one the Tray only points to (a move is allowed).
+    private var draggingCanMove = false
     private var draggingCount = 0
 
     /// Pointer travel before a press turns into a drag.
@@ -768,6 +1296,8 @@ final class TrayDragSourceView: NSView, NSDraggingSource {
     // The panel never becomes key in an active app: take the very first click.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
+    /// The notch panel becomes key only for views that ask (`becomesKeyOnlyIfNeeded`).
+    override var needsPanelToBecomeKey: Bool { takesKeyboardFocus }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         let hit = super.hitTest(point)
@@ -818,6 +1348,7 @@ final class TrayDragSourceView: NSView, NSDraggingSource {
         }
         mouseDownEvent = event
         isDragging = false
+        onPress?()
         if event.clickCount >= 2 {
             pendingClick?.cancel()
             pendingClick = nil
@@ -839,11 +1370,11 @@ final class TrayDragSourceView: NSView, NSDraggingSource {
         guard mouseDownEvent != nil, !isDragging,
               bounds.contains(convert(event.locationInWindow, from: nil))
         else { return }
-        if event.clickCount == 1, let onCommandClick,
-           !event.modifierFlags.intersection([.command, .shift]).isEmpty {
+        let modifiers = event.modifierFlags.intersection([.command, .shift])
+        if event.clickCount == 1, !modifiers.isEmpty, onModifiedClick != nil || onCommandClick != nil {
             pendingClick?.cancel()
             pendingClick = nil
-            onCommandClick()
+            if let onModifiedClick { onModifiedClick(modifiers) } else { onCommandClick?() }
             return
         }
         switch event.clickCount {
@@ -900,6 +1431,7 @@ final class TrayDragSourceView: NSView, NSDraggingSource {
         }
         isDragging = true
         draggingTextOnly = !payloads.contains { TrayDragOut.carriesFile($0.writer) }
+        draggingCanMove = payloads.allSatisfy(\.canMove)
         draggingCount = payloads.count
 
         let center: CGPoint
@@ -922,23 +1454,39 @@ final class TrayDragSourceView: NSView, NSDraggingSource {
 
     /// Outside the app: copy only for files, so Finder never *moves* a
     /// tray-owned screenshot out of Application Support (it treats `.generic`
-    /// and `.move` as a move on the same volume). Inside the app: nothing, so
-    /// dropping back on the drawer doesn't add a duplicate.
-    nonisolated static func operationMask(for context: NSDraggingContext, textOnly: Bool) -> NSDragOperation {
+    /// and `.move` as a move on the same volume). Files the Tray only points
+    /// to may move: with ⌘ held in the default mode, or the way Finder does
+    /// it (same disk moves, ⌥ copies) in "Like Finder" mode. Inside the app:
+    /// nothing, so dropping back on the drawer doesn't add a duplicate.
+    nonisolated static func operationMask(for context: NSDraggingContext, textOnly: Bool, canMove: Bool = false,
+                                          mode: ShelfSettings.DragOut = .copy, commandHeld: Bool = false) -> NSDragOperation {
         switch context {
-        case .outsideApplication: textOnly ? [.copy, .generic] : .copy
-        case .withinApplication: []
-        @unknown default: .copy
+        case .outsideApplication:
+            if textOnly { return [.copy, .generic] }
+            guard canMove else { return .copy }
+            switch mode {
+            case .finder: return [.copy, .move, .generic]
+            case .copy: return commandHeld ? [.move, .generic] : .copy
+            }
+        case .withinApplication: return []
+        @unknown default: return .copy
         }
     }
 
+    /// The mode in effect (AppKit asks on the main thread).
+    private var dragOutMode: ShelfSettings.DragOut { ShelfSettings.shared.dragOut }
+
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        Self.operationMask(for: context, textOnly: draggingTextOnly)
+        Self.operationMask(for: context, textOnly: draggingTextOnly, canMove: draggingCanMove, mode: dragOutMode,
+                           commandHeld: NSEvent.modifierFlags.contains(.command))
     }
 
     /// Cmd/Option would otherwise filter the mask down to an operation we
-    /// don't offer and make the drop fail.
-    func ignoreModifierKeys(for session: NSDraggingSession) -> Bool { true }
+    /// don't offer and make the drop fail. "Like Finder" lets them through:
+    /// that mask offers every operation they pick.
+    func ignoreModifierKeys(for session: NSDraggingSession) -> Bool {
+        !(draggingCanMove && dragOutMode == .finder)
+    }
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         isDragging = false
@@ -963,6 +1511,10 @@ struct TrayDragSource: NSViewRepresentable {
     var passThroughTopLeading: CGSize = .zero
     var onCommandClick: (() -> Void)? = nil
     var onDragEnded: ((NSDragOperation) -> Void)? = nil
+    var onModifiedClick: ((NSEvent.ModifierFlags) -> Void)? = nil
+    var onPress: (() -> Void)? = nil
+    var takesKeyboardFocus = false
+    var quickLookID: UUID? = nil
 
     func makeNSView(context: Context) -> TrayDragSourceView {
         let view = TrayDragSourceView()
@@ -981,6 +1533,10 @@ struct TrayDragSource: NSViewRepresentable {
         view.onDoubleClick = onDoubleClick
         view.onCommandClick = onCommandClick
         view.onDragEnded = onDragEnded
+        view.onModifiedClick = onModifiedClick
+        view.onPress = onPress
+        view.takesKeyboardFocus = takesKeyboardFocus
+        view.quickLookID = quickLookID
         view.makeMenu = menu
         view.onHoverChange = onHoverChange
         view.passThroughTopTrailing = passThroughTopTrailing
@@ -990,13 +1546,16 @@ struct TrayDragSource: NSViewRepresentable {
 }
 
 /// Menu item that runs a closure (NSMenuItem's target is weak, so the item
-/// is its own target).
+/// is its own target). `key` shows a shortcut that works while the Tray
+/// has the keyboard (the item itself doesn't bind it).
 final class TrayMenuItem: NSMenuItem {
     private let handler: () -> Void
 
-    init(_ title: String, systemImage: String? = nil, handler: @escaping () -> Void) {
+    init(_ title: String, systemImage: String? = nil, key: String = "", modifiers: NSEvent.ModifierFlags = [],
+         handler: @escaping () -> Void) {
         self.handler = handler
-        super.init(title: title, action: #selector(run), keyEquivalent: "")
+        super.init(title: title, action: #selector(run), keyEquivalent: key)
+        keyEquivalentModifierMask = modifiers
         target = self
         if let systemImage {
             image = NSImage(systemSymbolName: systemImage, accessibilityDescription: nil)
@@ -1032,6 +1591,8 @@ private enum TrayLayout {
     static let aiButtonCorner = CGSize(width: 30, height: 30)
     /// Selected cards: the system accent in Apple, red in SparkV Red.
     static var selectionTint: Color { SparkVTheme.accent }
+    /// The keyboard focus ring (lighter than a selection).
+    static var focusTint: Color { SparkVTheme.isApple ? Color.white.opacity(0.75) : SparkVTheme.red.opacity(0.75) }
 }
 
 /// Opens the AI panel on tray items. "Save to Tray" results land in this
@@ -1044,6 +1605,12 @@ private func openTrayAI(_ items: [TrayItem], tray: TrayStore, action: TrayAIActi
         controller.onSaveToTray = { [weak tray] text in tray?.addText(text) }
     }
     controller.open(items: items, initialAction: action)
+}
+
+/// Share menu / Nearby panel on tray items.
+@MainActor
+private func shareTrayItems(_ items: [TrayItem]) {
+    ShelfShare.presentAtPointer(ShelfShare.objects(for: items), localSendFiles: { ShelfShare.fileURLs(for: items) })
 }
 
 struct TrayView: View {
@@ -1072,17 +1639,27 @@ struct TrayView: View {
                         TrayHeader()
                             .frame(height: TrayLayout.headerHeight)
                         TrayWell(isTargeted: state.isDropTargeted) {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: TrayLayout.cardSpacing) {
-                                    ForEach(Array(tray.items.enumerated()), id: \.element.id) { index, item in
-                                        TrayCardView(item: item, side: side)
-                                            .sparkVStaggeredEntrance(appeared.isOn, index: index)
-                                            .transition(.opacity.combined(with: .scale(scale: SparkVMotion.enterScale)))
+                            ScrollViewReader { reader in
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: TrayLayout.cardSpacing) {
+                                        ForEach(Array(tray.items.enumerated()), id: \.element.id) { index, item in
+                                            TrayCardView(item: item, side: side)
+                                                .id(item.id)
+                                                .sparkVStaggeredEntrance(appeared.isOn, index: index)
+                                                .transition(.opacity.combined(with: .scale(scale: SparkVMotion.enterScale)))
+                                        }
                                     }
+                                    .padding(TrayLayout.wellPadding)
+                                    // New and removed cards slide the row instead of
+                                    // jumping; keyboard changes show at once.
+                                    .animation(tray.animatesChanges ? SparkVMotion.respecting(SparkVMotion.easeOut()) : nil,
+                                               value: tray.items.map(\.id))
                                 }
-                                .padding(TrayLayout.wellPadding)
-                                // New and removed cards slide the row instead of jumping.
-                                .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: tray.items.map(\.id))
+                                // Arrow keys keep the focused card in view (instantly).
+                                .onChange(of: tray.focusedID) { _, id in
+                                    guard let id else { return }
+                                    reader.scrollTo(id)
+                                }
                             }
                         }
                         .frame(height: wellHeight)
@@ -1095,8 +1672,17 @@ struct TrayView: View {
             .frame(width: size.width, height: size.height, alignment: .bottom)
         }
         .padding(.vertical, 2)
-        .onAppear { appeared.isOn = true }
-        .onDisappear { appeared.isOn = false }
+        // The Tray's keyboard target and Quick Look controller.
+        .background(TrayKeyResponder().frame(width: 1, height: 1).opacity(0).accessibilityHidden(true))
+        .onAppear {
+            appeared.isOn = true
+            tray.pruneExpired()
+            TrayKeyboard.shared.attach(tray: tray, state: state)
+        }
+        .onDisappear {
+            appeared.isOn = false
+            TrayKeyboard.shared.detach(drawerOpen: state.isExpanded)
+        }
     }
 }
 
@@ -1145,26 +1731,68 @@ private struct TrayEmptyState: View {
                     .help("Capture part of the screen")
                 TrayActionButton(title: "Add…", systemImage: "plus") { tray.chooseFiles() }
                     .help("Choose files to add")
+                if let undo = tray.undo {
+                    TrayActionButton(title: undo.putBackTitle, systemImage: "arrow.uturn.backward",
+                                     tint: TrayLayout.selectionTint) { tray.undoLast() }
+                        .help("Put back what was just removed (⌘Z)")
+                        .transition(.opacity)
+                }
             }
+            .animation(tray.animatesChanges ? SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)) : nil, value: tray.undo)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-/// Count, quick actions and the "All" drag handle above the well.
+/// Count, quick actions and the "All" drag handle above the well; the
+/// rename field while a card is being renamed.
 private struct TrayHeader: View {
     @EnvironmentObject private var tray: TrayStore
+    @ObservedObject private var keyboard = TrayKeyboard.shared
 
     var body: some View {
+        Group {
+            if let id = tray.renamingID, let item = tray.items.first(where: { $0.id == id }) {
+                TrayRenameBar(item: item)
+                    .transition(.opacity)
+            } else {
+                actions
+                    .transition(.opacity)
+            }
+        }
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)), value: tray.renamingID)
+    }
+
+    private var actions: some View {
         let images = tray.items.filter { $0.kind == .image }
-        HStack(spacing: 5) {
-            if tray.selection.isEmpty {
-                Text("\(tray.items.count)/\(TrayStore.capacity)")
+        return HStack(spacing: 5) {
+            if let undo = tray.undo {
+                TrayActionButton(title: "\(undo.title) · Undo", systemImage: "arrow.uturn.backward", height: TrayLayout.headerHeight,
+                                 tint: TrayLayout.selectionTint) {
+                    tray.undoLast()
+                }
+                .help("Put it back (⌘Z)")
+                .transition(.opacity)
+            } else if tray.selection.isEmpty {
+                Text("\(tray.items.count)/\(tray.capacity)")
                     .font(SparkVTheme.eyebrow(9.5))
                     .tracking(0.6)
                     .foregroundStyle(SparkVTheme.textTertiary)
                     .padding(.leading, 6)
-                    .help("Cmd-click cards to pick several, then drag any of them")
+                    .help("⌘-click or ⇧-click cards to pick several, then drag any of them · click a card, then Space for Quick Look")
+                if keyboard.hasFocus {
+                    HStack(spacing: 3) {
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 8.5, weight: .semibold))
+                        Text("Space to preview")
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                    .foregroundStyle(SparkVTheme.textTertiary)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .transition(.opacity)
+                    .accessibilityLabel("Keyboard: Space previews, arrows move, Delete removes")
+                }
             } else {
                 TrayActionButton(title: "\(tray.selection.count) selected", systemImage: "xmark", height: TrayLayout.headerHeight,
                                  tint: TrayLayout.selectionTint) {
@@ -1187,16 +1815,177 @@ private struct TrayHeader: View {
                 tray.captureScreenshot()
             }
             .help("Capture part of the screen")
+            TrayActionButton(title: nil, systemImage: "square.and.arrow.up", height: TrayLayout.headerHeight) {
+                shareTrayItems(tray.selection.isEmpty ? tray.items : tray.keyboardTargets)
+            }
+            .help(tray.selection.isEmpty ? "Share all: AirDrop, Messages, NearDrop, LocalSend…" : "Share the \(tray.selection.count) picked items")
+            .accessibilityLabel("Share")
             TrayClearButton()
             if tray.items.count > 1 {
                 TrayDragAllHandle()
+            }
+        }
+        .animation(tray.animatesChanges ? SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)) : nil, value: tray.undo)
+        .animation(SparkVMotion.hover(), value: keyboard.hasFocus)
+    }
+}
+
+/// Holds the rename field's text and error (no `@State` with the CLT toolchain).
+@MainActor
+private final class TrayRenameDraft: ObservableObject {
+    @Published var text = ""
+    @Published var error: String?
+    var loadedFor: UUID?
+}
+
+/// "Rename  [name].png  ✓ ✕" in place of the header; Return renames, Esc cancels.
+private struct TrayRenameBar: View {
+    @EnvironmentObject private var tray: TrayStore
+    let item: TrayItem
+    @StateObject private var draft = TrayRenameDraft()
+
+    var body: some View {
+        let ext = isFolder ? "" : (item.url?.pathExtension ?? "")
+        HStack(spacing: 5) {
+            Image(systemName: "character.cursor.ibeam")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(SparkVTheme.textSecondary)
+                .padding(.leading, 5)
+            HStack(spacing: 1) {
+                TrayRenameField(text: Binding(get: { draft.text }, set: { draft.text = $0; draft.error = nil }),
+                                onCommit: commit, onCancel: cancel)
+                if !ext.isEmpty {
+                    Text(".\(ext)")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(SparkVTheme.textTertiary)
+                        .fixedSize()
+                }
+            }
+            .padding(.horizontal, 6)
+            .frame(height: TrayLayout.headerHeight)
+            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(SparkVTheme.surface))
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .strokeBorder(draft.error == nil ? TrayLayout.selectionTint.opacity(0.8) : SparkVTheme.warning, lineWidth: 1))
+            if let error = draft.error {
+                Text(error)
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundStyle(SparkVTheme.warning)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 120, alignment: .leading)
+            }
+            TrayActionButton(title: "Rename", systemImage: "checkmark", height: TrayLayout.headerHeight,
+                             tint: TrayLayout.selectionTint, action: commit)
+                .help("Rename (Return)")
+            TrayActionButton(title: nil, systemImage: "xmark", height: TrayLayout.headerHeight, action: cancel)
+                .help("Cancel (Esc)")
+        }
+        .onAppear(perform: load)
+        .onChange(of: item.id) { _, _ in load() }
+    }
+
+    private var isFolder: Bool {
+        guard let url = item.url else { return false }
+        return (try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])).map { $0.isDirectory == true && $0.isPackage != true } ?? false
+    }
+
+    private func load() {
+        guard draft.loadedFor != item.id, let url = item.url else { return }
+        draft.loadedFor = item.id
+        draft.text = isFolder ? url.lastPathComponent : url.deletingPathExtension().lastPathComponent
+        draft.error = nil
+    }
+
+    private func commit() {
+        if let error = tray.rename(item, to: draft.text) {
+            draft.error = error
+            return
+        }
+        TrayKeyboard.shared.returnFocusAfterEditing()
+    }
+
+    private func cancel() {
+        tray.renamingID = nil
+        TrayKeyboard.shared.returnFocusAfterEditing()
+    }
+}
+
+/// A plain AppKit text field (takes the keyboard by itself when it appears,
+/// which makes the non-activating notch panel key): Return commits, Esc cancels.
+private struct TrayRenameField: NSViewRepresentable {
+    @Binding var text: String
+    let onCommit: () -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> TrayRenameTextField {
+        let field = TrayRenameTextField()
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.font = .systemFont(ofSize: 10.5, weight: .medium)
+        field.textColor = .white
+        field.lineBreakMode = .byTruncatingMiddle
+        field.cell?.usesSingleLineMode = true
+        field.delegate = context.coordinator
+        field.stringValue = text
+        field.setAccessibilityLabel("New name")
+        return field
+    }
+
+    func updateNSView(_ field: TrayRenameTextField, context: Context) {
+        context.coordinator.parent = self
+        if field.currentEditor() == nil, field.stringValue != text { field.stringValue = text }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: TrayRenameField
+        init(_ parent: TrayRenameField) { self.parent = parent }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            parent.text = field.stringValue
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            switch selector {
+            case #selector(NSResponder.insertNewline(_:)):
+                parent.onCommit()
+                return true
+            case #selector(NSResponder.cancelOperation(_:)):
+                parent.onCancel()
+                return true
+            default:
+                return false
+            }
+        }
+    }
+}
+
+/// Focuses itself, with the whole name selected, as soon as it's on screen.
+final class TrayRenameTextField: NSTextField {
+    override var needsPanelToBecomeKey: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window else { return }
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.window === window else { return }
+                if !window.isKeyWindow, window.canBecomeKey { window.makeKey() }
+                window.makeFirstResponder(self)
+                self.currentEditor()?.selectAll(nil)
             }
         }
     }
 }
 
 /// Clearing asks first: the first click turns the button into a red
-/// "Clear 3?" capsule for a few seconds, a second click clears.
+/// "Clear 3?" capsule for a few seconds, a second click clears (and the
+/// header then offers Undo).
 private struct TrayClearButton: View {
     @EnvironmentObject private var tray: TrayStore
     @StateObject private var armed = ViewFlag()
@@ -1211,7 +2000,7 @@ private struct TrayClearButton: View {
                     armed.isOn = false
                     tray.clear()
                 }
-                .help("Click again to remove every item (tray copies go to the Trash)")
+                .help("Click again to remove every item (tray copies go to the Trash; Undo puts them back)")
             } else {
                 TrayActionButton(title: nil, systemImage: "xmark", height: TrayLayout.headerHeight) {
                     armed.isOn = true
@@ -1224,6 +2013,7 @@ private struct TrayClearButton: View {
                     }
                 }
                 .help("Clear tray")
+                .accessibilityLabel("Clear tray")
             }
         }
         .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.hover)), value: armed.isOn)
@@ -1298,9 +2088,13 @@ private struct TrayDragAllHandle: View {
                 anchor: .pointer,
                 toolTip: "Drag all \(tray.items.count) items anywhere · click to copy them all",
                 payloads: { tray.dragPayloads(for: tray.items) },
-                onClick: { copyAll() }
+                onClick: { copyAll() },
+                onDragEnded: { [tray] operation in tray.dragEnded(ids: tray.items.map(\.id), operation: operation) }
             )
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Drag all items")
+        .accessibilityAction(named: "Copy All") { copyAll() }
     }
 
     private func copyAll() {
@@ -1338,7 +2132,7 @@ private struct TrayAirDropColumn: View {
             : 1
         let count = tray.items.count
         Button {
-            AirDrop.share(tray.items)
+            AirDrop.share(tray.selection.isEmpty ? tray.items : tray.keyboardTargets)
         } label: {
             AirDropTile()
                 .fixedSize()
@@ -1356,15 +2150,18 @@ private struct TrayAirDropColumn: View {
         .buttonStyle(SparkVPressStyle())
         .help(count == 0
               ? "Drop files, images or links here to send them with AirDrop"
-              : "Click to AirDrop \(count == 1 ? "the item" : "all \(count) items") · drop files here to AirDrop them")
+              : (tray.selection.isEmpty
+                 ? "Click to AirDrop \(count == 1 ? "the item" : "all \(count) items") · drop files here to AirDrop them"
+                 : "Click to AirDrop the \(tray.selection.count) picked items"))
     }
 }
 
 /// One square shelf card. AppKit owns the mouse over it: drag = drag out,
-/// click = copy, double-click = open, right/control-click = menu; hovering
-/// shows a ✨ button that asks AI about the item.
+/// click = copy (and keyboard focus), ⌘/⇧-click = pick, double-click = open,
+/// right/control-click = menu; hovering shows ✕ and a ✨ button that asks AI.
 private struct TrayCardView: View {
     @EnvironmentObject private var tray: TrayStore
+    @ObservedObject private var keyboard = TrayKeyboard.shared
     let item: TrayItem
     let side: CGFloat
 
@@ -1375,6 +2172,9 @@ private struct TrayCardView: View {
         let shape = RoundedRectangle(cornerRadius: TrayLayout.cardCorner, style: .continuous)
         let hovered = hover.isOn
         let selected = tray.isSelected(item)
+        // The card whose name is being edited in the header.
+        let renaming = tray.renamingID == item.id
+        let focused = keyboard.hasFocus && tray.isFocused(item) && !selected
         ZStack(alignment: .bottom) {
             artwork
                 .frame(width: side, height: side)
@@ -1385,8 +2185,11 @@ private struct TrayCardView: View {
         .frame(width: side, height: side)
         .clipShape(shape)
         .overlay(
-            shape.strokeBorder(selected ? TrayLayout.selectionTint : (hovered ? SparkVTheme.choose(apple: Color.white.opacity(0.3), sparkv: SparkVTheme.red.opacity(0.55)) : SparkVTheme.choose(apple: Color.white.opacity(0.08), sparkv: SparkVTheme.stroke)),
-                               lineWidth: selected ? 2.5 : 1)
+            shape.strokeBorder(selected || renaming ? TrayLayout.selectionTint
+                               : (focused ? TrayLayout.focusTint
+                                  : (hovered ? SparkVTheme.choose(apple: Color.white.opacity(0.3), sparkv: SparkVTheme.red.opacity(0.55))
+                                     : SparkVTheme.choose(apple: Color.white.opacity(0.08), sparkv: SparkVTheme.stroke))),
+                               lineWidth: selected || renaming ? 2.5 : (focused ? 2 : 1))
         )
         .overlay(alignment: .topTrailing) {
             if selected, !hovered {
@@ -1417,7 +2220,7 @@ private struct TrayCardView: View {
                 toolTip: item.kind == .text ? String((item.text ?? "").prefix(500)) : (item.url?.path ?? ""),
                 payloads: { tray.dragPayloads(for: tray.itemsToDrag(startingWith: item)) },
                 onClick: {
-                    tray.clearSelection()
+                    tray.focus(item)
                     copy()
                 },
                 onDoubleClick: item.kind == .text ? nil : { open() },
@@ -1425,7 +2228,14 @@ private struct TrayCardView: View {
                 onHoverChange: { hover.isOn = $0 },
                 passThroughTopTrailing: hovered ? TrayLayout.aiButtonCorner : .zero,
                 passThroughTopLeading: hovered ? TrayLayout.aiButtonCorner : .zero,
-                onCommandClick: { tray.toggleSelection(item) }
+                onCommandClick: { tray.toggleSelection(item) },
+                onDragEnded: { [tray, item] operation in
+                    tray.dragEnded(ids: tray.itemsToDrag(startingWith: item).map(\.id), operation: operation)
+                },
+                onModifiedClick: { modifiers in tray.click(item, modifiers: modifiers) },
+                onPress: { TrayKeyboard.shared.focusFromClick() },
+                takesKeyboardFocus: true,
+                quickLookID: item.id
             )
         )
         .overlay(alignment: .topLeading) {
@@ -1445,11 +2255,26 @@ private struct TrayCardView: View {
             }
         }
         .animation(SparkVMotion.hover(), value: hovered)
-        .animation(SparkVMotion.hover(), value: selected)
+        .animation(tray.animatesChanges ? SparkVMotion.hover() : nil, value: selected)
+        // Focus moves with the keys: no animation.
+        .animation(nil, value: focused)
         .animation(SparkVMotion.easeOut(SparkVMotion.Duration.hover), value: copied.isOn)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityLabel(accessibilityTitle)
+        .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
+        .accessibilityAction { copy() }
+        .accessibilityActions { accessibilityActionButtons }
+    }
+
+    /// VoiceOver actions: the right-click menu and the hover-only ✕ and ✨.
+    @ViewBuilder
+    private var accessibilityActionButtons: some View {
+        Button("Quick Look") { TrayKeyboard.showQuickLook(tray, startingAt: item) }
+        Button(item.kind == .text ? "Copy" : "Open") { item.kind == .text ? copy() : open() }
+        Button(tray.isSelected(item) ? "Deselect" : "Select") { tray.toggleSelection(item) }
+        Button("Share") { shareTrayItems([item]) }
+        Button("Remove from Tray") { tray.remove(item) }
+        Button("Ask AI") { askAI() }
     }
 
     // MARK: Artwork
@@ -1469,7 +2294,7 @@ private struct TrayCardView: View {
             ZStack {
                 SparkVTheme.surface
                 if let url = item.url {
-                    Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                    Image(nsImage: TrayFileIcons.icon(for: url))
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: side * 0.66, height: side * 0.66)
@@ -1527,6 +2352,14 @@ private struct TrayCardView: View {
         }
     }
 
+    private var accessibilityTitle: String {
+        switch item.kind {
+        case .image: "Image, \(label)"
+        case .file: "File, \(label)"
+        case .text: link == nil ? "Text, \(label)" : "Link, \(label)"
+        }
+    }
+
     // MARK: Actions
 
     private func makeMenu() -> NSMenu {
@@ -1534,18 +2367,46 @@ private struct TrayCardView: View {
         menu.autoenablesItems = false
         let tray = tray
         let item = item
-        menu.addItem(TrayMenuItem("Copy", systemImage: "doc.on.doc") { copy() })
+        // A right-click on a picked card acts on every picked card.
+        let group = tray.isSelected(item) && tray.selection.count > 1 ? tray.keyboardTargets : [item]
+        let several = group.count > 1
+        menu.addItem(TrayMenuItem(several ? "Copy \(group.count) Items" : "Copy", systemImage: "doc.on.doc", key: "c", modifiers: .command) {
+            if several { tray.copyToClipboard(group) } else { copy() }
+        })
+        menu.addItem(TrayMenuItem("Quick Look", systemImage: "eye", key: " ") {
+            TrayKeyboard.showQuickLook(tray, startingAt: several ? nil : item)
+        })
         if item.kind != .text {
             menu.addItem(TrayMenuItem("Open", systemImage: "arrow.up.forward.app") { open() })
             menu.addItem(TrayMenuItem("Show in Finder", systemImage: "folder") {
-                if let url = item.url { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                let urls = group.compactMap(\.url)
+                if !urls.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(urls) }
             })
+            if !several {
+                menu.addItem(TrayMenuItem("Rename…", systemImage: "character.cursor.ibeam") {
+                    tray.renamingID = item.id
+                })
+            }
         }
         menu.addItem(.separator())
-        menu.addItem(TrayMenuItem("Ask AI…", systemImage: "sparkles") { openTrayAI([item], tray: tray) })
-        menu.addItem(TrayMenuItem("AirDrop", systemImage: "dot.radiowaves.left.and.right") { AirDrop.share([item]) })
+        menu.addItem(ShelfShare.menuItem(for: ShelfShare.objects(for: group), localSendFiles: { ShelfShare.fileURLs(for: group) }))
+        menu.addItem(TrayMenuItem("AirDrop", systemImage: "dot.radiowaves.left.and.right") { AirDrop.share(group) })
+        menu.addItem(TrayMenuItem("Send to Android / Windows…", systemImage: "wave.3.right") {
+            LocalSendPanelController.shared.open(files: ShelfShare.fileURLs(for: group))
+        })
+        menu.addItem(TrayMenuItem("Ask AI…", systemImage: "sparkles") { openTrayAI(group, tray: tray) })
         menu.addItem(.separator())
-        menu.addItem(TrayMenuItem("Remove from Tray", systemImage: "trash") { tray.remove(item) })
+        if !several, !tray.isSelected(item) {
+            menu.addItem(TrayMenuItem("Select", systemImage: "checkmark.circle") { tray.toggleSelection(item) })
+        }
+        menu.addItem(TrayMenuItem("Select All", systemImage: "checkmark.circle.badge.questionmark", key: "a", modifiers: .command) {
+            tray.selectAll()
+        })
+        menu.addItem(.separator())
+        menu.addItem(TrayMenuItem(several ? "Remove \(group.count) from Tray" : "Remove from Tray", systemImage: "trash",
+                                  key: "\u{8}") {
+            tray.remove(ids: group.map(\.id))
+        })
         return menu
     }
 
@@ -1590,7 +2451,8 @@ private struct TrayCardLabel: View {
 }
 
 /// The small ✕ shown on a hovered card: takes the item off the shelf (a
-/// dropped file stays where it is; a tray-made copy goes to the Trash).
+/// dropped file stays where it is; a tray-made copy goes to the Trash; the
+/// header offers Undo).
 private struct TrayRemoveButton: View {
     let action: () -> Void
     @StateObject private var hover = ViewFlag()
@@ -1611,6 +2473,7 @@ private struct TrayRemoveButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help("Remove from Tray")
+        .accessibilityLabel("Remove from Tray")
     }
 }
 
@@ -1635,5 +2498,25 @@ private struct TrayAIButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help("Ask AI about this")
+        .accessibilityLabel("Ask AI")
+    }
+}
+
+/// File icons for Tray cards, looked up once per path (a LaunchServices and
+/// file-system call) instead of on every redraw of the card body.
+@MainActor
+enum TrayFileIcons {
+    private static let cache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 200
+        return cache
+    }()
+
+    static func icon(for url: URL) -> NSImage {
+        let key = url.path as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        cache.setObject(icon, forKey: key)
+        return icon
     }
 }

@@ -17,8 +17,13 @@ struct NotchNookLayoutView: View {
     @EnvironmentObject private var universalSearch: UniversalSearchController
     @EnvironmentObject private var fileDrop: FileDropController
     @EnvironmentObject private var downloads: DownloadsController
+    @EnvironmentObject private var colorPicker: ColorPickerController
     /// Notch theme and island background (Labs/NotchThemes).
     @ObservedObject private var themeSettings = NotchThemeSettings.shared
+    /// The Agents hub's rows (its category) set the drawer's height.
+    @ObservedObject private var layout = LayoutSettings.shared
+    /// Drawer width and motion (Labs/IslandInteraction): re-lays out when they change.
+    @ObservedObject private var interactionSettings = IslandInteractionSettings.shared
 
     /// Geometry of the closed island (compact wings, expanded band), or nil
     /// when it rests at the notch or the drawer is open.
@@ -31,36 +36,66 @@ struct NotchNookLayoutView: View {
 
     var body: some View {
         let closed = closedLayout
+        let surface = state.surface
+        let isPill = surface.shape == .pill
         let size: CGSize = if state.isExpanded {
             NotchMetrics.expandedSize(for: state.tab)
+        } else if let closed {
+            closed.size
+        } else if state.isHoverPrimed {
+            // Open by Click or Press and Hold: ready under the pointer.
+            CGSize(width: state.collapsedSize.width + IslandSizing.primedGrowth.width,
+                   height: state.collapsedSize.height + IslandSizing.primedGrowth.height)
         } else {
-            closed?.size ?? state.collapsedSize
+            state.collapsedSize
         }
         // glance-style silhouette: shoulders flare into the menu bar, and both
         // radii grow as the island opens. The flare sits outside the body.
-        let radii: (top: CGFloat, bottom: CGFloat) = if state.isExpanded {
+        // A pill has no flare: a capsule at rest, rounded corners open.
+        let radii: (top: CGFloat, bottom: CGFloat) = if isPill {
+            if state.isExpanded {
+                (0, NotchMetrics.pillOpenRadius)
+            } else if closed?.band != nil {
+                (0, NotchMetrics.pillBandRadius)
+            } else {
+                (0, size.height / 2)
+            }
+        } else if state.isExpanded {
             (NotchMetrics.openFlareRadius, NotchMetrics.openBottomRadius)
         } else if closed?.band != nil {
             (NotchMetrics.activityFlareRadius, NotchMetrics.activityBottomRadius)
         } else {
             (NotchMetrics.closedFlareRadius, NotchMetrics.closedBottomRadius)
         }
-        let shape = IslandShape(topRadius: radii.top, bottomRadius: radii.bottom)
+        let shape = IslandSilhouette(shape: surface.shape, topRadius: radii.top, bottomRadius: radii.bottom)
         let wingsSource = state.isExpanded ? nil : NotchActivityView.wingsSource(activities: activities, media: media)
+        // Minimal (or an auto-hidden menu bar): nothing at rest until the
+        // pointer reaches the top edge or an activity appears.
+        let restingHidden = surface.restsHidden && !state.isExpanded && closed == nil && !state.isRestingRevealed
+        // A floating pill rests `gap` below the top edge (the panel reaches
+        // the edge). Open, or with a band, the body grows up into the gap,
+        // so no strip of menu bar shows above the black.
+        let gap = isPill ? surface.topInset : 0
+        let fill: CGFloat = gap > 0 && (state.isExpanded || closed?.band != nil) ? gap : 0
 
         ZStack(alignment: .top) {
-            shape.fill(SparkVTheme.islandBackground)
+            // Black, or Liquid Glass while open (Appearance › Drawer); always
+            // black when closed and with Reduce Transparency.
+            LookDrawerBackground(shape: shape, isExpanded: state.isExpanded, headerHeight: state.collapsedSize.height,
+                                 hasNotch: state.surface.hasNotch)
+
+            Group {
 
             // Album-art glow (boring.notch style), under all content; the
             // clip shape below keeps it inside the island.
             // Only with the Album Glow background; Black keeps the island pure black.
-            if themeSettings.background == .albumGlow, state.isExpanded, state.tab == .nook {
+            if themeSettings.effectiveBackground == .albumGlow, state.isExpanded, state.tab == .nook {
                 MediaGlowBackground(center: UnitPoint(
                     x: (16 + radii.top + MediaColumnV2.artworkSide / 2) / (size.width + 2 * radii.top),
                     y: (state.collapsedSize.height + MediaColumnV2.artworkSide / 2) / size.height
                 ))
                 .transition(.opacity)
-            } else if themeSettings.background == .albumGlow, !state.isExpanded, wingsSource == .nowPlaying {
+            } else if themeSettings.effectiveBackground == .albumGlow, !state.isExpanded, wingsSource == .nowPlaying {
                 MediaGlowBackground(style: .pill, center: UnitPoint(
                     x: (radii.top + 22) / (size.width + 2 * radii.top),
                     y: 0.5
@@ -71,43 +106,48 @@ struct NotchNookLayoutView: View {
             if state.isExpanded {
                 VStack(spacing: 0) {
                     HeaderRow()
+                        // Right-click: version, Settings, updates, About, Quit.
+                        .contextMenu { AppShellContextMenuItems() }
+                        // VoiceOver: the tab strip first, then the tab's content.
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel("Drawer tabs")
+                        .accessibilitySortPriority(2)
                         // Header shares the band beside the camera cutout, so
                         // nothing important is drawn under the physical notch.
-                        .frame(height: state.collapsedSize.height)
+                        .frame(height: isPill ? max(state.collapsedSize.height, NotchMetrics.pillHeaderMinHeight) : state.collapsedSize.height)
+                        // A click on the notch (the camera gap) closes the drawer.
+                        .overlay { IslandNotchGapTarget(headerWidth: size.width - 32) }
 
                     // Crossfade between tabs (opacity and a light 2 pt blur
                     // that hides the double exposure) while the drawer's
                     // height springs to the new tab.
-                    ZStack {
-                        tabContent
-                            .id(state.tab)
-                            .transition(.sparkVCrossfade)
+                    // Text Size: laid out at Standard and zoomed to fill the
+                    // (larger) drawer, so every tab grows evenly.
+                    LookDrawerZoom {
+                        ZStack {
+                            tabContent
+                                .id(state.tab)
+                                .transition(.sparkVCrossfade)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .animation(NotchMetrics.tabAnimation, value: state.tab)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .animation(NotchMetrics.tabAnimation, value: state.tab)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(DrawerShortcutStore.title(of: state.tab))
+                    .accessibilitySortPriority(1)
                 }
                 .padding(.horizontal, 16 + radii.top)
                 .padding(.bottom, NotchMetrics.drawerBottomPadding)
+                // Keep Drawer Open: a short bar at the bottom edge.
+                .overlay(alignment: .bottom) { IslandPinnedIndicator().padding(.bottom, 1) }
                 // The whole drawer accepts files, including the header band the
                 // drag enters through; a drag over Nook switches to the Tray.
                 .contentShape(Rectangle())
-                // Screenshot thumbnails arrive as image data or a file promise,
-                // not a file URL, so images, links and text are accepted too.
-                .onDrop(of: [.fileURL, .image, .url, .text], isTargeted: $state.isDropTargeted) { providers in
-                    if state.tab == .converter {
-                        return converter.accept(providers)
-                    }
-                    // Between the Space cards: file it in the Spaces Inbox.
-                    if state.tab == .spaces {
-                        return SpacesDropIngestor.accept(providers, into: nil, store: SpaceStore.shared)
-                    }
-                    // The strip has its own drop target; this covers the header band.
-                    if state.tab == .fileDrop {
-                        return fileDrop.accept(providers)
-                    }
-                    tray.accept(providers)
-                    return true
-                }
+                // Files, images and file promises (Mail, Photos, the screenshot
+                // thumbnail) land here on any tab; links and text only on the
+                // Tray or Spaces the user opened (Labs/ShelfPlus/ShelfDragFilter).
+                .onDrop(of: ShelfDrawerDrop.types,
+                        delegate: ShelfDrawerDrop(state: state, tray: tray, converter: converter, fileDrop: fileDrop))
                 // Grows out of the notch: from 96 % at the top edge with a
                 // fade (fade only under Reduce Motion). On close the content
                 // fades out quickly, so it is gone before the body shrinks
@@ -121,29 +161,57 @@ struct NotchNookLayoutView: View {
                 // bar, plus the band under the notch only when expanded.
                 ClosedIslandContent(layout: closed, restingHeight: state.collapsedSize.height, source: wingsSource)
                     .padding(.horizontal, radii.top)
+                    // Opening without hover: VoiceOver's actions (also the
+                    // menu bar icon's Open Drawer and the keyboard shortcut).
+                    .accessibilityAction(named: "Open SparkV drawer") { AppShellController.shared.openDrawerOrSettings() }
                     .transition(.opacity)
             }
+            // Track progress along the bottom of the closed pill (Settings ›
+            // Island › Closed Island Music; draws nothing while off).
+            if !state.isExpanded, wingsSource == .nowPlaying, closed?.band == nil {
+                MediaClosedProgressLine(bottomRadius: radii.bottom)
+                    .padding(.horizontal, radii.top)
+            }
+            }
+            .padding(.top, fill)
         }
-        .frame(width: size.width + 2 * radii.top, height: size.height)
+        .frame(width: size.width + 2 * radii.top, height: size.height + fill)
         .clipShape(shape)
+        // Appearance › Island at Rest: only while resting with nothing to
+        // show, only without a camera notch, never with Reduce Transparency.
+        .opacity(LookResting.opacity(isResting: !state.isExpanded && closed == nil, hasNotch: state.surface.hasNotch))
         // Hover theme, behind and around the black body. Plain draws nothing.
         .background(alignment: .top) {
             NotchThemeBackdrop(
                 isExpanded: state.isExpanded,
-                bodySize: size,
+                bodySize: CGSize(width: size.width, height: size.height + fill),
                 topRadius: radii.top,
                 bottomRadius: radii.bottom
             )
         }
         // Ambient Light: music-synced glow around the island (nothing while off).
         .background(alignment: .top) {
-            AmbientNotchGlowBackdrop(bodySize: size, topRadius: radii.top, bottomRadius: radii.bottom)
+            if !LookDrawerMaterial.hidesBackdrops(isExpanded: state.isExpanded) {
+                AmbientNotchGlowBackdrop(bodySize: CGSize(width: size.width, height: size.height + fill), topRadius: radii.top, bottomRadius: radii.bottom)
+            }
         }
         // Uneven wings shift the body so the housing stays over the camera.
         .offset(x: closed?.xOffset ?? 0)
+        .padding(.top, gap - fill)
         .animation(NotchMetrics.hoverAnimation, value: closed)
         .animation(NotchMetrics.hoverAnimation, value: state.tab)
+        .animation(NotchMetrics.hoverAnimation, value: layout.hub.category)
+        // Enters and leaves with a short strong ease-out (a fade only, so
+        // Reduce Motion needs nothing else).
+        .opacity(restingHidden ? 0 : 1)
+        .animation(SparkVMotion.easeOut(SparkVMotion.Duration.small), value: restingHidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .top) {
+            if restingHidden, surface.showsHairline {
+                IslandRestingHairline(hasNotch: surface.hasNotch, width: state.collapsedSize.width)
+                    .transition(.opacity)
+            }
+        }
         .environment(\.colorScheme, .dark)
         .onChange(of: NotchActivityView.isBandHeld(dictation: dictation, clicky: clicky), initial: true) { _, held in
             activities.setBandHeld(held)
@@ -175,7 +243,28 @@ struct NotchNookLayoutView: View {
         case .downloads: DownloadsDrawerView(controller: downloads)
         case .widgets: WidgetsTabView()
         case .fans: FanTabView()
+        case .colorPicker: ColorPickerDrawerView(controller: colorPicker)
+        case .devStatus: DevStatusDrawerView()
+        case .menuBar: MenuBarOverflowDrawerView()
+        case .status: SystemStatusTabView()
         }
+    }
+}
+
+/// Minimal style at rest: a faint 3 pt line where the island will appear,
+/// readable on light and dark menu bars. On a notched display it sits just
+/// under the camera housing.
+private struct IslandRestingHairline: View {
+    let hasNotch: Bool
+    let width: CGFloat
+
+    var body: some View {
+        Capsule()
+            .fill(Color.black.opacity(0.55))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.34), lineWidth: 0.5))
+            .frame(width: max(44, width * 0.32), height: 3)
+            .padding(.top, hasNotch ? 2 : 1.5)
+            .accessibilityHidden(true)
     }
 }
 
@@ -186,6 +275,8 @@ private struct HeaderRow: View {
     @EnvironmentObject private var state: NotchState
     /// The active tab's pill is one shape that slides between icons.
     @Namespace private var pill
+    /// Which controls show, in what order, and pinned hub tiles.
+    @ObservedObject private var headerLayout = LayoutSettings.shared
 
     var body: some View {
         // Each side of the camera housing has 161.5 pt (508 pt header, 185 pt
@@ -193,30 +284,46 @@ private struct HeaderRow: View {
         // group 154 pt with Widgets; right group 145 pt with Focus, 148 pt while the record
         // button shows "● 59:59". Focus steps aside while recording, since
         // both together (174 pt) would slide under the camera.
+        // Customize Layout decides which controls show and in what order,
+        // and adds pinned hub tiles where a slot is free (six per side, the
+        // gear included on the right). While recording, Focus steps aside
+        // for the timer pill (and a pin if the side is full).
+        // Switched-off features (Customize Layout › Features) are left out.
+        let placement = headerLayout.effectiveHeader.placement(recording: assistant.phase == .recording)
         HStack(spacing: 2) {
             // Places on the left, actions on the right; the camera cutout sits
             // in the gap between them. Icons only, each with a tooltip.
-            IconTab(systemImage: "house.fill", tab: .nook, help: "Home: media, shortcuts and mirror", pill: pill)
-            IconTab(systemImage: "rectangle.3.group.fill", tab: .widgets, help: "Widgets: world clocks, volume, habits, system and network", pill: pill)
-            IconTab(systemImage: "tray.full.fill", tab: .tray, help: "Tray: screenshots, text and files", pill: pill)
-            IconTab(systemImage: "calendar", tab: .today, help: "Today: meetings and timer", pill: pill)
-            IconTab(systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard", tab: .converter, help: "Convert: drop a file, pick a format", pill: pill)
-            IconTab(systemImage: "square.stack.3d.up.fill", tab: .spaces, help: "Spaces: knowledge folders per organization", pill: pill)
+            ForEach(placement.left, id: \.self) { id in headerItem(id) }
             Spacer(minLength: 0)
-            if assistant.phase != .recording {
-                FocusHeaderButton()
-            }
-            RecordMeetingButton()
-            IconTab(systemImage: "square.grid.2x2.fill", tab: .agents, help: "Agents: search, focus, capture, reply, screen, prompts, clipboard, files, downloads and more",
-                    activeFor: NotchState.Tab.agentTabs, pill: pill)
-            // Original SF Symbols, not the Wispr Flow or Clicky logos.
-            IconTab(systemImage: "waveform", tab: .flow, help: "Flow: dictation history and notes", pill: pill)
-            IconTab(systemImage: "cursorarrow.rays", tab: .clicky, help: "Clicky: ask about your screen", pill: pill)
+            ForEach(placement.right, id: \.self) { id in headerItem(id) }
             SettingsMenu()
         }
         // The pill slides with a strong ease-in-out (on-screen movement),
         // overriding the island spring the drawer uses for its height.
         .animation(NotchMetrics.tabPillAnimation, value: state.tab)
+    }
+
+    /// One header control by its Customize Layout id; anything else is a
+    /// hub tile pinned to the header.
+    @ViewBuilder
+    private func headerItem(_ id: String) -> some View {
+        switch id {
+        case "focus":
+            FocusHeaderButton()
+        case "record":
+            RecordMeetingButton()
+        case "agents":
+            // A page a pinned tile opens lights that pin, not Agents.
+            IconTab(systemImage: "square.grid.2x2.fill", tab: .agents, help: HeaderCatalog.info(id)?.help ?? "Agents",
+                    activeFor: HubCatalog.agentsActiveTabs(pins: headerLayout.header.pins), pill: pill)
+        default:
+            // Original SF Symbols, not the Wispr Flow or Clicky logos.
+            if let tab = HeaderTabs.tab(for: id), let item = HeaderCatalog.info(id) {
+                IconTab(systemImage: item.systemImage, tab: tab, help: item.help, pill: pill)
+            } else {
+                HubPinnedHeaderButton(id: id)
+            }
+        }
     }
 }
 
@@ -258,6 +365,10 @@ private struct IconTab: View {
         .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
+        // "Home" (the tooltip's part before the colon); the rest is the hint.
+        .accessibilityLabel(help.split(separator: ":", maxSplits: 1).first.map(String.init) ?? help)
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
+        .accessibilityValue(isActive ? "Showing" : "")
     }
 }
 
@@ -282,10 +393,10 @@ private struct RecordMeetingButton: View {
                 if isRecording, let started = assistant.current?.startedAt {
                     TimelineView(.periodic(from: started, by: 1)) { context in
                         HStack(spacing: 3) {
-                            Circle()
-                                .fill(SparkVTheme.recording)
-                                .frame(width: 7, height: 7)
-                                .opacity(Int(context.date.timeIntervalSince(started)) % 2 == 0 ? 1 : 0.35)
+                            // A record glyph with Differentiate Without Color;
+                            // steady with Reduce Motion.
+                            SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 7, label: "")
+                                .opacity(SparkVMotion.reduceMotion || Int(context.date.timeIntervalSince(started)) % 2 == 0 ? 1 : 0.35)
                             Text(Self.elapsed(from: started, to: context.date))
                                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                                 .foregroundStyle(SparkVTheme.text)
@@ -309,6 +420,8 @@ private struct RecordMeetingButton: View {
         .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(isRecording ? "Stop recording and write meeting notes" : "Record this meeting (transcript, tasks and minutes)")
+        .accessibilityLabel(isRecording ? "Stop recording" : (assistant.phase == .summarizing ? "Writing meeting notes" : "Record meeting"))
+        .accessibilityValue(isRecording ? "Recording" : "")
     }
 
     private static func elapsed(from start: Date, to now: Date) -> String {
@@ -350,15 +463,18 @@ private struct SettingsMenu: View {
     @EnvironmentObject private var tray: TrayStore
     @EnvironmentObject private var clipboard: ClipboardController
     @EnvironmentObject private var screenRecorder: ScreenRecorderController
+    @EnvironmentObject private var colorPicker: ColorPickerController
     @ObservedObject private var flowCanvasSettings = FCSettingsModel.shared
     @StateObject private var loginItem = LaunchAtLogin()
     @StateObject private var hover = ViewFlag()
 
     var body: some View {
         Menu {
-            ForEach(macros.slots) { slot in
-                Menu("Button \(slot.id + 1): \(slot.assignment?.title ?? "None")") {
-                    ShortcutPickerItems(slot: slot)
+            Menu("Home Buttons") {
+                ForEach(macros.slots) { slot in
+                    Menu("Button \(slot.id + 1): \(slot.assignment?.title ?? "None")") {
+                        ShortcutPickerItems(slot: slot)
+                    }
                 }
             }
             Divider()
@@ -387,121 +503,155 @@ private struct SettingsMenu: View {
                 Divider()
                 MeetingLiveAssistMenuItems(assist: meetingLive)
             }
+            Menu("Planner") { PlannerMenuItems(timer: timer, macros: macros) }
             Menu("Live Activities") {
                 Toggle("Now Playing Beside the Notch", isOn: $media.showsInClosedNotch)
-                Toggle("Volume & Brightness", isOn: $hud.isEnabled)
-                Toggle("Hide macOS Volume/Brightness Pop-up", isOn: $hud.replacesSystemHUD)
-                    .disabled(!hud.isEnabled)
+                // Show / hide macOS pop-up, style, steps, displays, preview.
+                Menu("Volume & Brightness") { HUDMenuItems() }
                 Toggle("Battery & AirPods", isOn: $power.isEnabled)
                 if power.bluetoothAccess == .notDetermined {
                     Button("Enable AirPods Battery…") { power.requestBluetoothAccess() }
                 }
+                SystemStatusMenuItems()
                 Toggle("Timer", isOn: $timer.isEnabled)
                 Toggle("Meetings", isOn: $meetings.isEnabled)
                 Toggle("Notifications", isOn: $notifications.isEnabled)
                 Toggle("Hide Message Text", isOn: $notifications.hidesMessageBody)
                     .disabled(!notifications.isEnabled)
-            }
-            Menu("Downloads") {
-                Toggle("Watch Downloads Folder", isOn: Binding(get: { downloads.isEnabled }, set: { downloads.setEnabled($0) }))
-                Toggle("Show Download Progress Under the Notch", isOn: $downloads.showsActivity)
-                    .disabled(!downloads.isEnabled)
-                Toggle("Suggest Folders with Apple Intelligence", isOn: $downloads.suggestsWithAI)
                 Divider()
-                Button("Sorting Rules…") { downloads.openRulesEditor() }
+                // Show in Wings, Next Activity ⌃⌥A, Timing, Notification
+                // Options, Calls, Announce to VoiceOver (Labs/Activities).
+                LiveActivitiesMenuItems()
             }
-            Menu("Dictation") {
-                Picker("Hold to Talk", selection: $dictation.hotkey) {
-                    ForEach(DictationController.Hotkey.allCases, id: \.self) { key in
-                        Text(key.title).tag(key)
+            Menu("Media") { MediaPlusMenuItems() }
+            Divider()
+            // The island: where it shows, how it opens, how it looks.
+            Menu("Island & Look") {
+                Menu("Island") { IslandPlacementMenuItems() }
+                Menu("Island Behavior") { IslandInteractionMenuItems() }
+                Menu("Appearance") { AppearanceMenuItems() }
+                Menu("Layout") { LayoutMenuItems() }
+                Menu("Notch Theme") { NotchThemeMenuItems() }
+                Menu("Ambient Light") { AmbientLightMenuItems() }
+            }
+            Menu("System") {
+                Menu("Keep Awake") { KeepAwakeMenuItems() }
+                Menu("Microphone") { MicMuteMenuItems() }
+                Menu("Quick Toggles") { QuickTogglesMenuItems() }
+                Menu("Menu Bar Icons") { MenuBarOverflowMenuItems() }
+                Menu("Screen Distance") {
+                    ScreenDistanceMenuItems(controller: screenDistance)
+                }
+                Menu("Fans") { FanMenuItems() }
+            }
+            Menu("Tools") {
+                Menu("Dictation") {
+                    Picker("Hold to Talk", selection: $dictation.hotkey) {
+                        ForEach(DictationController.Hotkey.allCases, id: \.self) { key in
+                            Text(key.title).tag(key)
+                        }
                     }
+                    Toggle("AI Formatting", isOn: $dictation.formattingEnabled)
+                    Toggle("Paste / Copy Last Dictation  ⌃⌘V ⌃⌘C", isOn: $dictation.historyShortcutsEnabled)
                 }
-                Toggle("AI Formatting", isOn: $dictation.formattingEnabled)
-                Toggle("Paste / Copy Last Dictation  ⌃⌘V ⌃⌘C", isOn: $dictation.historyShortcutsEnabled)
-            }
-            Menu("Modes") { ModesMenuItems() }
-            if let smartMoments = SmartMomentsWiring.current {
-                SmartMomentsMenu(settings: smartMoments.settings)
-            }
-            Menu("Notch Theme") { NotchThemeMenuItems() }
-            Menu("Ambient Light") { AmbientLightMenuItems() }
-            AppearanceMenu()
-            Menu("Focus") {
-                Button(focus.isActive ? "End Focus" : "Start Focus (\(focus.settings.focusMinutes) min)") { focus.toggle() }
-                if focus.isActive {
-                    Button(focus.isPaused ? "Resume" : "Pause") { focus.togglePause() }
-                }
-                Button("Focus Settings…") { FocusSettingsWindowController.shared.show(controller: focus) }
-                Divider()
-                Toggle("Turn On Do Not Disturb", isOn: $focus.settings.usesDoNotDisturb)
-                Toggle("Remind Me About Distractions", isOn: $focus.settings.blocksDistractions)
-                Toggle("Write Recap On Device", isOn: $focus.settings.summarizesWithModel)
-                Divider()
-                Picker("Screen Glow", selection: $focus.settings.edgeGlow) {
-                    ForEach(FocusEdgeGlowMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
+                Menu("Focus") {
+                    Button(focus.isActive ? "End Focus" : "Start Focus (\(focus.settings.focusMinutes) min)") { focus.toggle() }
+                    if focus.isActive {
+                        Button(focus.isPaused ? "Resume" : "Pause") { focus.togglePause() }
                     }
-                }
-                Toggle("Shake on Start and Breaks", isOn: $focus.settings.edgeGlowKick)
-                    .disabled(focus.settings.edgeGlow == .off)
-                Toggle("Confetti When a Session Ends", isOn: $focus.settings.edgeGlowConfetti)
-                    .disabled(focus.settings.edgeGlow == .off)
-                Button("Preview Screen Glow") { focus.previewEdgeGlow(.focus) }
-            }
-            Menu("Clipboard") {
-                Button("Open Clipboard Stack  ⌘⇧V") { clipboard.showStackPanel() }
-                Toggle("⌘ + Number + V Pastes From History", isOn: Binding(
-                    get: { clipboard.stackChordEnabled }, set: { clipboard.setStackChordEnabled($0) }))
-                Toggle("⌘⇧V Opens the Clipboard Stack", isOn: Binding(
-                    get: { clipboard.stackPanelShortcutEnabled }, set: { clipboard.setStackPanelShortcutEnabled($0) }))
-                if clipboard.stackShortcutsNeedAccessibility {
+                    Button("Focus Settings…") { FocusSettingsWindowController.shared.show(controller: focus) }
                     Divider()
-                    Button("Allow Accessibility for ⌘+Number+V…") { clipboard.openAccessibilitySettings() }
+                    Toggle("Turn On Do Not Disturb", isOn: $focus.settings.usesDoNotDisturb)
+                    Toggle("Remind Me About Distractions", isOn: $focus.settings.blocksDistractions)
+                    Toggle("Write Recap On Device", isOn: $focus.settings.summarizesWithModel)
+                    Divider()
+                    Picker("Screen Glow", selection: $focus.settings.edgeGlow) {
+                        ForEach(FocusEdgeGlowMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Shake on Start and Breaks", isOn: $focus.settings.edgeGlowKick)
+                        .disabled(focus.settings.edgeGlow == .off)
+                    Toggle("Confetti When a Session Ends", isOn: $focus.settings.edgeGlowConfetti)
+                        .disabled(focus.settings.edgeGlow == .off)
+                    Button("Preview Screen Glow") { focus.previewEdgeGlow(.focus) }
+                }
+                Menu("Modes") { ModesMenuItems() }
+                if let smartMoments = SmartMomentsWiring.current {
+                    SmartMomentsMenu(settings: smartMoments.settings)
+                }
+                UniversalSearchSettingsMenu(controller: universalSearch)
+                Menu("Clipboard") {
+                    Button("Open Clipboard Stack  ⌘⇧V") { clipboard.showStackPanel() }
+                    Toggle("⌘ + Number + V Pastes From History", isOn: Binding(
+                        get: { clipboard.stackChordEnabled }, set: { clipboard.setStackChordEnabled($0) }))
+                    Toggle("⌘⇧V Opens the Clipboard Stack", isOn: Binding(
+                        get: { clipboard.stackPanelShortcutEnabled }, set: { clipboard.setStackPanelShortcutEnabled($0) }))
+                    if clipboard.stackShortcutsNeedAccessibility {
+                        Divider()
+                        Button("Allow Accessibility for ⌘+Number+V…") { clipboard.openAccessibilitySettings() }
+                    }
+                }
+                Menu("Screen Tools") {
+                    ScreenTextGrabMenuItems(controller: screenRegion.textGrab)
+                    Divider()
+                    ScreenRecorderMenuItems(recorder: screenRecorder)
+                }
+                Menu("Color Picker") { ColorPickerMenuItems(controller: colorPicker) }
+                Menu("Quick Capture") {
+                    QuickCaptureMenuItems(capture: quickCapture, screenshots: screenshotClipboard)
+                }
+                Menu("Spaces") {
+                    Button("Open Spaces…") { SpacesWindowController.shared.show() }
+                    Button("Save Current Web Page") { SpaceIngestCenter.saveCurrentWebPage() }
+                    Button("Save Selected Mail") { SpaceIngestCenter.saveSelectedMail() }
+                    Button("Quick Capture  \(quickCapture.settings.shortcut.displayString)") { quickCapture.captureNow() }
+                    if spacesIngest.screenshotWatchNeedsConsent {
+                        Button("File New Screenshots Automatically") { spacesIngest.allowScreenshotWatching() }
+                    }
+                }
+                Button("Sync to iPhone…") { CloudSyncWindowController.shared.show() }
+                Menu("Teleprompter") { TeleprompterMenuItems() }
+                Menu("Mirror") { CameraMirrorMenuItems() }
+                Menu("Agents") {
+                    Button("UI Audit…") { uiAudit.showWindow() }
+                    Button("Job Agent…") { jobAgent.showWindow() }
+                    Button("Capture Job Page  fn⌃") { jobAgent.captureNow() }
+                    Button("Ask About Screen…  \(screenRegion.shortcut.displayString)") { screenRegion.beginSelection() }
+                    Button("Pick a Window to Ask About…") { screenRegion.beginSelection(mode: .window) }
+                    Button("Prompt Refiner…") { promptRefiner.openPanel() }
+                    Button("Browser Flows…") { browserRecorder.openWindow() }
+                    Divider()
+                    Button("Draft Reply…  \(replyDrafter.shortcutLabel)") { replyDrafter.draftReply() }
+                    ReplyDrafterMenuToggles(settings: replyDrafter.settings)
+                    Divider()
+                    Button("Flow Canvas…") { FlowCanvasWindowController.shared.show() }
+                    Button("Send Tray to Flow Canvas") {
+                        FlowCanvasWindowController.shared.show(adding: FlowCanvasInput.from(trayItems: tray.items))
+                    }
+                    .disabled(tray.items.isEmpty)
+                    Toggle("Allow Flow Canvas to Use My Groq Key", isOn: $flowCanvasSettings.allowsGroq)
                 }
             }
-            Menu("Screen Tools") {
-                ScreenTextGrabMenuItems(controller: screenRegion.textGrab)
-                Divider()
-                ScreenRecorderMenuItems(recorder: screenRecorder)
-            }
-            Menu("Fans") { FanMenuItems() }
-            Menu("Agents") {
-                Button("UI Audit…") { uiAudit.showWindow() }
-                Button("Job Agent…") { jobAgent.showWindow() }
-                Button("Capture Job Page  fn⌃") { jobAgent.captureNow() }
-                Button("Ask About Screen…  \(screenRegion.shortcut.displayString)") { screenRegion.beginSelection() }
-                Button("Pick a Window to Ask About…") { screenRegion.beginSelection(mode: .window) }
-                Button("Prompt Refiner…") { promptRefiner.openPanel() }
-                Button("Browser Flows…") { browserRecorder.openWindow() }
-                Divider()
-                Button("Draft Reply…  \(replyDrafter.shortcutLabel)") { replyDrafter.draftReply() }
-                ReplyDrafterMenuToggles(settings: replyDrafter.settings)
-                Divider()
-                Button("Flow Canvas…") { FlowCanvasWindowController.shared.show() }
-                Button("Send Tray to Flow Canvas") {
-                    FlowCanvasWindowController.shared.show(adding: FlowCanvasInput.from(trayItems: tray.items))
-                }
-                .disabled(tray.items.isEmpty)
-                Toggle("Allow Flow Canvas to Use My Groq Key", isOn: $flowCanvasSettings.allowsGroq)
-            }
-            Menu("Screen Distance") {
-                ScreenDistanceMenuItems(controller: screenDistance)
-            }
-            Menu("Spaces") {
-                Button("Open Spaces…") { SpacesWindowController.shared.show() }
-                Button("Save Current Web Page") { SpaceIngestCenter.saveCurrentWebPage() }
-                Button("Save Selected Mail") { SpaceIngestCenter.saveSelectedMail() }
-                Button("Quick Capture  \(quickCapture.settings.shortcut.displayString)") { quickCapture.captureNow() }
-                if spacesIngest.screenshotWatchNeedsConsent {
-                    Button("File New Screenshots Automatically") { spacesIngest.allowScreenshotWatching() }
+            Menu("Files") {
+                Menu("Shelf") { ShelfMenuItems() }
+                FileDropSettingsMenu(controller: fileDrop)
+                Menu("Downloads") {
+                    Toggle("Watch Downloads Folder", isOn: Binding(get: { downloads.isEnabled }, set: { downloads.setEnabled($0) }))
+                    Toggle("Show Download Progress Under the Notch", isOn: $downloads.showsActivity)
+                        .disabled(!downloads.isEnabled)
+                    Toggle("Suggest Folders with Apple Intelligence", isOn: $downloads.suggestsWithAI)
+                    Divider()
+                    Button("Sorting Rules…") { downloads.openRulesEditor() }
                 }
             }
-            Button("Sync to iPhone…") { CloudSyncWindowController.shared.show() }
-            Menu("Quick Capture") {
-                QuickCaptureMenuItems(capture: quickCapture, screenshots: screenshotClipboard)
+            Menu("Developer") {
+                    CodingAgentsMenuItems()
+                    Divider()
+                    DevStatusMenuItems()
+                Divider()
+                Menu("Scripts") { ScriptWidgetMenuItems() }
             }
-            UniversalSearchSettingsMenu(controller: universalSearch)
-            FileDropSettingsMenu(controller: fileDrop)
             Divider()
             OnboardingMenuItems()
             Button(FaceUnlock.isSetUp ? "Face Unlock Settings…" : "Set Up Face Unlock…") {
@@ -522,7 +672,11 @@ private struct SettingsMenu: View {
                 Text("Couldn’t change Launch at Login: \(error)")
             }
             Divider()
-            Button("Quit SparkV") { NSApp.terminate(nil) }
+            LocalizationMenuItems()
+            // Quits cleanly (the same work as Quit) and opens SparkV again:
+            // the fix for a lost or misplaced island.
+            Button("Restart SparkV") { PermissionCenter.shared.relaunch(from: "Menu") }
+            AppShellMenuItems()
         } label: {
             // Same 12 pt semibold glyph, 24x22 hit area and hover fill as
             // the tab icons beside it.
@@ -540,6 +694,8 @@ private struct SettingsMenu: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .onHover { hover.isOn = $0 }
+        .help("Settings and more")
+        .accessibilityLabel("Settings and more")
         .onAppear { loginItem.reload() }
     }
 }
@@ -597,7 +753,7 @@ private final class LaunchAtLogin: ObservableObject {
 private struct FeaturesGrid: View {
     var body: some View {
         HStack(spacing: 0) {
-            MediaColumnV2()
+            HomeMediaSlot()
                 .frame(width: 180, height: 69, alignment: .leading)
             Spacer(minLength: 8)
             // 56 pt rotary volume knob beside the transport controls.
@@ -630,12 +786,28 @@ private struct ColumnDivider: View {
 
 private struct MacroColumn: View {
     @EnvironmentObject private var macros: MacroController
+    /// Customize Layout › Show Empty Shortcut Buttons (on by default).
+    @ObservedObject private var layout = LayoutSettings.shared
 
     var body: some View {
+        let shown = macros.slots.filter { !layout.hidesEmptyShortcuts || macros.status(for: $0) != .unassigned }
         VStack(spacing: 7) {
-            ForEach(macros.slots) { slot in
+            ForEach(shown) { slot in
                 MacroCapsule(slot: slot, status: macros.status(for: slot))
             }
+            if shown.isEmpty {
+                // Every button is empty and hidden: keep a quiet area to right-click.
+                Color.clear.frame(height: 28)
+            }
+        }
+        .contentShape(Rectangle())
+        .contextMenu {
+            if let empty = macros.slots.first(where: { macros.status(for: $0) == .unassigned }) {
+                Menu("Add Shortcut") { ShortcutPickerItems(slot: empty) }
+            }
+            Toggle("Show Empty Shortcut Buttons", isOn: Binding(
+                get: { !layout.hidesEmptyShortcuts }, set: { layout.hidesEmptyShortcuts = !$0 }
+            ))
         }
     }
 }
@@ -658,6 +830,18 @@ private struct ShortcutPickerItems: View {
             } else {
                 ForEach(macros.library, id: \.self) { name in
                     pickerButton(.shortcut(name), systemImage: nil)
+                }
+            }
+        }
+        Section("Apps") {
+            Button("Choose an App…") {
+                macros.chooseApp { assignment in
+                    if let assignment { macros.assign(assignment, to: slot.id) }
+                }
+            }
+            Menu("Running Apps") {
+                ForEach(macros.runningApps, id: \.storageValue) { app in
+                    pickerButton(app, systemImage: nil)
                 }
             }
         }
@@ -729,14 +913,27 @@ private struct MacroCapsule: View {
 
     private var capsule: some View {
         HStack(spacing: 6) {
-            statusIcon
-                .frame(width: 14)
-            Text(label)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(labelColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 0)
+            if status == .unassigned {
+                // No placeholder text: a quiet centered plus (click to choose).
+                Spacer(minLength: 0)
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(hover.isOn ? SparkVTheme.text : SparkVTheme.textSecondary)
+                    .accessibilityLabel("Choose a shortcut for this button")
+                Spacer(minLength: 0)
+            } else {
+                statusIcon
+                    .frame(width: 14)
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(labelColor)
+                    .lineLimit(1)
+                    // "Capture to Tray" fits the 130 pt capsule this way
+                    // instead of truncating.
+                    .minimumScaleFactor(0.8)
+                    .truncationMode(.tail)
+                Spacer(minLength: 0)
+            }
         }
         .padding(.horizontal, 10)
         .frame(width: 130, height: 27)
@@ -756,6 +953,11 @@ private struct MacroCapsule: View {
                 Image(systemName: isLiveDictation ? "stop.fill" : action.systemImage)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(isLiveDictation ? Color.white : SparkVTheme.choose(apple: Color.cyan, sparkv: SparkVTheme.red))
+            } else if let assignment = slot.assignment, assignment.isApp, let icon = LauncherIcons.icon(for: assignment) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 14, height: 14)
             } else {
                 Image(systemName: "sparkles")
                     .font(.system(size: 11, weight: .semibold))
@@ -815,6 +1017,7 @@ private struct MacroCapsule: View {
 
 private struct MirrorColumn: View {
     @EnvironmentObject private var camera: CameraController
+    @ObservedObject private var mirrorSettings = CameraMirrorSettings.shared
     @EnvironmentObject private var screenDistance: ScreenDistanceController
 
     var body: some View {
@@ -834,7 +1037,7 @@ private struct MirrorColumn: View {
                         .zIndex(1)
 
                     if camera.isRunning {
-                        CameraMirrorView(session: camera.session)
+                        CameraMirrorView(session: camera.session, mirrored: mirrorSettings.isMirrored)
                             .clipShape(Circle())
                             .transition(.opacity)
                     } else if camera.isStarting {
@@ -852,6 +1055,7 @@ private struct MirrorColumn: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help(camera.errorMessage ?? "Toggle camera mirror")
+            .contextMenu { CameraMirrorMenuItems() }
 
             Text(caption)
                 .font(.system(size: 10, weight: .medium))
@@ -861,7 +1065,10 @@ private struct MirrorColumn: View {
         .animation(SparkVMotion.easeOut(SparkVMotion.Duration.standard), value: camera.isRunning)
         // Leaving the Nook tab (or closing the drawer) removes the preview,
         // so the camera must not keep capturing behind it.
-        .onDisappear { camera.stop() }
+        // The circle shows the camera whenever it runs: closing the large
+        // mirror while it is on screen keeps the camera on here.
+        .onAppear { camera.drawerPreviewAppeared() }
+        .onDisappear { camera.releaseDrawerPreview() }
     }
 
     private var caption: String {

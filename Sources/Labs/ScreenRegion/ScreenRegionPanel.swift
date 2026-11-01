@@ -193,6 +193,9 @@ struct ScreenRegionResultsView: View {
                 .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.stroke))
                 .help("The captured selection. Click to copy the image")
                 .onTapGesture { session.copyImage() }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { session.copyImage() }
+                .accessibilityHint("Copies the image")
             VStack(alignment: .leading, spacing: 2) {
                 Text("Ask about screen").font(SparkVTheme.headline(14)).tracking(-0.2)
                 Text(session.subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
@@ -240,6 +243,7 @@ struct ScreenRegionResultsView: View {
             .buttonStyle(SparkVPressStyle())
             .foregroundStyle(session.question.isEmpty && !session.isRunning ? SparkVTheme.textTertiary : SparkVTheme.accent)
             .help(session.isRunning ? "Stop" : "Ask")
+            .accessibilityLabel(session.isRunning ? "Stop" : "Ask")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
@@ -379,6 +383,7 @@ struct ScreenRegionIconButton: View {
         }
         .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
         .onHover { hover.isOn = $0 }
     }
 }

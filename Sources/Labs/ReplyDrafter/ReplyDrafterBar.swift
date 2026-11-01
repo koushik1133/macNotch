@@ -337,6 +337,7 @@ struct ReplyIconButton: View {
         .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 

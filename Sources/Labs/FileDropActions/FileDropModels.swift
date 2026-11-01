@@ -7,8 +7,11 @@ import UniformTypeIdentifiers
 /// 115 − 38 header − 8 bottom padding = 69 tall).
 enum FileDropLayout {
     static let stripSize = CGSize(width: 508, height: 69)
-    /// The floating shelf that appears under the closed notch during a drag.
-    static let zoneSize = CGSize(width: 372, height: 76)
+    /// The floating shelf that appears under the closed notch (or at the
+    /// pointer, after a shake) during a drag.
+    static let zoneSize = CGSize(width: 444, height: 76)
+    /// Gap between the pointer and the shelf summoned at it.
+    static let pointerGap: CGFloat = 26
     /// Gap between the hardware notch and the shelf.
     static let zoneGap: CGFloat = 6
     /// The pointer must be this close to the notch (horizontally from the
@@ -110,6 +113,8 @@ enum FileDropAction: String, CaseIterable, Identifiable, Sendable {
 enum FileDropInstant: String, CaseIterable, Identifiable, Sendable {
     /// Keep the files and open the action strip.
     case actions
+    /// Keep them on the Tray (the drawer stays closed).
+    case tray
     case compress
     /// Let the Spaces agents file it.
     case space
@@ -120,6 +125,7 @@ enum FileDropInstant: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .actions: "Actions"
+        case .tray: "Tray"
         case .compress: "Compress"
         case .space: "To Space"
         case .airDrop: "AirDrop"
@@ -129,6 +135,7 @@ enum FileDropInstant: String, CaseIterable, Identifiable, Sendable {
     var systemImage: String {
         switch self {
         case .actions: "bolt.fill"
+        case .tray: FileDropAction.tray.systemImage
         case .compress: FileDropAction.compress.systemImage
         case .space: FileDropAction.space.systemImage
         case .airDrop: FileDropAction.airDrop.systemImage

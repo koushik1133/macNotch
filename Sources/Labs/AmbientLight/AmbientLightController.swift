@@ -30,6 +30,9 @@ final class AmbientLightController: NSObject, ObservableObject {
     var notchOutset: CGFloat { wantsNotchOutset ? NotchThemeMetrics.maxOutset : 0 }
 
     private let engine = AmbientAudioEngine()
+    /// Live analyser output while capture runs (the Media visualizer's
+    /// level bars read it instead of starting a second tap).
+    var liveFeatures: AmbientAudioFeatures? { engine.isRunning ? engine.mailbox.load() : nil }
     private var choreographer = AmbientLightChoreographer()
     private var discoPalette: AmbientLightPalette = .disco(base: .brand(.sparkV))
     private let edges = AmbientScreenEdgeGlow()

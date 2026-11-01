@@ -128,6 +128,7 @@ struct SmartMomentsSettingsView: View {
                 .toggleStyle(.switch)
                 .tint(SparkVTheme.accent)
                 .help(settings.isEnabled ? "Turn every Smart Moment off" : "Turn Smart Moments on")
+                .accessibilityLabel("Smart Moments")
         }
     }
 
@@ -256,6 +257,7 @@ struct SmartMomentSettingsRow: View {
                     .controlSize(.small)
                     .tint(SparkVTheme.accent)
                     .help(s.isEnabled ? "Turn \(moment.title) off" : "Turn \(moment.title) on")
+                    .accessibilityLabel(moment.title)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -450,6 +452,7 @@ struct SmartMomentDetail: View {
                     }
                     .labelsHidden()
                     .fixedSize()
+                    .accessibilityLabel("From")
                 }
                 modePicker("Night mode", selection: tunable(\.nightModeID), builtIn: "Built-in wind-down")
             }
@@ -505,6 +508,7 @@ struct SmartMomentDetail: View {
             }
             .labelsHidden()
             .fixedSize()
+            .accessibilityLabel(label)
         }
     }
 

@@ -254,6 +254,8 @@ private struct UniversalSearchResultsList: View {
                             .id(result.id)
                             .onTapGesture(count: 2) { controller.activate(result) }
                             .onTapGesture { controller.select(result.id) }
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { controller.select(result.id) }
                         }
                     }
                 }
@@ -508,7 +510,7 @@ private struct UniversalSearchFooter: View {
     @ViewBuilder private var status: some View {
         if controller.isDictating {
             HStack(spacing: 5) {
-                Circle().fill(SparkVTheme.recording).frame(width: 6, height: 6)
+                SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 6, label: "")
                 Text("Listening… click the mic to finish")
             }
             .font(.system(size: 11, weight: .medium))
@@ -589,6 +591,8 @@ private struct UniversalSearchAskView: View {
                                 .contentShape(Rectangle())
                                 .onTapGesture(count: 2) { controller.activate(r) }
                                 .onTapGesture { controller.select(r.id) }
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction { controller.select(r.id) }
                             }
                         }
                     }

@@ -448,7 +448,7 @@ private struct FlowLiveNoteChip: View {
                         .foregroundStyle(SparkVTheme.warning)
                     Text(error).lineLimit(1)
                 } else {
-                    Circle().fill(SparkVTheme.recording).frame(width: 6, height: 6)
+                    SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 6, label: "")
                     Text(dictation.phase == .formatting ? "Formatting…" : "Listening")
                     Spacer(minLength: 2)
                     Text(dictation.hotkey == .off ? "Stop to save" : dictation.hotkeyHint.replacingOccurrences(of: "stop", with: "save"))
@@ -814,6 +814,7 @@ private struct FlowPairEditor: View {
                 .font(.system(size: 11))
                 .foregroundStyle(SparkVTheme.text)
                 .onSubmit(done)
+                .accessibilityLabel(label)
         }
         .padding(.horizontal, 6)
         .frame(maxHeight: .infinity)
@@ -989,6 +990,7 @@ private struct FlowIconButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 

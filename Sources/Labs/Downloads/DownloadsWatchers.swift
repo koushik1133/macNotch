@@ -100,6 +100,11 @@ final class DownloadsFolderStream: @unchecked Sendable {
 /// Chromium's `download_status_updater_mac.mm` publishes one per download
 /// with NSProgressFileURLKey and the downloading kind). Gives exact
 /// received/total bytes and the source URL when the browser provides them.
+///
+/// The progress objects it receives are live proxies of the browser's own:
+/// `cancel()`, `pause()` and `resume()` on them reach the browser, exactly
+/// like the ✕ on a downloading file's icon in Finder. Which of those a
+/// browser supports it says itself (`isCancellable`, `isPausable`).
 @MainActor
 final class DownloadsProgressSubscriber {
     struct Update: Sendable, Equatable {
@@ -109,6 +114,18 @@ final class DownloadsProgressSubscriber {
         let sourceURL: String?
         /// The publisher unpublished (finished, cancelled or quit).
         let ended: Bool
+        var cancellable = false
+        var pausable = false
+        var paused = false
+    }
+
+    /// What the browser lets SparkV do with one download.
+    struct Controls: Equatable, Sendable {
+        var canCancel: Bool
+        var canPause: Bool
+        var isPaused: Bool
+
+        static let none = Controls(canCancel: false, canPause: false, isPaused: false)
     }
 
     private let folder: URL
@@ -117,8 +134,11 @@ final class DownloadsProgressSubscriber {
     /// KVO tokens per published progress proxy.
     private var observations: [ObjectIdentifier: [NSKeyValueObservation]] = [:]
     private var lastSent: [ObjectIdentifier: Date] = [:]
-    /// Published progress proxies, for the final snapshot on unpublish.
+    /// Published progress proxies, for the final snapshot on unpublish and
+    /// for Cancel / Pause / Resume.
     private var proxies: [ObjectIdentifier: Progress] = [:]
+    /// The file each proxy is about (standardized path).
+    private var paths: [ObjectIdentifier: String] = [:]
 
     /// Updates more frequent than this are dropped (the last one is always sent).
     static let minInterval: TimeInterval = 0.25
@@ -146,12 +166,48 @@ final class DownloadsProgressSubscriber {
         observations.removeAll()
         lastSent.removeAll()
         proxies.removeAll()
+        paths.removeAll()
+    }
+
+    // MARK: Controls
+
+    private func proxy(matching candidates: Set<String>) -> Progress? {
+        guard let key = paths.first(where: { candidates.contains($0.value) })?.key else { return nil }
+        return proxies[key]
+    }
+
+    /// The browser's own Cancel / Pause support for a download, by any of
+    /// its paths (the partial file or the final name).
+    func controls(matching candidates: Set<String>) -> Controls {
+        guard let progress = proxy(matching: candidates) else { return .none }
+        return Controls(canCancel: progress.isCancellable, canPause: progress.isPausable, isPaused: progress.isPaused)
+    }
+
+    /// Cancels in the browser. False when it doesn't allow that.
+    @discardableResult
+    func cancel(matching candidates: Set<String>) -> Bool {
+        guard let progress = proxy(matching: candidates), progress.isCancellable else { return false }
+        progress.cancel()
+        return true
+    }
+
+    /// Pauses or resumes in the browser. False when it doesn't allow that.
+    @discardableResult
+    func togglePause(matching candidates: Set<String>) -> Bool {
+        guard let progress = proxy(matching: candidates), progress.isPausable else { return false }
+        if progress.isPaused { progress.resume() } else { progress.pause() }
+        return true
     }
 
     private func published(_ progress: Progress) {
-        if let kind = progress.fileOperationKind, kind != .downloading, kind != .receiving { return }
+        // A subscriber's proxy has the kind only in its userInfo. Finder
+        // copies into Downloads are the copy monitor's, not downloads.
+        if let kind = ShelfTransfersMonitor.operation(of: progress), kind != .downloading, kind != .receiving { return }
         let key = ObjectIdentifier(progress)
         proxies[key] = progress
+        if let url = progress.fileURL ?? (progress.userInfo[.fileURLKey] as? URL) {
+            paths[key] = DownloadsPath.real(url.standardizedFileURL.path)
+        }
         let handler: @Sendable (Progress, NSKeyValueObservedChange<Int64>) -> Void = { [weak self] progress, _ in
             let update = Self.snapshot(progress, ended: false)
             let id = ObjectIdentifier(progress)
@@ -159,9 +215,18 @@ final class DownloadsProgressSubscriber {
                 MainActor.assumeIsolated { self?.deliver(update, key: id, force: false) }
             }
         }
+        // Pause / resume (from SparkV, Finder or the browser) shows at once.
+        let flags: @Sendable (Progress, NSKeyValueObservedChange<Bool>) -> Void = { [weak self] progress, _ in
+            let update = Self.snapshot(progress, ended: false)
+            let id = ObjectIdentifier(progress)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.deliver(update, key: id, force: true) }
+            }
+        }
         observations[key] = [
             progress.observe(\.completedUnitCount, options: [], changeHandler: handler),
             progress.observe(\.totalUnitCount, options: [], changeHandler: handler),
+            progress.observe(\.isPaused, options: [], changeHandler: flags),
         ]
         deliver(Self.snapshot(progress, ended: false), key: key, force: true)
     }
@@ -169,6 +234,7 @@ final class DownloadsProgressSubscriber {
     private func unpublished(_ key: ObjectIdentifier) {
         observations[key] = nil
         lastSent[key] = nil
+        paths[key] = nil
         guard let progress = proxies.removeValue(forKey: key) else { return }
         deliver(Self.snapshot(progress, ended: true), key: key, force: true)
     }
@@ -188,6 +254,7 @@ final class DownloadsProgressSubscriber {
         let source = progress.userInfo[ProgressUserInfoKey("NSProgressFileDownloadingSourceURLKey")]
         let sourceText = (source as? URL)?.absoluteString ?? (source as? String)
         return Update(path: url.standardizedFileURL.path, completed: progress.completedUnitCount,
-                      total: progress.totalUnitCount, sourceURL: sourceText, ended: ended)
+                      total: progress.totalUnitCount, sourceURL: sourceText, ended: ended,
+                      cancellable: progress.isCancellable, pausable: progress.isPausable, paused: progress.isPaused)
     }
 }

@@ -22,6 +22,7 @@ struct FCInspector: View {
                 }
                 .buttonStyle(SparkVPressStyle())
                 .help("Hide inspector")
+                .accessibilityLabel("Hide inspector")
             }
             .padding(.horizontal, 14)
             .frame(height: 38)
@@ -80,6 +81,7 @@ struct FCFullscreenView: View {
                             Image(systemName: "xmark.circle.fill").font(.system(size: 16)).foregroundStyle(palette.secondary)
                         }
                         .buttonStyle(SparkVPressStyle())
+                        .accessibilityLabel("Close")
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 50)
@@ -243,6 +245,7 @@ struct FCNodeDetail: View {
                     if !TrayAISettings.languages.contains(node.config.language) { Text(node.config.language).tag(node.config.language) }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Language")
             }
         case .custom, .summarize, .report, .compare:
             section(node.kind == .custom ? "Instruction" : node.kind == .report ? "Audience / goal (optional)" : "Focus (optional)") {

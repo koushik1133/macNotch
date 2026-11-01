@@ -493,6 +493,8 @@ final class DictationController: ObservableObject {
             return
         }
         resetTask?.cancel()
+        // A muted mic would record silence: say so (System Status mic mute).
+        MicMuteController.shared.warnIfMuted(feature: "Dictation")
         sessionID += 1
         let id = sessionID
         phase = .listening

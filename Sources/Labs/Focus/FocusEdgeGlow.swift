@@ -647,14 +647,8 @@ final class FocusEdgeGlowController {
 
     /// Three quick taps: felt only while a finger rests on a Force Touch trackpad.
     private static func hapticKick() {
-        let performer = NSHapticFeedbackManager.defaultPerformer
-        performer.perform(.levelChange, performanceTime: .now)
-        Task { @MainActor in
-            for delay in [0.12, 0.14] {
-                try? await Task.sleep(for: .seconds(delay))
-                performer.perform(.generic, performanceTime: .now)
-            }
-        }
+        // Gentle (the default): one light tap instead of three.
+        SparkVHaptics.performSequence([.levelChange, .generic, .generic], gaps: [0.12, 0.14])
     }
 }
 

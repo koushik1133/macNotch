@@ -156,6 +156,7 @@ private struct ConverterInputChip: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Remove \(input.name)")
+            .accessibilityLabel("Remove \(input.name)")
         }
         .foregroundStyle(SparkVTheme.text)
         .padding(.horizontal, 7)
@@ -515,6 +516,7 @@ private struct ConverterJobCard: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Cancel")
+            .accessibilityLabel("Cancel")
         }
         .padding(.horizontal, 9)
         .frame(width: ConverterLayout.cardWidth, height: height)
@@ -660,6 +662,7 @@ private struct ConverterErrorBanner: View {
                 Image(systemName: "xmark").foregroundStyle(SparkVTheme.textSecondary)
             }
             .buttonStyle(SparkVPressStyle())
+            .accessibilityLabel("Dismiss")
         }
         .font(.system(size: 10, weight: .medium))
         .padding(.horizontal, 10)
@@ -724,6 +727,7 @@ private struct ConverterIconButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -747,5 +751,6 @@ private struct ConverterCardButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }

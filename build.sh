@@ -4,7 +4,7 @@ set -euo pipefail
 cd "${0:A:h}"
 
 CONFIG="${1:-release}"
-OPT_FLAGS=(-O)
+OPT_FLAGS=(-O -g)
 [[ "$CONFIG" == "debug" ]] && OPT_FLAGS=(-Onone -g)
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 
@@ -30,12 +30,15 @@ cp Sources/Labs/UniversalSearch/*.swift "$WORK/src/"
 cp Sources/Labs/QuickCapture/*.swift "$WORK/src/"
 cp Sources/Labs/ReplyDrafter/*.swift "$WORK/src/"
 cp Sources/Labs/FileDropActions/*.swift "$WORK/src/"
+cp Sources/Labs/ShelfPlus/*.swift "$WORK/src/"
 cp Sources/Labs/LiveTranslation/*.swift "$WORK/src/"
 cp Sources/Labs/Downloads/*.swift "$WORK/src/"
 cp Sources/Labs/Onboarding/*.swift "$WORK/src/"
 cp Sources/Labs/ScreenRecorder/*.swift "$WORK/src/"
 cp Sources/Labs/Media/*.swift "$WORK/src/"
+cp Sources/Labs/MediaPlus/*.swift "$WORK/src/"
 cp Sources/Labs/Widgets/*.swift "$WORK/src/"
+cp Sources/Labs/Planner/*.swift "$WORK/src/"
 cp Sources/Labs/Modes/*.swift "$WORK/src/"
 cp Sources/Labs/NotchThemes/*.swift "$WORK/src/"
 cp Sources/Labs/FanControl/*.swift "$WORK/src/"
@@ -43,6 +46,18 @@ cp Sources/Labs/CloudSync/*.swift "$WORK/src/"
 cp Sources/Labs/MeetingIntel/*.swift "$WORK/src/"
 cp Sources/Labs/AmbientLight/*.swift "$WORK/src/"
 cp Sources/Labs/SmartMoments/*.swift "$WORK/src/"
+cp Sources/Labs/ColorPicker/*.swift "$WORK/src/"
+cp Sources/Labs/Localization/*.swift "$WORK/src/"
+cp Sources/Labs/DevStatus/*.swift "$WORK/src/"
+cp Sources/Labs/Teleprompter/*.swift "$WORK/src/"
+cp Sources/Labs/MenuBarOverflow/*.swift "$WORK/src/"
+cp Sources/Labs/SystemStatus/*.swift "$WORK/src/"
+cp Sources/Labs/Activities/*.swift "$WORK/src/"
+cp Sources/Labs/HUDPlus/*.swift "$WORK/src/"
+cp Sources/Labs/IslandInteraction/*.swift "$WORK/src/"
+cp Sources/Labs/IslandPlacement/*.swift "$WORK/src/"
+cp Sources/Labs/LookLayout/*.swift "$WORK/src/"
+cp Sources/Labs/AppShell/*.swift "$WORK/src/"
 cp -R Vendor/mediaremote-adapter "$WORK/adapter-src"
 cp -R Vendor/glance "$WORK/glance"
 
@@ -82,7 +97,23 @@ xcrun swiftc \
   "$WORK/src"/*.swift \
   -o "$STAGED/Contents/MacOS/SparkV"
 
+# Debug symbols stay outside the app, one folder per version and build.
+SYMBOLS="build/symbols/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Info.plist)"
+mkdir -p "$SYMBOLS"
+if [[ -d "$STAGED/Contents/MacOS/SparkV.dSYM" ]]; then
+  rm -rf "$SYMBOLS/SparkV.dSYM"
+  mv "$STAGED/Contents/MacOS/SparkV.dSYM" "$SYMBOLS/SparkV.dSYM"
+  { dwarfdump --uuid "$SYMBOLS/SparkV.dSYM" 2>/dev/null || dwarfdump -u "$SYMBOLS/SparkV.dSYM" 2>/dev/null || true; } | sed 's/^/symbols: /'
+fi
+
 cp Info.plist "$STAGED/Contents/Info.plist"
+# Translations (Resources/<lang>.lproj: Localizable.strings, InfoPlist.strings).
+# SwiftUI looks literal Text/Button/Toggle/Label/.help strings up here.
+for LPROJ in Resources/*.lproj(N); do
+  cp -R "$LPROJ" "$STAGED/Contents/Resources/"
+done
+# Privacy manifest: no tracking, no data collected, required-reason APIs.
+cp Packaging/PrivacyInfo.xcprivacy "$STAGED/Contents/Resources/PrivacyInfo.xcprivacy"
 # glance's videos, images and the ArcFace face-embedding model.
 cp "$WORK/glance/Resources"/* "$STAGED/Contents/Resources/"
 cp -R "$WORK/glance/Models/ArcFace.mlmodelc" "$STAGED/Contents/Resources/"
@@ -138,6 +169,10 @@ xcrun swiftc \
   -sdk "$SDK" \
   "$WORK/fanhelper-src"/*.swift \
   -o "$STAGED/Contents/Library/LaunchServices/com.sparkv.fanhelper"
+if [[ -d "$STAGED/Contents/Library/LaunchServices/com.sparkv.fanhelper.dSYM" ]]; then
+  rm -rf "$SYMBOLS/com.sparkv.fanhelper.dSYM"
+  mv "$STAGED/Contents/Library/LaunchServices/com.sparkv.fanhelper.dSYM" "$SYMBOLS/"
+fi
 cp Helpers/FanHelper/com.sparkv.fanhelper.plist Helpers/FanHelper/install-fanhelper.sh Helpers/FanHelper/uninstall-fanhelper.sh \
   "$STAGED/Contents/Resources/FanHelper/"
 chmod 755 "$STAGED/Contents/Resources/FanHelper/"*.sh

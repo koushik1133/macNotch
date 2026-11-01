@@ -153,9 +153,11 @@ final class SpaceIngestCenter: ObservableObject {
         // The screenshot location can change in the Screenshot app; re-read it now and then.
         locationRefreshTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(120))
-                guard !Task.isCancelled else { return }
-                self?.updateScreenshotWatcher()
+                try? await Task.sleep(for: SparkVEnergy.shared.duration(.seconds(120)))
+                guard !Task.isCancelled, let self else { return }
+                // Only matters while screenshots are collected and someone can take one.
+                guard self.enabledSources.contains(.screenshots), !SparkVEnergy.shared.screensAsleep else { continue }
+                self.updateScreenshotWatcher()
             }
         }
         AppLog.log("Spaces ingest: started (\(enabledSources.map(\.rawValue).sorted().joined(separator: ", ")))")
@@ -295,7 +297,7 @@ final class SpaceIngestCenter: ObservableObject {
             page = try await TrayAIWeb.fetch(tab.url)
         } catch {
             // Still save the title and URL; the page may need a login.
-            AppLog.log("Spaces ingest: page fetch failed for \(SpaceConnectors.domain(of: tab.url) ?? "?"): \(error.localizedDescription)")
+            AppLog.log("Spaces ingest: page fetch failed: \(error.localizedDescription)")
         }
         return await submitSerially(SpaceConnectors.webInput(tab: tab, page: page), userInitiated: true)
     }

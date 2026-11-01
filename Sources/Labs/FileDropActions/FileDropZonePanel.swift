@@ -72,14 +72,16 @@ private final class FileDropZoneHostingView<Content: View>: NSHostingView<Conten
 // MARK: - Shelf view
 
 /// The drop target that appears under the collapsed notch while a file
-/// drag nears it: Dropover-style instant-action buckets. "Actions" keeps the
-/// files and opens the strip; the others run right away.
+/// drag nears it (or at the pointer after a shake): Dropover-style
+/// instant-action buckets. "Actions" keeps the files and opens the strip;
+/// "Tray" keeps them on the shelf; the others run right away.
 struct FileDropTargetView: View {
     @ObservedObject var controller: FileDropController
 
     var body: some View {
         HStack(spacing: 6) {
             FileDropBucket(instant: .actions, controller: controller, wide: true)
+            FileDropBucket(instant: .tray, controller: controller)
             FileDropBucket(instant: .compress, controller: controller)
             FileDropBucket(instant: .space, controller: controller)
             FileDropBucket(instant: .airDrop, controller: controller)
@@ -154,10 +156,10 @@ private struct FileDropBucket: View {
             return controller.accept(providers, then: instant)
         }
         .onReceive(targeted.$isOn.removeDuplicates()) { on in
-            if on { NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now) }
+            if on { SparkVHaptics.perform(.alignment) }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(instant == .actions ? "Drop for actions" : instant.title)
+        .accessibilityLabel(instant == .actions ? "Drop for actions" : (instant == .tray ? "Drop to keep on the Tray" : instant.title))
     }
 
     /// Apple: every bucket in its own color, white glyph (like the share
@@ -270,6 +272,7 @@ extension FileDropInstant {
     var tint: Color {
         switch self {
         case .actions: SparkVTheme.accent
+        case .tray: Color(red: 0.0, green: 0.74, blue: 0.62)
         case .compress: Color.orange
         case .space: Color(red: 0.55, green: 0.45, blue: 1.0)
         case .airDrop: Color(red: 0.0, green: 0.60, blue: 1.0)

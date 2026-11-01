@@ -355,12 +355,14 @@ struct JobTrackerView: View {
             HStack(spacing: 4) {
                 Text("Fit ≥ \(Int(model.minimumFit))").font(.system(size: 11)).monospacedDigit().frame(width: 52)
                 Slider(value: $model.minimumFit, in: 0...100, step: 5).frame(width: 90)
+                    .accessibilityLabel("Minimum fit")
             }
             Picker("", selection: $model.showBoard) {
                 Image(systemName: "tablecells").help("Table").tag(false)
                 Image(systemName: "rectangle.split.3x1").help("Board").tag(true)
             }
             .pickerStyle(.segmented).labelsHidden().frame(width: 76)
+            .accessibilityLabel("View")
             Spacer()
             Button { pickScreenshots() } label: { Label("Import screenshots…", systemImage: "photo.on.rectangle").lineLimit(1) }
                 .buttonStyle(LabsSecondaryButtonStyle())
@@ -369,6 +371,7 @@ struct JobTrackerView: View {
                 Button("Mark overdue (21+ days) as Ghosted") { controller.markOverdueAsGhosted() }
             } label: { Image(systemName: "ellipsis.circle") }
                 .menuStyle(.borderlessButton).frame(width: 30)
+                .accessibilityLabel("More")
         }
         .padding(.horizontal, 14).padding(.top, 34).padding(.bottom, 10)
     }
@@ -448,6 +451,7 @@ struct JobDetailView: View {
                     ForEach(JobStatus.allCases) { status in Label(status.rawValue, systemImage: status.symbol).tag(status) }
                 }
                 .labelsHidden().frame(width: 140)
+                .accessibilityLabel("Status")
                 if job.status == .considering {
                     Button("Mark applied now") { Task { await controller.markApplied(job.id) } }
                         .buttonStyle(LabsPrimaryButtonStyle())
@@ -917,6 +921,8 @@ struct JobBoardView: View {
         .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.accent.opacity(selected ? 0.8 : 0), lineWidth: 1))
         .contentShape(Rectangle())
         .onTapGesture { model.selection = job.id }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.selection = job.id }
         .draggable(job.id.uuidString)
         .contextMenu {
             Menu("Move to") {

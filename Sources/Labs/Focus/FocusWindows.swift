@@ -25,7 +25,7 @@ final class FocusSummaryWindowController {
         panel.contentView = host
         let size = host.fittingSize
         // The notched display, like NotchWindowController, so the card sits under the island.
-        let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens.first
+        let screen = IslandScreen.current ?? NSScreen.main ?? NSScreen.screens.first
         let frame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1728, height: 1117)
         let menuBar = max(screen?.safeAreaInsets.top ?? 0, frame.maxY - (screen?.visibleFrame.maxY ?? frame.maxY - 38))
         // Below the 46 pt summary band that hangs from the notch at the same time.
@@ -544,6 +544,7 @@ struct FocusChips: View {
                         }
                         .buttonStyle(SparkVPressStyle())
                         .foregroundStyle(SparkVTheme.textTertiary)
+                        .accessibilityLabel("Remove \(item.title)")
                     }
                     .padding(.horizontal, 9)
                     .frame(height: 24)

@@ -472,7 +472,7 @@ final class PermissionCenter: ObservableObject {
 
     /// Restarts SparkV so a fresh Screen Recording grant applies.
     func relaunch(from feature: String) {
-        AppLog.log("Permissions: relaunching for Screen Recording (\(feature))")
+        AppLog.log("Permissions: relaunching SparkV (\(feature))")
         system.relaunch()
     }
 

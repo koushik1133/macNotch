@@ -288,6 +288,7 @@ struct ScreenDistanceSettingsSection: View {
                 HStack {
                     Text("Warn closer than").font(.system(size: 12))
                     Slider(value: $controller.thresholdCM, in: ScreenDistanceSettings.thresholdRange, step: 5)
+                        .accessibilityLabel("Warn closer than")
                     Text("\(Int(controller.thresholdCM)) cm").font(.system(size: 12).monospacedDigit()).frame(width: 46, alignment: .trailing)
                 }
                 HStack {
@@ -297,6 +298,7 @@ struct ScreenDistanceSettingsSection: View {
                     }
                     .labelsHidden()
                     .frame(width: 130)
+                    .accessibilityLabel("Check every")
                     Spacer()
                 }
                 Toggle("Full-screen alert (otherwise only the band under the notch)", isOn: $controller.showsFullScreenAlert)

@@ -601,9 +601,7 @@ struct MeetingIntelLiveBadge: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Circle()
-                .fill(SparkVTheme.recording)
-                .frame(width: compact ? 6 : 7, height: compact ? 6 : 7)
+            SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: compact ? 6 : 7, label: "")
             if !compact {
                 Text(text)
                     .font(SparkVTheme.caption(10))

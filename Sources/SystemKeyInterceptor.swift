@@ -3,26 +3,45 @@ import ApplicationServices
 import Combine
 import CoreAudio
 
-/// Replaces macOS's own volume and brightness pop-up with SparkV's band.
+/// Replaces macOS's own volume and brightness pop-up with SparkV's HUD.
 ///
 /// An active event tap (needs Accessibility) catches the brightness and
 /// volume keys before the system does, swallows them, and applies the change
 /// itself: CoreAudio for the default output device, DisplayServices for the
-/// built-in display. The HUD's existing change listeners then draw SparkV's
-/// band. Keys pass through untouched whenever SparkV can't apply them (an
-/// output with no volume control, an external display, Option held to open
-/// System Settings), so nothing ever stops working.
+/// display the key is for. The HUD's change listeners then draw SparkV's HUD.
+///
+/// Keys pass through untouched whenever SparkV can't (or shouldn't) apply
+/// them, so nothing ever stops working:
+/// - an output with no volume control (HDMI, AirPlay);
+/// - a brightness key for a monitor SparkV can't set (DDC monitors: there's
+///   no public API, BetterDisplay / Lunar / MonitorControl or macOS handle it);
+/// - a brightness key for an external display while one of those tools runs
+///   (and the user lets it handle those, the default);
+/// - Option held alone (opens Sound / Displays settings), and the keyboard
+///   backlight keys, which SparkV never touches;
+/// - a key whose display has its HUD style set to Off, so macOS's pop-up
+///   still gives feedback there.
 @MainActor
 final class SystemKeyInterceptor {
     /// Called after a key was handled, so the HUD can show the level even when
     /// it didn't change (already at 0 % or 100 %).
     var onHandled: ((Int) -> Void)?
+    /// Called after a brightness key was applied to `display`.
+    var onHandledBrightness: ((CGDirectDisplayID) -> Void)?
+    /// Whether SparkV draws a HUD for this key: the brightness key's display,
+    /// or nil for volume. False (style Off there): the key goes to macOS.
+    var showsFeedback: (CGDirectDisplayID?) -> Bool = { _ in true }
 
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     /// Follows Accessibility through PermissionCenter (no polling).
     private var trustWatch: AnyCancellable?
-    private let brightness = BrightnessControl()
+    private let brightness = HUDDisplayBrightness.shared
+    private let displays = HUDDisplayDirectory.shared
+    private let displayApps = HUDDisplayAppWatcher.shared
+    private let settings = HUDPlusSettings.shared
+    /// Last brightness route, to log only when it changes.
+    private var lastRoute: HUDBrightnessRoute?
 
     var isActive: Bool { tap != nil }
 
@@ -93,32 +112,36 @@ final class SystemKeyInterceptor {
     /// Returns true when the event was handled and must be swallowed.
     fileprivate func handle(subtype: Int16, data1 data: Int, flags allFlags: NSEvent.ModifierFlags) -> Bool {
         guard let key = SystemKeyEvent(subtype: subtype, data1: data),
-              let step = Self.step(for: key.keyCode, flags: allFlags)
+              let step = Self.step(for: key.keyCode, flags: allFlags, divisions: settings.stepDivisions)
         else { return false }
 
         switch key.keyCode {
         case SystemKeyEvent.mute:
+            guard showsFeedback(nil) else { return false }
             // Without a mute control macOS knows best (it may hide the key).
-            guard let device = VolumeControl.defaultOutput(), VolumeControl.hasMute(device) else { return false }
+            guard let device = HUDVolumeControl.defaultOutput(), HUDVolumeControl.hasMute(device) else { return false }
             if key.isKeyDown, !key.isRepeat {
-                VolumeControl.setMuted(device, !VolumeControl.isMuted(device))
+                HUDVolumeControl.setMuted(device, !HUDVolumeControl.isMuted(device))
                 onHandled?(key.keyCode)
             }
             return true
         case SystemKeyEvent.soundUp, SystemKeyEvent.soundDown:
-            guard let device = VolumeControl.defaultOutput(), VolumeControl.canSetVolume(device) else { return false }
+            guard showsFeedback(nil) else { return false }
+            guard let device = HUDVolumeControl.defaultOutput(), HUDVolumeControl.canSetVolume(device) else { return false }
             if key.isKeyDown {
-                let current = VolumeControl.volume(device) ?? 0
-                VolumeControl.setVolume(device, Self.stepped(current, step: step, up: key.keyCode == SystemKeyEvent.soundUp))
+                let current = HUDVolumeControl.volume(device) ?? 0
+                HUDVolumeControl.setVolume(device, Self.stepped(current, step: step, up: key.keyCode == SystemKeyEvent.soundUp))
                 // Either volume key unmutes, like macOS.
-                if VolumeControl.isMuted(device) { VolumeControl.setMuted(device, false) }
+                if HUDVolumeControl.isMuted(device) { HUDVolumeControl.setMuted(device, false) }
                 onHandled?(key.keyCode)
             }
             return true
         case SystemKeyEvent.brightnessUp, SystemKeyEvent.brightnessDown:
-            guard brightness.isAvailable, let current = brightness.read() else { return false }
+            guard case .apply(let display) = brightnessRoute(), showsFeedback(display),
+                  let current = brightness.read(display) else { return false }
             if key.isKeyDown {
-                brightness.write(Self.stepped(current, step: step, up: key.keyCode == SystemKeyEvent.brightnessUp))
+                brightness.write(Self.stepped(current, step: step, up: key.keyCode == SystemKeyEvent.brightnessUp), to: display)
+                onHandledBrightness?(display)
                 onHandled?(key.keyCode)
             }
             return true
@@ -127,30 +150,47 @@ final class SystemKeyInterceptor {
         }
     }
 
+    /// Which display a brightness key is for and whether SparkV applies it.
+    /// Uses cached display facts: cheap enough for every key repeat.
+    func brightnessRoute() -> HUDBrightnessRoute {
+        let route = HUDBrightnessRouter.route(
+            pointer: displays.screenUnderPointer()?.facts,
+            builtIn: displays.builtIn()?.facts,
+            followsPointer: settings.brightnessFollowsPointer,
+            displayAppRunning: displayApps.isRunning,
+            stepAside: settings.stepAsideForDisplayApps,
+            appsHandleBuiltIn: settings.displayAppsHandleBuiltIn
+        )
+        if route != lastRoute {
+            lastRoute = route
+            switch route {
+            case .apply(let display):
+                AppLog.log("HUD: brightness keys drive display \(display)")
+            case .passThrough(let reason):
+                AppLog.log("HUD: brightness keys pass through (\(reason)\(displayApps.runningName.map { ", \($0) running" } ?? ""))")
+            }
+        }
+        return route
+    }
+
     // MARK: - Pure key math
 
     /// The step a handled key moves by, or nil to leave the key to macOS:
-    /// a key SparkV doesn't drive, or Option alone (opens Sound / Displays
-    /// settings). Option+Shift gives quarter steps (1/64), like macOS.
-    nonisolated static func step(for keyCode: Int, flags allFlags: NSEvent.ModifierFlags) -> Float? {
+    /// a key SparkV doesn't drive (keyboard backlight, media keys), or Option
+    /// alone (opens Sound / Displays settings). `divisions` steps span 0...100 %
+    /// (16 like macOS); Option+Shift gives quarter steps (1/64 by default).
+    nonisolated static func step(for keyCode: Int, flags allFlags: NSEvent.ModifierFlags, divisions: Int = HUDStepMath.defaultDivisions) -> Float? {
         let handled = [SystemKeyEvent.soundUp, SystemKeyEvent.soundDown, SystemKeyEvent.mute,
                        SystemKeyEvent.brightnessUp, SystemKeyEvent.brightnessDown]
         guard handled.contains(keyCode) else { return nil }
         let flags = allFlags.intersection(.deviceIndependentFlagsMask)
-        if flags.contains(.option), !flags.contains(.shift) { return nil }
-        return flags.contains(.option) && flags.contains(.shift) ? 1 / 64 : 1 / 16
+        return HUDStepMath.keyStep(option: flags.contains(.option), shift: flags.contains(.shift), divisions: divisions)
     }
 
     /// Next level one step up or down, snapped to the step grid: 0.53 goes
     /// to 0.5625 or 0.5, never skipping a notch. Clamped to 0...1.
     nonisolated static func stepped(_ current: Float, step: Float, up: Bool) -> Float {
-        guard step > 0, current.isFinite else { return up ? step : 0 }
-        let position = min(1, max(0, current)) / step
-        let nearest = position.rounded()
-        // Float noise (0.4999 for 0.5) counts as being on the grid.
-        let base = abs(position - nearest) < 0.02 ? nearest : position
-        let index = up ? base.rounded(.down) + 1 : base.rounded(.up) - 1
-        return min(1, max(0, index * step))
+        HUDStepMath.stepped(current, step: step, up: up)
     }
 }
 
@@ -174,131 +214,4 @@ private func systemKeyTapCallback(
         return interceptor.handle(subtype: data1.0, data1: data1.1, flags: NSEvent.ModifierFlags(rawValue: data1.2))
     }
     return swallow ? nil : Unmanaged.passUnretained(event)
-}
-
-// MARK: - Volume
-
-private enum VolumeControl {
-    static func defaultOutput() -> AudioObjectID? {
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        var device = AudioObjectID(0)
-        var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        let status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
-        return status == noErr && device != 0 ? device : nil
-    }
-
-    /// Volume elements to drive: the main element when settable, else channels 1 and 2.
-    private static func elements(_ device: AudioObjectID) -> [AudioObjectPropertyElement] {
-        if isSettable(device, kAudioDevicePropertyVolumeScalar, kAudioObjectPropertyElementMain) {
-            return [kAudioObjectPropertyElementMain]
-        }
-        return [1, 2].filter { isSettable(device, kAudioDevicePropertyVolumeScalar, $0) }
-    }
-
-    static func canSetVolume(_ device: AudioObjectID) -> Bool {
-        !elements(device).isEmpty
-    }
-
-    static func volume(_ device: AudioObjectID) -> Float? {
-        let values = elements(device).compactMap { scalar(device, $0) }
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +) / Float(values.count)
-    }
-
-    static func setVolume(_ device: AudioObjectID, _ value: Float) {
-        for element in elements(device) {
-            var address = outputAddress(kAudioDevicePropertyVolumeScalar, element)
-            var v = value
-            AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &v)
-        }
-    }
-
-    static func hasMute(_ device: AudioObjectID) -> Bool {
-        isSettable(device, kAudioDevicePropertyMute, kAudioObjectPropertyElementMain)
-    }
-
-    static func isMuted(_ device: AudioObjectID) -> Bool {
-        var address = outputAddress(kAudioDevicePropertyMute, kAudioObjectPropertyElementMain)
-        var muted: UInt32 = 0
-        var size = UInt32(MemoryLayout<UInt32>.size)
-        guard AudioObjectHasProperty(device, &address),
-              AudioObjectGetPropertyData(device, &address, 0, nil, &size, &muted) == noErr
-        else { return false }
-        return muted != 0
-    }
-
-    static func setMuted(_ device: AudioObjectID, _ muted: Bool) {
-        var address = outputAddress(kAudioDevicePropertyMute, kAudioObjectPropertyElementMain)
-        guard AudioObjectHasProperty(device, &address) else {
-            // No mute control: emulate with volume 0.
-            if muted { setVolume(device, 0) }
-            return
-        }
-        var value: UInt32 = muted ? 1 : 0
-        AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &value)
-    }
-
-    private static func scalar(_ device: AudioObjectID, _ element: AudioObjectPropertyElement) -> Float? {
-        var address = outputAddress(kAudioDevicePropertyVolumeScalar, element)
-        var value = Float32(0)
-        var size = UInt32(MemoryLayout<Float32>.size)
-        guard AudioObjectHasProperty(device, &address),
-              AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr
-        else { return nil }
-        return value
-    }
-
-    private static func isSettable(_ device: AudioObjectID, _ selector: AudioObjectPropertySelector, _ element: AudioObjectPropertyElement) -> Bool {
-        var address = outputAddress(selector, element)
-        guard AudioObjectHasProperty(device, &address) else { return false }
-        var settable = DarwinBoolean(false)
-        return AudioObjectIsPropertySettable(device, &address, &settable) == noErr && settable.boolValue
-    }
-
-    private static func outputAddress(_ selector: AudioObjectPropertySelector, _ element: AudioObjectPropertyElement) -> AudioObjectPropertyAddress {
-        AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioDevicePropertyScopeOutput, mElement: element)
-    }
-}
-
-// MARK: - Brightness
-
-/// Built-in display brightness through the private DisplayServices framework.
-private final class BrightnessControl {
-    private typealias Get = @convention(c) (CGDirectDisplayID, UnsafeMutablePointer<Float>) -> Int32
-    private typealias Set = @convention(c) (CGDirectDisplayID, Float) -> Int32
-
-    private let getFn: Get?
-    private let setFn: Set?
-
-    init() {
-        let path = "/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices"
-        let handle = dlopen(path, RTLD_LAZY)
-        getFn = handle.flatMap { dlsym($0, "DisplayServicesGetBrightness") }.map { unsafeBitCast($0, to: Get.self) }
-        setFn = handle.flatMap { dlsym($0, "DisplayServicesSetBrightness") }.map { unsafeBitCast($0, to: Set.self) }
-    }
-
-    var isAvailable: Bool { getFn != nil && setFn != nil && Self.builtInDisplay() != nil }
-
-    func read() -> Float? {
-        guard let getFn, let display = Self.builtInDisplay() else { return nil }
-        var value: Float = 0
-        return getFn(display, &value) == 0 ? value : nil
-    }
-
-    func write(_ value: Float) {
-        guard let setFn, let display = Self.builtInDisplay() else { return }
-        _ = setFn(display, value)
-    }
-
-    private static func builtInDisplay() -> CGDirectDisplayID? {
-        var count: UInt32 = 0
-        CGGetOnlineDisplayList(0, nil, &count)
-        var displays = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        CGGetOnlineDisplayList(count, &displays, &count)
-        return displays.prefix(Int(count)).first { CGDisplayIsBuiltin($0) != 0 && CGDisplayIsActive($0) != 0 }
-    }
 }

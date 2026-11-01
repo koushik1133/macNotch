@@ -20,6 +20,14 @@ final class MediaEngine: ObservableObject {
         case togglePlayPause
         case nextTrack
         case previousTrack
+        /// 15 s back / forward (podcasts, audiobooks, long videos). Players
+        /// that don't take the MediaRemote command get a plain seek.
+        case skipBackward15
+        case skipForward15
+        /// Shuffle on/off and repeat off → all → one (`setShuffle` /
+        /// `setRepeat` pick an exact mode).
+        case toggleShuffle
+        case toggleRepeat
 
         /// MRCommand IDs understood by `mediaremote-adapter.pl send`.
         var adapterID: Int {
@@ -27,16 +35,65 @@ final class MediaEngine: ObservableObject {
             case .togglePlayPause: 2
             case .nextTrack: 4
             case .previousTrack: 5
+            case .toggleShuffle: 6
+            case .toggleRepeat: 7
+            case .skipBackward15: 12 // kMRGoBackFifteenSeconds
+            case .skipForward15: 13 // kMRSkipFifteenSeconds
             }
         }
 
-        var mediaKeyCode: Int32 {
+        /// The hardware media key with the same effect, if there is one.
+        var mediaKeyCode: Int32? {
             switch self {
             case .togglePlayPause: 16 // NX_KEYTYPE_PLAY
             case .nextTrack: 17 // NX_KEYTYPE_NEXT
             case .previousTrack: 18 // NX_KEYTYPE_PREVIOUS
+            case .skipBackward15, .skipForward15, .toggleShuffle, .toggleRepeat: nil
             }
         }
+
+        /// Play/pause and track changes: the commands every path supports.
+        var isTransport: Bool {
+            switch self {
+            case .togglePlayPause, .nextTrack, .previousTrack: true
+            case .skipBackward15, .skipForward15, .toggleShuffle, .toggleRepeat: false
+            }
+        }
+    }
+
+    /// MediaRemote's shuffle modes (the adapter's `shuffle <mode>` values).
+    enum ShuffleMode: Int, Sendable, Equatable {
+        case off = 1
+        case albums = 2
+        case tracks = 3
+
+        var isOn: Bool { self != .off }
+    }
+
+    /// MediaRemote's repeat modes (the adapter's `repeat <mode>` values).
+    enum RepeatMode: Int, Sendable, Equatable, CaseIterable {
+        case off = 1
+        case one = 2
+        case all = 3
+
+        /// Off → All → One → Off, like Music's repeat button.
+        var next: RepeatMode {
+            switch self {
+            case .off: .all
+            case .all: .one
+            case .one: .off
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .off: "Off"
+            case .one: "One"
+            case .all: "All"
+            }
+        }
+
+        var systemImage: String { self == .one ? "repeat.1" : "repeat" }
     }
 
     enum Source: Equatable {
@@ -79,6 +136,101 @@ final class MediaEngine: ObservableObject {
     /// Vibrant color pulled from the artwork, for the island's glow
     /// (boring.notch style). Nil without artwork.
     @Published private(set) var artworkTint: NSColor?
+    /// Album of the current track, when the player reports one (lyrics
+    /// lookups use it to pick the right version).
+    @Published private(set) var album = ""
+    /// Shuffle / repeat as the player reports them; nil when it doesn't
+    /// (most web players).
+    @Published private(set) var shuffleMode: ShuffleMode?
+    @Published private(set) var repeatMode: RepeatMode?
+    /// The player takes MediaRemote's own 15 s skip commands.
+    @Published private(set) var reportsSkip15 = false
+    /// The current track is a favorite (Music) / saved (Spotify); nil when
+    /// unknown.
+    @Published private(set) var isLiked: Bool?
+    /// The player marks the current item as an advertisement.
+    @Published private(set) var isAdvertisement = false
+    /// One short line about the last action that couldn't be done ("Music
+    /// can't add streaming tracks to playlists"), cleared after a few seconds.
+    @Published private(set) var notice: String?
+    /// Music or Spotify is open but stopped (read over Apple Events): the
+    /// column shows "<Player> · Not playing" and Home may go idle.
+    @Published private(set) var isStoppedPlayer = false
+
+    // MARK: Sources (gear menu › Media › Media Sources)
+
+    /// Apps that may not drive the island (e.g. a browser playing previews).
+    /// Matched against both the app and its host (`parentBundleID`).
+    @Published var excludedSources: Set<String> {
+        didSet {
+            guard excludedSources != oldValue else { return }
+            UserDefaults.standard.set(excludedSources.sorted(), forKey: Self.excludedKey)
+            reapplySourceFilter()
+        }
+    }
+
+    /// Music or Spotify: shown instead of another app whenever it is playing.
+    @Published var preferredSource: String? {
+        didSet {
+            guard preferredSource != oldValue else { return }
+            UserDefaults.standard.set(preferredSource, forKey: Self.preferredKey)
+            preferredCheckedAt = .distantPast
+            reapplySourceFilter()
+        }
+    }
+
+    /// Apps seen owning Now Playing, most recent first (for the picker).
+    @Published private(set) var seenSources: [String]
+
+    /// Set by Labs/MediaPlus once the user connects Spotify (hearts for
+    /// Spotify tracks go through its Web API).
+    var spotifyLibrary: (any MediaLibraryService)? {
+        didSet {
+            likeKey = nil
+            scheduleLikeRefresh()
+        }
+    }
+
+    /// The heart is shown (MediaPlus's "Show Favorite Button"). While false,
+    /// nothing reads favorites: no Apple Event to Music, nothing sent to
+    /// Spotify on track changes.
+    var likesEnabled = true {
+        didSet {
+            guard likesEnabled != oldValue else { return }
+            likeKey = nil
+            scheduleLikeRefresh()
+        }
+    }
+
+    /// Whether the heart can do something for the current track.
+    var canLike: Bool {
+        guard likesEnabled else { return false }
+        switch likeTarget {
+        case .music: return true
+        case .spotify: return spotifyLibrary?.isConnected == true
+        case nil: return false
+        }
+    }
+
+    /// A Music or Spotify track (adapter or Apple Events), i.e. a player that
+    /// can be asked about favorites, shuffle and repeat directly.
+    var scriptablePlayer: ScriptablePlayer? {
+        guard let bundleID = sourceBundleID else { return nil }
+        return ScriptablePlayer.allCases.first { $0.bundleID == bundleID }
+    }
+
+    /// Shuffle can be read or set for this source.
+    var canShuffle: Bool { source != .none && (shuffleMode != nil || scriptablePlayer != nil) }
+    /// Repeat can be read or set for this source.
+    var canRepeat: Bool { source != .none && (repeatMode != nil || scriptablePlayer != nil) }
+    /// ±15 s is possible (MediaRemote command or a plain seek).
+    var canSkip15: Bool { canSeek || (reportsSkip15 && isAdapterSource) }
+
+    private var likeTarget: ScriptablePlayer? { scriptablePlayer }
+    private var isAdapterSource: Bool {
+        if case .app = source { return adapterHealthy && override == nil }
+        return false
+    }
 
     /// Playback position right now, interpolated from the last report.
     var elapsedTime: TimeInterval { timing.position(at: Date()) }
@@ -123,6 +275,35 @@ final class MediaEngine: ObservableObject {
     }
 
     private static let closedNotchKey = "NowPlaying.showsInClosedNotch"
+    static let excludedKey = "NowPlaying.excludedBundleIDs"
+    static let preferredKey = "NowPlaying.preferredBundleID"
+    static let seenKey = "NowPlaying.seenBundleIDs"
+
+    // Source filter state.
+    /// Why Apple Events show a player instead of the adapter's Now Playing app.
+    private enum Override: Equatable {
+        /// The Now Playing app is excluded; show Music / Spotify if one plays.
+        case excluded
+        /// The preferred player is playing while another app owns Now Playing.
+        case preferred(ScriptablePlayer)
+    }
+    private var override: Override?
+    private var overrideTimer: Timer?
+    /// While an excluded app owns Now Playing and neither Music nor Spotify
+    /// runs: no polling, just this launch observer.
+    private var playerLaunchObserver: NSObjectProtocol?
+    private var isPollingOverride = false
+    /// Latest adapter report, shown again when an override ends.
+    private var lastAdapterInfo: NowPlayingAdapter.Info?
+    private var hasAdapterReport = false
+    private var preferredCheckedAt = Date.distantPast
+    private var noticeTask: Task<Void, Never>?
+    private var likeTask: Task<Void, Never>?
+    private var likeKey: String?
+    private var modeRevertTask: Task<Void, Never>?
+    /// Shuffle / repeat as the adapter last reported them.
+    private var reportedShuffle: ShuffleMode?
+    private var reportedRepeat: RepeatMode?
 
     private let adapter = NowPlayingAdapter()
     /// The adapter is streaming. Cleared if it keeps failing, which switches
@@ -162,6 +343,9 @@ final class MediaEngine: ObservableObject {
 
     init() {
         showsInClosedNotch = UserDefaults.standard.object(forKey: Self.closedNotchKey) as? Bool ?? true
+        excludedSources = Set(UserDefaults.standard.stringArray(forKey: Self.excludedKey) ?? [])
+        preferredSource = UserDefaults.standard.string(forKey: Self.preferredKey)
+        seenSources = UserDefaults.standard.stringArray(forKey: Self.seenKey) ?? []
         adapterHealthy = adapter != nil
         guard let adapter else {
             AppLog.log("Media: Now Playing adapter missing from the app bundle; using the Apple Events fallback")
@@ -185,12 +369,14 @@ final class MediaEngine: ObservableObject {
         isActive = active
         pollTimer?.invalidate()
         pollTimer = nil
+        updateOverridePolling()
         guard active, !adapterHealthy else { return }
 
         refreshFromPlayers()
         let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshFromPlayers() }
         }
+        timer.tolerance = 0.4
         RunLoop.main.add(timer, forMode: .common)
         pollTimer = timer
     }
@@ -198,10 +384,31 @@ final class MediaEngine: ObservableObject {
     func stop() {
         adapter?.stop()
         setActive(false)
+        endOverride(reshow: false)
     }
 
     func send(_ command: Command) {
-        if adapterHealthy, let adapter {
+        switch command {
+        case .skipBackward15, .skipForward15:
+            skip15(forward: command == .skipForward15)
+            return
+        case .toggleShuffle:
+            setShuffle(!(shuffleMode?.isOn ?? false))
+            return
+        case .toggleRepeat:
+            // Spotify over Apple Events has no "one" (shown as All), so
+            // cycling would never get back to Off: toggle Off / All there.
+            if scriptablePlayer == .spotify, !isAdapterSource {
+                setRepeat(repeatMode == .off || repeatMode == nil ? .all : .off)
+            } else {
+                setRepeat((repeatMode ?? .off).next)
+            }
+            return
+        case .togglePlayPause, .nextTrack, .previousTrack:
+            break
+        }
+
+        if adapterHealthy, override == nil, let adapter {
             if case .app = source, command == .togglePlayPause {
                 isPlaying.toggle()
                 reanchorTiming(playing: isPlaying)
@@ -222,7 +429,7 @@ final class MediaEngine: ObservableObject {
             // and opens Settings instead once the user has answered.
             Task {
                 _ = await PermissionCenter.shared.request(.automation(bundleID: player.bundleID), from: "Media")
-                refreshFromPlayers()
+                refreshPlayerState()
             }
             return
         case .denied(let player):
@@ -236,15 +443,17 @@ final class MediaEngine: ObservableObject {
             Task {
                 await players.send(command, to: player)
                 try? await Task.sleep(for: .milliseconds(400))
-                refreshFromPlayers()
+                refreshPlayerState()
             }
             return
         case .app, .none:
             break
         }
 
+        // An excluded app owns Now Playing: a media key would control it.
+        guard override == nil, let key = command.mediaKeyCode else { return }
         if PermissionCenter.shared.isGranted(.accessibility) {
-            MediaKey.post(command.mediaKeyCode)
+            MediaKey.post(key)
         } else {
             // A tap is a user action: the prompt shows once per signature,
             // later taps open the Accessibility pane instead of re-prompting.
@@ -263,7 +472,7 @@ final class MediaEngine: ObservableObject {
         pendingSeek = (target, now)
         timing = PlaybackTiming(elapsed: target, anchor: now, rate: timing.rate, duration: timing.duration)
 
-        if adapterHealthy, let adapter, case .app(let bundleID) = source {
+        if adapterHealthy, override == nil, let adapter, case .app(let bundleID) = source {
             scheduleSeekRevertIfUnconfirmed()
             let fallbackPlayer = ScriptablePlayer.allCases.first { $0.bundleID == bundleID }
             adapter.seek(toMicros: Int64((target * 1_000_000).rounded())) { [weak self] status in
@@ -288,7 +497,7 @@ final class MediaEngine: ObservableObject {
             Task {
                 _ = await players.seek(player, to: target)
                 try? await Task.sleep(for: .milliseconds(300))
-                refreshFromPlayers()
+                refreshPlayerState()
             }
         }
     }
@@ -296,6 +505,269 @@ final class MediaEngine: ObservableObject {
     /// Jumps forward (positive) or back (negative) by `seconds`.
     func skip(by seconds: TimeInterval) {
         seek(to: elapsedTime + seconds)
+    }
+
+    /// 15 s back or forward: MediaRemote's own command when the player
+    /// advertises it (podcast apps keep their chapter logic), otherwise a seek.
+    func skip15(forward: Bool) {
+        if isAdapterSource, reportsSkip15, let adapter {
+            let command: Command = forward ? .skipForward15 : .skipBackward15
+            // Move the scrubber now; the player's report confirms it.
+            if timing.isKnown {
+                let now = Date()
+                let target = min(max(0, timing.position(at: now) + (forward ? 15 : -15)), max(0, timing.duration - 0.25))
+                pendingSeek = (target, now)
+                timing = PlaybackTiming(elapsed: target, anchor: now, rate: timing.rate, duration: timing.duration)
+                scheduleSeekRevertIfUnconfirmed()
+            }
+            adapter.send(command.adapterID) { [weak self] status in
+                guard status != 0 else { return }
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        guard let self else { return }
+                        self.pendingSeek = nil
+                        self.skip(by: forward ? 15 : -15)
+                    }
+                }
+            }
+            return
+        }
+        skip(by: forward ? 15 : -15)
+    }
+
+    // MARK: - Shuffle and repeat
+
+    /// Turns shuffle on (tracks) or off.
+    func setShuffle(_ on: Bool) {
+        guard source != .none else { return }
+        let mode: ShuffleMode = on ? .tracks : .off
+        if isAdapterSource, reportedShuffle != nil, let adapter {
+            shuffleMode = mode
+            scheduleModeRevert()
+            adapter.setShuffle(mode.rawValue) { [weak self] status in
+                guard status != 0 else { return }
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.revertModes() } }
+            }
+            return
+        }
+        guard let player = scriptablePlayer else { return }
+        shuffleMode = mode
+        runScriptAction(for: player, "Shuffle") { players in
+            await players.setShuffle(on, for: player)
+        }
+    }
+
+    /// Sets repeat off, one track or all.
+    func setRepeat(_ mode: RepeatMode) {
+        guard source != .none else { return }
+        if isAdapterSource, reportedRepeat != nil, let adapter {
+            repeatMode = mode
+            scheduleModeRevert()
+            adapter.setRepeat(mode.rawValue) { [weak self] status in
+                guard status != 0 else { return }
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.revertModes() } }
+            }
+            return
+        }
+        guard let player = scriptablePlayer else { return }
+        // Spotify only knows repeat on/off.
+        repeatMode = player == .spotify && mode == .one ? .all : mode
+        runScriptAction(for: player, "Repeat") { players in
+            await players.setRepeat(mode, for: player)
+        }
+    }
+
+    /// The adapter only reports changes: a mode the player ignored would
+    /// otherwise stay on screen.
+    private func scheduleModeRevert() {
+        modeRevertTask?.cancel()
+        let generation = adapterUpdateGeneration
+        modeRevertTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1800))
+            guard !Task.isCancelled, let self, self.adapterUpdateGeneration == generation else { return }
+            self.revertModes()
+        }
+    }
+
+    private func revertModes() {
+        modeRevertTask?.cancel()
+        modeRevertTask = nil
+        guard isAdapterSource else { return }
+        if shuffleMode != reportedShuffle { shuffleMode = reportedShuffle }
+        if repeatMode != reportedRepeat { repeatMode = reportedRepeat }
+    }
+
+    /// Runs an Apple Events action for a tap: asks for Automation first when
+    /// macOS hasn't been asked (the tap is the user action), refreshes after.
+    private func runScriptAction(
+        for player: ScriptablePlayer,
+        _ label: String,
+        _ work: @escaping @Sendable (PlayerBridge) async -> Bool
+    ) {
+        let players = players
+        Task {
+            guard await self.ensureAutomation(player) else {
+                self.refreshPlayerState()
+                return
+            }
+            let ok = await work(players)
+            if !ok { self.post(notice: "\(player.name) didn’t take \(label.lowercased())") }
+            try? await Task.sleep(for: .milliseconds(350))
+            self.refreshPlayerState()
+            if self.isAdapterSource { self.readScriptModes(for: player) }
+        }
+    }
+
+    /// True when SparkV may send Apple Events to `player`, asking first if
+    /// macOS hasn't asked yet. Call only from a user action.
+    private func ensureAutomation(_ player: ScriptablePlayer) async -> Bool {
+        if await players.isAutomationGranted(player) { return true }
+        let status = await PermissionCenter.shared.request(.automation(bundleID: player.bundleID), from: "Media")
+        if status.isGranted { return true }
+        return await players.isAutomationGranted(player)
+    }
+
+    /// For an adapter source whose app doesn't report shuffle / repeat over
+    /// MediaRemote: read them from Music / Spotify (only when already allowed).
+    private func readScriptModes(for player: ScriptablePlayer) {
+        let key = trackKey
+        Task {
+            guard let modes = await players.modes(of: player), self.trackKey == key, self.isAdapterSource else { return }
+            if self.reportedShuffle == nil, self.shuffleMode != modes.shuffle { self.shuffleMode = modes.shuffle }
+            if self.reportedRepeat == nil, self.repeatMode != modes.repeat { self.repeatMode = modes.repeat }
+        }
+    }
+
+    // MARK: - Favorites
+
+    /// Hearts (Music: Favorite; Spotify: Save to Your Library). The first tap
+    /// may show the Automation prompt; nothing is asked from a background read.
+    func toggleLike() {
+        guard let player = likeTarget else {
+            post(notice: "No favorites in this app")
+            return
+        }
+        let key = trackKey
+        let target = !(isLiked ?? false)
+        switch player {
+        case .music:
+            isLiked = target
+            let players = players
+            Task {
+                guard await self.ensureAutomation(.music) else {
+                    if self.trackKey == key { self.isLiked = !target }
+                    return
+                }
+                let ok = await players.setMusicFavorite(target)
+                guard self.trackKey == key else { return }
+                if !ok {
+                    self.isLiked = !target
+                    self.post(notice: "Couldn’t favorite in Music")
+                }
+            }
+        case .spotify:
+            guard let library = spotifyLibrary, library.isConnected else {
+                post(notice: "Connect Spotify in Settings")
+                return
+            }
+            isLiked = target
+            let players = players
+            Task {
+                guard await self.ensureAutomation(.spotify) else {
+                    if self.trackKey == key { self.isLiked = !target }
+                    self.post(notice: "Allow control of Spotify")
+                    return
+                }
+                guard let id = await players.spotifyTrackID() else {
+                    // Podcast episodes and ads have no track id to save.
+                    if self.trackKey == key { self.isLiked = !target }
+                    self.post(notice: "Only songs can be saved")
+                    return
+                }
+                let ok = await library.setSaved(target, trackID: id)
+                guard self.trackKey == key else { return }
+                if !ok {
+                    self.isLiked = !target
+                    self.post(notice: "Spotify didn’t save it")
+                }
+            }
+        }
+    }
+
+    /// Reads the heart for a new track, without ever prompting.
+    private func scheduleLikeRefresh() {
+        likeTask?.cancel()
+        guard likesEnabled, let player = likeTarget, let key = trackKey else {
+            likeKey = nil
+            if isLiked != nil { isLiked = nil }
+            return
+        }
+        guard key != likeKey else { return }
+        likeKey = key
+        if isLiked != nil { isLiked = nil }
+        let players = players
+        let library = spotifyLibrary
+        likeTask = Task { [weak self] in
+            // Players report a new title before the track is fully loaded.
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+            let liked: Bool? = switch player {
+            case .music:
+                await players.musicFavorite()
+            case .spotify:
+                if let library, library.isConnected, let id = await players.spotifyTrackID() {
+                    await library.isSaved(trackID: id)
+                } else {
+                    nil
+                }
+            }
+            guard let self, !Task.isCancelled, self.trackKey == key else { return }
+            if self.isLiked != liked { self.isLiked = liked }
+        }
+    }
+
+    // MARK: - Music extras
+
+    /// The user's own (non-smart) Music playlists; empty when Music isn't
+    /// running or SparkV may not script it (never prompts).
+    func musicPlaylists() async -> [String] {
+        await players.musicPlaylists()
+    }
+
+    /// Adds the current Music track to `playlist`. Streaming catalog tracks
+    /// that aren't in the library can't be added this way; that's reported.
+    func addCurrentTrack(toPlaylist playlist: String) {
+        guard scriptablePlayer == .music else { return }
+        let players = players
+        Task {
+            guard await self.ensureAutomation(.music) else { return }
+            switch await players.addMusicTrack(toPlaylist: playlist) {
+            case .success:
+                self.post(notice: "Added to “\(playlist)”")
+            case .failure(let failure):
+                self.post(notice: failure.code == -1728 || failure.code == -10014
+                          ? "Add to Library first"
+                          : "Couldn’t add to “\(playlist)”")
+            }
+        }
+    }
+
+    /// Lyrics stored with the current Music track (local files and tracks
+    /// the user added lyrics to). Never prompts.
+    func musicLyrics() async -> String? {
+        guard scriptablePlayer == .music else { return nil }
+        return await players.musicLyrics()
+    }
+
+    /// Shows a short line in the media column for a few seconds.
+    func post(notice text: String) {
+        notice = text
+        noticeTask?.cancel()
+        noticeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.6))
+            guard !Task.isCancelled else { return }
+            self?.notice = nil
+        }
     }
 
     /// The adapter only reports changes, and `seek` exits 0 even when the
@@ -357,11 +829,26 @@ final class MediaEngine: ObservableObject {
         artwork: NSImage?,
         isPlaying: Bool,
         bundleID: String = "com.apple.Music",
-        timing: PlaybackTiming
+        timing: PlaybackTiming,
+        album: String = "",
+        isLiked: Bool? = nil,
+        shuffle: ShuffleMode? = nil,
+        repeat mode: RepeatMode? = nil,
+        reportsSkip15: Bool = false,
+        notice: String? = nil
     ) {
         apply(title: title, artist: artist, isPlaying: isPlaying, source: .app(bundleID: bundleID))
         self.artwork = artwork
         self.timing = timing
+        applyExtras(album: album, shuffle: shuffle, repeat: mode, skip15: reportsSkip15, advertisement: false)
+        likeKey = trackKey
+        self.isLiked = isLiked
+        self.notice = notice
+    }
+
+    /// Clears the preview state back to "Not Playing" (tests).
+    func showPreviewIdle() {
+        clear()
     }
 
     // MARK: - Adapter
@@ -389,6 +876,38 @@ final class MediaEngine: ObservableObject {
 
     private func show(_ info: NowPlayingAdapter.Info?) {
         guard adapterHealthy else { return }
+        lastAdapterInfo = info
+        hasAdapterReport = true
+        if let info { noteSeen(info.parentBundleID ?? info.bundleID) }
+
+        switch NowPlayingSourceFilter.decide(
+            ownerIDs: [info?.parentBundleID, info?.bundleID].compactMap { $0 },
+            excluded: excludedSources,
+            preferred: preferredSource,
+            running: runningPlayers()
+        ) {
+        case .excluded:
+            // A filtered app owns Now Playing: never show (or control) it.
+            adapterUpdateGeneration += 1
+            beginOverride(.excluded)
+            return
+        case .checkPreferred(let player):
+            if case .preferred(let current) = override, current == player {
+                // Already showing the preferred player; its poll decides.
+                adapterUpdateGeneration += 1
+                return
+            }
+            endOverride(reshow: false)
+            showAdapter(info)
+            checkPreferred(player)
+        case .adapter:
+            endOverride(reshow: false)
+            showAdapter(info)
+        }
+    }
+
+    /// Applies an adapter report to the published state (the unfiltered path).
+    private func showAdapter(_ info: NowPlayingAdapter.Info?) {
         adapterUpdateGeneration += 1
         lastReportedIsPlaying = info?.isPlaying ?? false
         revertTask?.cancel()
@@ -402,13 +921,15 @@ final class MediaEngine: ObservableObject {
             lastReportedAnchor = nil
             lastAdapterTiming = nil
             if timing != .unknown { timing = .unknown }
+            applyExtras(album: "", shuffle: nil, repeat: nil, skip15: false, advertisement: false)
+            scheduleLikeRefresh()
             return
         }
 
         let owner = info.parentBundleID ?? info.bundleID ?? ""
         let trackChanged = info.title != title || source != .app(bundleID: owner)
         if trackChanged {
-            AppLog.log("Media: now playing “\(info.title)” from \(owner) (playing: \(info.isPlaying))")
+            AppLog.log("Media: track changed from \(owner) (playing: \(info.isPlaying))")
             pendingSeek = nil
         }
         let reported = adapterTiming(for: info, trackChanged: trackChanged)
@@ -425,6 +946,221 @@ final class MediaEngine: ObservableObject {
         if info.artworkVersion != lastArtworkVersion {
             lastArtworkVersion = info.artworkVersion
             artwork = info.artworkData.flatMap(NSImage.init(data:))
+        }
+
+        reportedShuffle = info.shuffleMode.flatMap(ShuffleMode.init(rawValue:))
+        reportedRepeat = info.repeatMode.flatMap(RepeatMode.init(rawValue:))
+        modeRevertTask?.cancel()
+        modeRevertTask = nil
+        applyExtras(
+            album: info.album,
+            shuffle: reportedShuffle,
+            repeat: reportedRepeat,
+            skip15: info.supportsSkip15,
+            advertisement: info.isAdvertisement
+        )
+        scheduleLikeRefresh()
+        // Music and Spotify always know shuffle / repeat; ask them when the
+        // MediaRemote report leaves the modes out.
+        if trackChanged, reportedShuffle == nil || reportedRepeat == nil, let player = scriptablePlayer {
+            readScriptModes(for: player)
+        }
+    }
+
+    private func applyExtras(album: String, shuffle: ShuffleMode?, repeat mode: RepeatMode?, skip15: Bool, advertisement: Bool) {
+        if self.album != album { self.album = album }
+        if shuffleMode != shuffle { shuffleMode = shuffle }
+        if repeatMode != mode { repeatMode = mode }
+        if reportsSkip15 != skip15 { reportsSkip15 = skip15 }
+        if isAdvertisement != advertisement { isAdvertisement = advertisement }
+    }
+
+    // MARK: - Source filter
+
+    /// Music and Spotify, when open (never launches them).
+    private func runningPlayers() -> [ScriptablePlayer] {
+        let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+        return ScriptablePlayer.allCases.filter { running.contains($0.bundleID) }
+    }
+
+    private func noteSeen(_ bundleID: String?) {
+        guard let bundleID, !bundleID.isEmpty, seenSources.first != bundleID else { return }
+        var list = seenSources.filter { $0 != bundleID }
+        list.insert(bundleID, at: 0)
+        if list.count > 16 { list.removeLast(list.count - 16) }
+        seenSources = list
+        UserDefaults.standard.set(list, forKey: Self.seenKey)
+    }
+
+    /// Lets an app drive the island again, or stops it from doing so.
+    func setSource(_ bundleID: String, allowed: Bool) {
+        if allowed {
+            excludedSources.remove(bundleID)
+        } else {
+            excludedSources.insert(bundleID)
+        }
+    }
+
+    /// Forgets an app in the source picker (and allows it again).
+    func forgetSource(_ bundleID: String) {
+        excludedSources.remove(bundleID)
+        seenSources.removeAll { $0 == bundleID }
+        UserDefaults.standard.set(seenSources, forKey: Self.seenKey)
+    }
+
+    /// Display name and icon for the source picker.
+    func appInfo(for bundleID: String) -> (name: String, icon: NSImage?) {
+        let name = appName(for: bundleID)
+        return (name.isEmpty ? bundleID : name, icon(for: bundleID))
+    }
+
+    /// Settings changed: decide again from the adapter's last report.
+    private func reapplySourceFilter() {
+        guard adapterHealthy, hasAdapterReport else { return }
+        endOverride(reshow: false)
+        show(lastAdapterInfo)
+    }
+
+    private func beginOverride(_ reason: Override) {
+        let changed = override != reason
+        override = reason
+        if changed {
+            AppLog.log("Media: \(reason == .excluded ? "Now Playing app is excluded" : "preferring the player that is playing"); reading players over Apple Events")
+            pendingSeek = nil
+            // The adapter's artwork isn't the player's: load the player's own.
+            resetArtwork(for: nil)
+            lastArtworkVersion = -1
+            if case .excluded = reason {
+                // Never flash the excluded app's track while the players load.
+                clear()
+            }
+        }
+        refreshOverride()
+        updateOverridePolling()
+    }
+
+    /// Ends Apple Events reading; `reshow` puts the adapter's report back.
+    private func endOverride(reshow: Bool) {
+        guard override != nil else { return }
+        override = nil
+        overrideTimer?.invalidate()
+        overrideTimer = nil
+        stopWatchingPlayerLaunch()
+        resetArtwork(for: nil)
+        lastArtworkVersion = -1
+        if reshow { showAdapter(lastAdapterInfo) }
+    }
+
+    /// Polls every 2 s while an override is showing something that changes:
+    /// while it plays or the drawer is open. Stops otherwise; resuming the
+    /// player makes it the Now Playing app, which the adapter reports.
+    private func updateOverridePolling() {
+        let wanted = override != nil && (isActive || isPlaying) && playerLaunchObserver == nil
+        if !wanted {
+            overrideTimer?.invalidate()
+            overrideTimer = nil
+            return
+        }
+        guard overrideTimer == nil else { return }
+        let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshOverride() }
+        }
+        timer.tolerance = 0.4
+        RunLoop.main.add(timer, forMode: .common)
+        overrideTimer = timer
+    }
+
+    private func watchPlayerLaunch() {
+        guard playerLaunchObserver == nil else { return }
+        let ids = Set(ScriptablePlayer.allCases.map(\.bundleID))
+        playerLaunchObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            guard let id = app?.bundleIdentifier, ids.contains(id) else { return }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.stopWatchingPlayerLaunch()
+                self.refreshOverride()
+                self.updateOverridePolling()
+            }
+        }
+    }
+
+    private func stopWatchingPlayerLaunch() {
+        guard let token = playerLaunchObserver else { return }
+        NSWorkspace.shared.notificationCenter.removeObserver(token)
+        playerLaunchObserver = nil
+    }
+
+    /// One read of the preferred player (rate-limited): when it plays while
+    /// another app owns Now Playing, show it instead.
+    private func checkPreferred(_ player: ScriptablePlayer) {
+        let now = Date()
+        guard now.timeIntervalSince(preferredCheckedAt) > 3, !isPollingOverride else { return }
+        preferredCheckedAt = now
+        isPollingOverride = true
+        Task {
+            let readings = await players.read([player])
+            isPollingOverride = false
+            guard adapterHealthy, override == nil,
+                  case .track(let snapshot)? = readings.first, snapshot.isPlaying,
+                  preferredSource == player.bundleID else { return }
+            beginOverride(.preferred(player))
+        }
+    }
+
+    private func refreshOverride() {
+        guard let reason = override, !isPollingOverride else { return }
+        let candidates: [ScriptablePlayer] = switch reason {
+        case .excluded:
+            runningPlayers()
+                .filter { player in !excludedSources.contains { NowPlayingSourceFilter.matches(player.bundleID, $0) } }
+                .sorted { ($0.bundleID == preferredSource ? 0 : 1) < ($1.bundleID == preferredSource ? 0 : 1) }
+        case .preferred(let player):
+            runningPlayers().contains(player) ? [player] : []
+        }
+        guard !candidates.isEmpty else {
+            if case .preferred = reason {
+                endOverride(reshow: true)
+            } else {
+                clear()
+                // Nothing to read: stop polling until a player launches.
+                overrideTimer?.invalidate()
+                overrideTimer = nil
+                watchPlayerLaunch()
+            }
+            return
+        }
+        stopWatchingPlayerLaunch()
+        isPollingOverride = true
+        Task {
+            let readings = await players.read(candidates)
+            isPollingOverride = false
+            guard override == reason else { return }
+            let tracks = readings.filter { if case .track = $0 { true } else { false } }
+            switch reason {
+            case .excluded:
+                if tracks.isEmpty { clear() } else { show(tracks) }
+            case .preferred:
+                guard case .track(let snapshot)? = tracks.first, snapshot.isPlaying else {
+                    // Paused or stopped: the adapter's app is back on screen.
+                    preferredCheckedAt = Date()
+                    endOverride(reshow: true)
+                    return
+                }
+                show(tracks)
+            }
+            updateOverridePolling()
+        }
+    }
+
+    /// Re-reads whichever path is showing a scriptable player right now.
+    private func refreshPlayerState() {
+        if override != nil {
+            refreshOverride()
+        } else {
+            refreshFromPlayers()
         }
     }
 
@@ -485,6 +1221,7 @@ final class MediaEngine: ObservableObject {
         if let cached = iconCache[bundleID] { return cached }
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
         let image = NSWorkspace.shared.icon(forFile: url.path)
+        if iconCache.count >= 64 { iconCache.removeAll() }
         iconCache[bundleID] = image
         return image
     }
@@ -500,8 +1237,12 @@ final class MediaEngine: ObservableObject {
         guard !isPollingPlayers else { return }
 
         let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
-        // Only query players that are already open; scripting a closed app would launch it.
-        let candidates = ScriptablePlayer.allCases.filter { running.contains($0.bundleID) }
+        // Only query players that are already open; scripting a closed app would
+        // launch it. Excluded players never drive the island.
+        let candidates = ScriptablePlayer.allCases.filter { player in
+            running.contains(player.bundleID)
+                && !excludedSources.contains { NowPlayingSourceFilter.matches(player.bundleID, $0) }
+        }
         guard !candidates.isEmpty else {
             clear()
             return
@@ -532,16 +1273,22 @@ final class MediaEngine: ObservableObject {
             applyPlayerTiming(snapshot)
             sourceIcon = icon(for: snapshot.player.bundleID)
             loadArtworkIfNeeded(for: snapshot)
+            noteSeen(snapshot.player.bundleID)
+            applyExtras(album: snapshot.album, shuffle: snapshot.shuffle, repeat: snapshot.repeatMode,
+                        skip15: false, advertisement: false)
+            scheduleLikeRefresh()
             return
         }
 
         resetArtwork(for: nil)
         if timing != .unknown { timing = .unknown }
+        applyExtras(album: "", shuffle: nil, repeat: nil, skip15: false, advertisement: false)
+        scheduleLikeRefresh()
         // A player that can be controlled outranks one that is waiting for or
         // was refused Automation access.
         for reading in readings {
             if case .stopped(let player) = reading {
-                apply(title: player.name, artist: "Not playing", isPlaying: false, source: .player(player))
+                apply(title: player.name, artist: "Not playing", isPlaying: false, source: .player(player), stopped: true)
                 sourceIcon = icon(for: player.bundleID)
                 return
             }
@@ -607,8 +1354,8 @@ final class MediaEngine: ObservableObject {
             case .music:
                 await players.musicArtwork()
             case .spotify:
-                if let url = snapshot.artworkURL {
-                    try? await URLSession.shared.data(from: url).0
+                if let url = snapshot.artworkURL, MediaEngine.isSpotifyArtworkURL(url) {
+                    try? await MediaEngine.artworkSession.data(from: url).0
                 } else {
                     nil
                 }
@@ -621,6 +1368,23 @@ final class MediaEngine: ObservableObject {
         }
     }
 
+    /// Spotify artwork: https on Spotify's image CDN only, through a session
+    /// with no disk cache and no cookies.
+    nonisolated static let artworkSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.urlCache = nil
+        config.httpCookieStorage = nil
+        config.httpShouldSetCookies = false
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.timeoutIntervalForRequest = 15
+        return URLSession(configuration: config)
+    }()
+
+    nonisolated static func isSpotifyArtworkURL(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased() else { return false }
+        return host == "i.scdn.co" || host.hasSuffix(".scdn.co") || host.hasSuffix(".spotifycdn.com")
+    }
+
     private func resetArtwork(for key: String?) {
         artworkKey = key
         artworkAttempts = 0
@@ -631,7 +1395,8 @@ final class MediaEngine: ObservableObject {
 
     // MARK: - State helpers
 
-    private func apply(title: String, artist: String, isPlaying: Bool, source: Source) {
+    private func apply(title: String, artist: String, isPlaying: Bool, source: Source, stopped: Bool = false) {
+        if isStoppedPlayer != stopped { isStoppedPlayer = stopped }
         if self.title != title { self.title = title }
         if self.artist != artist { self.artist = artist }
         if self.isPlaying != isPlaying { self.isPlaying = isPlaying }
@@ -642,8 +1407,11 @@ final class MediaEngine: ObservableObject {
         apply(title: "Not Playing", artist: "Play something in any app", isPlaying: false, source: .none)
         if timing != .unknown { timing = .unknown }
         pendingSeek = nil
-        sourceIcon = nil
+        // Guarded: the override poll calls this every 2 s.
+        if sourceIcon != nil { sourceIcon = nil }
         resetArtwork(for: nil)
+        applyExtras(album: "", shuffle: nil, repeat: nil, skip15: false, advertisement: false)
+        scheduleLikeRefresh()
     }
 }
 
@@ -835,6 +1603,13 @@ final class NowPlayingAdapter: @unchecked Sendable {
         var timestamp: Date? = nil
         /// 1 while playing at normal speed, 0 while paused; nil if unreported.
         var playbackRate: Double? = nil
+        /// MediaRemote shuffle (1 off, 2 albums, 3 tracks) and repeat (1 off,
+        /// 2 one, 3 all) modes; nil when the player doesn't report them.
+        var shuffleMode: Int? = nil
+        var repeatMode: Int? = nil
+        /// The player takes kMRGoBackFifteenSeconds / kMRSkipFifteenSeconds.
+        var supportsSkip15 = false
+        var isAdvertisement = false
     }
 
     var onUpdate: (@Sendable (Info?) -> Void)?
@@ -897,6 +1672,16 @@ final class NowPlayingAdapter: @unchecked Sendable {
     /// (MRMediaRemoteSetElapsedTime through `mediaremote-adapter.pl seek`).
     func seek(toMicros micros: Int64, completion: (@Sendable (Int32) -> Void)? = nil) {
         run(["seek", String(max(0, micros))], label: "seek", completion: completion)
+    }
+
+    /// MRMediaRemoteSetShuffleMode (1 off, 2 albums, 3 tracks).
+    func setShuffle(_ mode: Int, completion: (@Sendable (Int32) -> Void)? = nil) {
+        run(["shuffle", String(mode)], label: "shuffle \(mode)", completion: completion)
+    }
+
+    /// MRMediaRemoteSetRepeatMode (1 off, 2 one, 3 all).
+    func setRepeat(_ mode: Int, completion: (@Sendable (Int32) -> Void)? = nil) {
+        run(["repeat", String(mode)], label: "repeat \(mode)", completion: completion)
     }
 
     private func run(_ arguments: [String], label: String, completion: (@Sendable (Int32) -> Void)?) {
@@ -1064,8 +1849,23 @@ final class NowPlayingAdapter: @unchecked Sendable {
             duration: Self.seconds(payload["durationMicros"]),
             elapsed: Self.seconds(payload["elapsedTimeMicros"]),
             timestamp: Self.seconds(payload["timestampEpochMicros"]).map { Date(timeIntervalSince1970: $0) },
-            playbackRate: (payload["playbackRate"] as? NSNumber)?.doubleValue
+            playbackRate: (payload["playbackRate"] as? NSNumber)?.doubleValue,
+            shuffleMode: Self.mode(payload["shuffleMode"]),
+            repeatMode: Self.mode(payload["repeatMode"]),
+            supportsSkip15: Self.flag(payload["supportsRewind15Seconds"]) || Self.flag(payload["supportsFastForward15Seconds"]),
+            isAdvertisement: Self.flag(payload["isAdvertisement"])
         ))
+    }
+
+    /// A MediaRemote mode number (1...3); nil when absent or out of range.
+    static func mode(_ value: Any?) -> Int? {
+        guard let number = value as? NSNumber else { return nil }
+        let mode = number.intValue
+        return (1...3).contains(mode) ? mode : nil
+    }
+
+    static func flag(_ value: Any?) -> Bool {
+        (value as? NSNumber)?.boolValue ?? false
     }
 
     /// Microseconds (a JSON number) to seconds; nil if absent or not finite.
@@ -1092,6 +1892,9 @@ enum ScriptablePlayer: CaseIterable, Equatable, Sendable {
         var position: TimeInterval? = nil
         /// Track length in seconds.
         var duration: TimeInterval? = nil
+        var album: String = ""
+        var shuffle: MediaEngine.ShuffleMode? = nil
+        var repeatMode: MediaEngine.RepeatMode? = nil
     }
 
     var bundleID: String {
@@ -1127,20 +1930,126 @@ enum ScriptablePlayer: CaseIterable, Equatable, Sendable {
 
     fileprivate var snapshotScript: String {
         let artworkExpression = self == .spotify ? "(artwork url of t)" : "\"\""
+        // Music: shuffle enabled + song repeat (off / one / all);
+        // Spotify: shuffling + repeating (booleans).
+        let modes = self == .spotify
+            ? "set shuf to (shuffling as text)\n            set rep to (repeating as text)"
+            : "set shuf to (shuffle enabled as text)\n            set rep to (song repeat as text)"
         // Spotify reports the duration in milliseconds, Music in seconds.
         return script("""
             if player state is stopped then return "stopped"
             set t to current track
             set pos to ""
             set len to ""
+            set alb to ""
+            set shuf to ""
+            set rep to ""
             try
                 set pos to (player position as text)
             end try
             try
                 set len to (duration of t as text)
             end try
-            return (player state as text) & linefeed & (name of t) & linefeed & (artist of t) & linefeed & \(artworkExpression) & linefeed & pos & linefeed & len
+            try
+                set alb to (album of t as text)
+            end try
+            try
+            \(modes)
+            end try
+            return (player state as text) & linefeed & (name of t) & linefeed & (artist of t) & linefeed & \(artworkExpression) & linefeed & pos & linefeed & len & linefeed & alb & linefeed & shuf & linefeed & rep
             """)
+    }
+
+    /// Shuffle text from the snapshot ("true" / "false").
+    static func shuffle(fromScriptText text: String) -> MediaEngine.ShuffleMode? {
+        switch text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "true": .tracks
+        case "false": .off
+        default: nil
+        }
+    }
+
+    /// Repeat text from the snapshot: Music "off" / "one" / "all", Spotify
+    /// "true" / "false".
+    static func repeatMode(fromScriptText text: String) -> MediaEngine.RepeatMode? {
+        switch text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "off", "false": .off
+        case "one": .one
+        case "all", "true": .all
+        default: nil
+        }
+    }
+
+    fileprivate func shuffleScript(_ on: Bool) -> String {
+        self == .spotify ? script("set shuffling to \(on)") : script("set shuffle enabled to \(on)")
+    }
+
+    fileprivate func repeatScript(_ mode: MediaEngine.RepeatMode) -> String {
+        switch self {
+        case .spotify:
+            return script("set repeating to \(mode != .off)")
+        case .music:
+            let value = switch mode {
+            case .off: "off"
+            case .one: "one"
+            case .all: "all"
+            }
+            return script("set song repeat to \(value)")
+        }
+    }
+
+    fileprivate var modesScript: String {
+        self == .spotify
+            ? script("return (shuffling as text) & linefeed & (repeating as text)")
+            : script("return (shuffle enabled as text) & linefeed & (song repeat as text)")
+    }
+
+    // Music's heart is "Favorite" (macOS 14+, `favorited`); older Music
+    // called it `loved`.
+    fileprivate static var musicFavoriteScript: String {
+        ScriptablePlayer.music.script("""
+            if player state is stopped then return ""
+            try
+                return (favorited of current track) as text
+            on error
+                return (loved of current track) as text
+            end try
+            """)
+    }
+
+    fileprivate static func musicSetFavoriteScript(_ on: Bool) -> String {
+        ScriptablePlayer.music.script("""
+            try
+                set favorited of current track to \(on)
+            on error
+                set loved of current track to \(on)
+            end try
+            return "ok"
+            """)
+    }
+
+    /// "spotify:track:<id>" of the playing track.
+    fileprivate static var spotifyTrackIDScript: String {
+        ScriptablePlayer.spotify.script("return id of current track")
+    }
+
+    fileprivate static var musicPlaylistsScript: String {
+        ScriptablePlayer.music.script("""
+            set out to ""
+            repeat with p in (user playlists whose smart is false and special kind is none)
+                set out to out & (name of p) & linefeed
+            end repeat
+            return out
+            """)
+    }
+
+    fileprivate static func musicAddScript(playlist: String) -> String {
+        let escaped = playlist.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        return ScriptablePlayer.music.script("duplicate current track to (first user playlist whose name is \"\(escaped)\")\nreturn \"ok\"")
+    }
+
+    fileprivate static var musicLyricsScript: String {
+        ScriptablePlayer.music.script("return lyrics of current track")
     }
 
     /// Track length from the snapshot script's text, in seconds.
@@ -1167,6 +2076,8 @@ enum ScriptablePlayer: CaseIterable, Equatable, Sendable {
         case .togglePlayPause: script("playpause")
         case .nextTrack: script("next track")
         case .previousTrack: script("previous track")
+        // Not routed here (MediaEngine seeks or sets modes directly).
+        case .skipBackward15, .skipForward15, .toggleShuffle, .toggleRepeat: script("return \"\"")
         }
     }
 
@@ -1212,6 +2123,77 @@ private final class PlayerBridge: @unchecked Sendable {
             guard self.permission(for: player) == noErr else { return false }
             if case .success = self.execute(player.seekScript(to: seconds), for: player) { return true }
             return false
+        }
+    }
+
+    /// Apple Events allowed for `player` (never prompts).
+    func isAutomationGranted(_ player: ScriptablePlayer) async -> Bool {
+        await perform { self.permission(for: player) == noErr }
+    }
+
+    func setShuffle(_ on: Bool, for player: ScriptablePlayer) async -> Bool {
+        await perform { self.runIfAllowed(player.shuffleScript(on), for: player) != nil }
+    }
+
+    func setRepeat(_ mode: MediaEngine.RepeatMode, for player: ScriptablePlayer) async -> Bool {
+        await perform { self.runIfAllowed(player.repeatScript(mode), for: player) != nil }
+    }
+
+    func modes(of player: ScriptablePlayer) async -> (shuffle: MediaEngine.ShuffleMode?, repeat: MediaEngine.RepeatMode?)? {
+        await perform {
+            guard let text = self.runIfAllowed(player.modesScript, for: player)?.stringValue else { return nil }
+            let lines = text.components(separatedBy: "\n")
+            guard lines.count >= 2 else { return nil }
+            return (ScriptablePlayer.shuffle(fromScriptText: lines[0]), ScriptablePlayer.repeatMode(fromScriptText: lines[1]))
+        }
+    }
+
+    func musicFavorite() async -> Bool? {
+        await perform {
+            switch self.runIfAllowed(ScriptablePlayer.musicFavoriteScript, for: .music)?.stringValue?.lowercased() {
+            case "true": true
+            case "false": false
+            default: nil
+            }
+        }
+    }
+
+    func setMusicFavorite(_ on: Bool) async -> Bool {
+        await perform { self.runIfAllowed(ScriptablePlayer.musicSetFavoriteScript(on), for: .music)?.stringValue == "ok" }
+    }
+
+    /// The Spotify track id (the part after "spotify:track:").
+    func spotifyTrackID() async -> String? {
+        await perform {
+            guard let uri = self.runIfAllowed(ScriptablePlayer.spotifyTrackIDScript, for: .spotify)?.stringValue,
+                  uri.hasPrefix("spotify:track:") else { return nil }
+            let id = String(uri.dropFirst("spotify:track:".count))
+            return id.isEmpty ? nil : id
+        }
+    }
+
+    func musicPlaylists() async -> [String] {
+        await perform {
+            guard let text = self.runIfAllowed(ScriptablePlayer.musicPlaylistsScript, for: .music)?.stringValue else { return [] }
+            return text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
+    }
+
+    fileprivate func addMusicTrack(toPlaylist playlist: String) async -> Result<Void, ScriptFailure> {
+        await perform {
+            guard self.permission(for: .music) == noErr else { return .failure(ScriptFailure(code: Int(errAEEventNotPermitted))) }
+            switch self.execute(ScriptablePlayer.musicAddScript(playlist: playlist), for: .music) {
+            case .success: return .success(())
+            case .failure(let failure): return .failure(failure)
+            }
+        }
+    }
+
+    func musicLyrics() async -> String? {
+        await perform {
+            guard let text = self.runIfAllowed(ScriptablePlayer.musicLyricsScript, for: .music)?.stringValue else { return nil }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty || trimmed == "notrunning" ? nil : trimmed
         }
     }
 
@@ -1264,9 +2246,19 @@ private final class PlayerBridge: @unchecked Sendable {
                 position: lines.count > 4 ? ScriptablePlayer.number(fromScriptText: lines[4]) : nil,
                 duration: lines.count > 5
                     ? ScriptablePlayer.number(fromScriptText: lines[5]).map(player.durationSeconds(fromScriptValue:))
-                    : nil
+                    : nil,
+                album: lines.count > 6 ? lines[6] : "",
+                shuffle: lines.count > 7 ? ScriptablePlayer.shuffle(fromScriptText: lines[7]) : nil,
+                repeatMode: lines.count > 8 ? ScriptablePlayer.repeatMode(fromScriptText: lines[8]) : nil
             ))
         }
+    }
+
+    /// Runs `source` only when Automation is already granted; nil on failure.
+    private func runIfAllowed(_ source: String, for player: ScriptablePlayer) -> NSAppleEventDescriptor? {
+        guard permission(for: player) == noErr else { return nil }
+        if case .success(let result) = execute(source, for: player) { return result }
+        return nil
     }
 
     /// Status only (askUserIfNeeded = false): never shows the consent prompt.
@@ -1301,6 +2293,59 @@ private final class PlayerBridge: @unchecked Sendable {
 
 private struct ScriptFailure: Error {
     let code: Int
+}
+
+// MARK: - Library service (Spotify hearts)
+
+/// Saves tracks to a streaming library (Labs/MediaPlus' Spotify client).
+@MainActor
+protocol MediaLibraryService: AnyObject, Sendable {
+    var isConnected: Bool { get }
+    /// nil when it couldn't be checked.
+    func isSaved(trackID: String) async -> Bool?
+    /// true when the library accepted the change.
+    func setSaved(_ saved: Bool, trackID: String) async -> Bool
+}
+
+// MARK: - Source filter
+
+/// Which app may drive the island, as a pure decision (tested).
+enum NowPlayingSourceFilter {
+    enum Decision: Equatable {
+        /// Show the adapter's Now Playing app.
+        case adapter
+        /// The Now Playing app is excluded.
+        case excluded
+        /// Show the adapter's app, but check whether this preferred player
+        /// is playing too (and show it instead if so).
+        case checkPreferred(ScriptablePlayer)
+    }
+
+    /// `id` is `rule` or one of its helpers ("com.google.Chrome.helper").
+    static func matches(_ id: String, _ rule: String) -> Bool {
+        let a = id.lowercased()
+        let b = rule.lowercased()
+        return !b.isEmpty && (a == b || a.hasPrefix(b + "."))
+    }
+
+    static func decide(
+        ownerIDs: [String],
+        excluded: Set<String>,
+        preferred: String?,
+        running: [ScriptablePlayer]
+    ) -> Decision {
+        if ownerIDs.contains(where: { id in excluded.contains { matches(id, $0) } }) {
+            return .excluded
+        }
+        guard let preferred,
+              let player = ScriptablePlayer.allCases.first(where: { $0.bundleID == preferred }),
+              running.contains(player),
+              !excluded.contains(where: { matches(player.bundleID, $0) }),
+              !ownerIDs.contains(where: { matches($0, player.bundleID) })
+        else { return .adapter }
+        // Nothing in Now Playing: the player, if it plays, would own it.
+        return ownerIDs.isEmpty ? .adapter : .checkPreferred(player)
+    }
 }
 
 /// Posts the same system-defined events as the keyboard's media keys.

@@ -9,16 +9,34 @@ final class MediaColumnModel: ObservableObject {
     @Published var noteDraft = ""
     /// Bumped on every save, for the bookmark icon's bounce.
     @Published var savedCount = 0
+    /// The user's Music playlists, for "Add to Playlist" (read only when
+    /// Music may already be scripted; never prompts).
+    @Published var playlists: [String] = []
+    private var playlistsLoadedAt = Date.distantPast
+
+    func loadPlaylistsIfNeeded(media: MediaEngine) {
+        guard media.scriptablePlayer == .music, Date().timeIntervalSince(playlistsLoadedAt) > 300 else { return }
+        playlistsLoadedAt = Date()
+        Task { [weak self] in
+            let names = await media.musicPlaylists()
+            self?.playlists = names
+        }
+    }
 }
 
 /// Redesigned Nook media column for the 115 pt drawer (about 170 x 69 pt):
-/// artwork with the playing app's badge, scrolling title and artist, one
-/// play/pause toggle between previous and next, a bookmark menu, and a
-/// scrubber with bookmark ticks across the full width underneath.
+/// artwork with the playing app's badge, scrolling title and artist (or the
+/// current lyric), a heart, previous / play-pause / next (±15 s for spoken
+/// word), a "More" menu (bookmarks, shuffle, repeat, sound output, lyrics,
+/// playlists, hide this app), and a scrubber with bookmark ticks across the
+/// full width underneath. Two-finger swipes and ←/→ work while the pointer
+/// is over it.
 struct MediaColumnV2: View {
     @EnvironmentObject private var media: MediaEngine
     /// Defaults to the shared store; tests pass a scratch one.
     @ObservedObject var bookmarks: MediaBookmarkStore = .shared
+    @ObservedObject private var settings = MediaPlusSettings.shared
+    @ObservedObject private var lyrics = LyricsController.shared
     @StateObject private var model = MediaColumnModel()
     @FocusState private var noteFocused: Bool
 
@@ -38,9 +56,23 @@ struct MediaColumnV2: View {
             HStack(alignment: .top, spacing: 9) {
                 MediaArtworkView(side: Self.artworkSide)
                 VStack(alignment: .leading, spacing: 0) {
-                    MarqueeText(text: media.title, font: Self.titleFont, previewElapsed: previewMarqueeElapsed)
-                    MarqueeText(text: media.artist, font: Self.artistFont, color: SparkVTheme.textSecondary,
-                                previewElapsed: previewMarqueeElapsed)
+                    if showsLyrics, lyrics.state == .synced {
+                        MediaLyricsLines(previewElapsed: previewMarqueeElapsed)
+                    } else {
+                        MarqueeText(text: media.title, font: Self.titleFont, previewElapsed: previewMarqueeElapsed)
+                        if let notice = media.notice {
+                            Text(notice)
+                                .font(Font(Self.artistFont as CTFont))
+                                .foregroundStyle(SparkVTheme.choose(apple: Color.orange, sparkv: SparkVTheme.red))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .transition(.opacity)
+                                .accessibilityLabel(notice)
+                        } else {
+                            MarqueeText(text: media.artist, font: Self.artistFont, color: SparkVTheme.textSecondary,
+                                        previewElapsed: previewMarqueeElapsed)
+                        }
+                    }
                     Spacer(minLength: 0)
                     if let position = model.notePosition {
                         noteField(position: position)
@@ -60,14 +92,33 @@ struct MediaColumnV2: View {
                 previewHover: previewHover
             )
         }
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.standard)), value: media.notice)
+        // Lyrics are looked up only while this column wants them.
+        .background { if showsLyrics { LyricsVisibility() } }
+        .mediaPointerControls()
         .onAppear {
             if let position = previewNotePosition { model.notePosition = position }
+            model.loadPlaylistsIfNeeded(media: media)
         }
         .onChange(of: media.trackKey) { _, _ in
             // A note started for the previous track would land on the wrong one.
             model.notePosition = nil
+            model.loadPlaylistsIfNeeded(media: media)
         }
     }
+
+    /// Lyrics replace title and artist (when on, and something plays).
+    private var showsLyrics: Bool {
+        lyrics.isEnabled && lyrics.showsInDrawer && media.source != .none && previewNotePosition == nil
+    }
+
+    /// ±15 s instead of previous / next (Settings › Media › Playback Controls).
+    private var skipsSeconds: Bool {
+        settings.skipStyle.usesSeconds(bundleID: media.sourceBundleID, duration: media.duration,
+                                       reportsSkip15: media.reportsSkip15, canSeek: media.canSeek)
+    }
+
+    private var showsHeart: Bool { settings.showsLikeButton && media.canLike }
 
     /// The elapsed part is white in Apple (iOS / macOS Now Playing) and
     /// SparkV red in SparkV Red; the artwork's own color stays in the glow
@@ -77,17 +128,30 @@ struct MediaColumnV2: View {
     // MARK: Controls
 
     private var controls: some View {
-        HStack(spacing: 0) {
-            MediaControlButton(systemImage: "backward.fill", help: "Previous") { media.send(.previousTrack) }
+        let seconds = skipsSeconds
+        return HStack(spacing: 0) {
+            if showsHeart {
+                MediaLikeButton()
+                Spacer(minLength: 0)
+            }
+            if seconds {
+                MediaControlButton(systemImage: "gobackward.15", size: 13, help: "Back 15 seconds") { media.send(.skipBackward15) }
+            } else {
+                MediaControlButton(systemImage: "backward.fill", help: "Previous") { media.send(.previousTrack) }
+            }
             Spacer(minLength: 0)
             MediaControlButton(systemImage: media.isPlaying ? "pause.fill" : "play.fill", size: 15,
                                help: media.isPlaying ? "Pause" : "Play") {
                 media.send(.togglePlayPause)
             }
             Spacer(minLength: 0)
-            MediaControlButton(systemImage: "forward.fill", help: "Next") { media.send(.nextTrack) }
+            if seconds {
+                MediaControlButton(systemImage: "goforward.15", size: 13, help: "Forward 15 seconds") { media.send(.skipForward15) }
+            } else {
+                MediaControlButton(systemImage: "forward.fill", help: "Next") { media.send(.nextTrack) }
+            }
             Spacer(minLength: 0)
-            bookmarkMenu
+            moreMenu
         }
         .frame(height: 20)
     }
@@ -96,47 +160,88 @@ struct MediaColumnV2: View {
         bookmarks.bookmarks(forTrack: media.trackKey)
     }
 
-    private var bookmarkMenu: some View {
+    private var moreMenu: some View {
         let list = currentBookmarks
         let hours = media.duration >= 3600
+        let canBookmark = media.canSeek && media.trackKey != nil
         return Menu {
-            Button("Bookmark This Moment") { addBookmark(note: "") }
-            Button("Bookmark with Note…") {
-                model.noteDraft = ""
-                model.notePosition = media.elapsedTime
-                noteFocused = true
+            Section("Bookmarks") {
+                Button("Bookmark This Moment") { addBookmark(note: "") }
+                    .disabled(!canBookmark)
+                Button("Bookmark with Note…") {
+                    model.noteDraft = ""
+                    model.notePosition = media.elapsedTime
+                    noteFocused = true
+                }
+                .disabled(!canBookmark)
+                if !list.isEmpty {
+                    Menu("Jump To") {
+                        ForEach(list) { bookmark in
+                            Button(Self.menuTitle(bookmark, hours: hours)) { media.seek(to: bookmark.position) }
+                        }
+                    }
+                    Menu("Remove") {
+                        ForEach(list) { bookmark in
+                            Button(Self.menuTitle(bookmark, hours: hours)) { bookmarks.remove(bookmark.id) }
+                        }
+                        Divider()
+                        Button("Remove All for This Track") {
+                            if let key = media.trackKey { bookmarks.removeAll(forTrack: key) }
+                        }
+                    }
+                }
             }
-            if !list.isEmpty {
-                Divider()
-                Section("Jump To") {
-                    ForEach(list) { bookmark in
-                        Button(Self.menuTitle(bookmark, hours: hours)) { media.seek(to: bookmark.position) }
+            Section("Playback") {
+                MediaPlaybackMenuItems()
+            }
+            Divider()
+            Menu("Sound Output") { SoundOutputMenuItems() }
+            if lyrics.isEnabled {
+                Toggle("Show Lyrics Here", isOn: $lyrics.showsInDrawer)
+            }
+            Button(lyrics.isEnabled ? "Lyrics Window…" : "Lyrics…") { LyricsWindow.shared.show() }
+            if media.scriptablePlayer == .music {
+                Menu("Add to Playlist") {
+                    if model.playlists.isEmpty {
+                        Button("Load Playlists") {
+                            Task {
+                                model.playlists = await media.musicPlaylists()
+                                if model.playlists.isEmpty { media.post(notice: "Allow control of Music") }
+                            }
+                        }
+                    }
+                    ForEach(model.playlists, id: \.self) { name in
+                        Button(name) { media.addCurrentTrack(toPlaylist: name) }
                     }
                 }
+            }
+            if let id = media.sourceBundleID {
                 Divider()
-                Menu("Remove") {
-                    ForEach(list) { bookmark in
-                        Button(Self.menuTitle(bookmark, hours: hours)) { bookmarks.remove(bookmark.id) }
-                    }
-                    Divider()
-                    Button("Remove All for This Track") {
-                        if let key = media.trackKey { bookmarks.removeAll(forTrack: key) }
-                    }
-                }
+                Button("Hide \(media.appInfo(for: id).name) in the Island") { media.setSource(id, allowed: false) }
             }
         } label: {
-            Image(systemName: list.isEmpty ? "bookmark" : "bookmark.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(media.canSeek ? (currentBookmarks.isEmpty ? SparkVTheme.textSecondary : SparkVTheme.choose(apple: Color.orange, sparkv: SparkVTheme.red)) : SparkVTheme.textTertiary.opacity(0.7))
+            Image(systemName: "ellipsis")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(SparkVTheme.textSecondary)
                 .symbolEffect(.bounce, value: model.savedCount)
-                .frame(width: 24, height: 20)
+                .frame(width: 22, height: 20)
+                .overlay(alignment: .topTrailing) {
+                    // A dot while the track has bookmarks.
+                    if !list.isEmpty {
+                        Circle()
+                            .fill(SparkVTheme.choose(apple: Color.orange, sparkv: SparkVTheme.red))
+                            .frame(width: 5, height: 5)
+                            .offset(x: -2, y: 2)
+                    }
+                }
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .disabled(!media.canSeek || media.trackKey == nil)
-        .help(list.isEmpty ? "Bookmark this moment" : "\(list.count) bookmark\(list.count == 1 ? "" : "s")")
+        .disabled(media.source == .none)
+        .help(list.isEmpty ? "More: bookmarks, shuffle, repeat, output, lyrics" : "More (\(list.count) bookmark\(list.count == 1 ? "" : "s"))")
+        .accessibilityLabel("More")
     }
 
     static func menuTitle(_ bookmark: MediaBookmark, hours: Bool) -> String {
@@ -184,6 +289,7 @@ struct MediaColumnV2: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Save bookmark")
+            .accessibilityLabel("Save bookmark")
         }
         .padding(.leading, 7)
         .padding(.trailing, 1)
@@ -342,12 +448,52 @@ struct MediaControlButton: View {
     }
 }
 
+/// The heart: Favorite in Music, Save to Your Library in Spotify. Bounces
+/// when it changes; dimmed while the state is unknown.
+struct MediaLikeButton: View {
+    @EnvironmentObject private var media: MediaEngine
+    @StateObject private var hover = ViewFlag()
+
+    var body: some View {
+        let liked = media.isLiked == true
+        Button {
+            media.toggleLike()
+        } label: {
+            Image(systemName: liked ? "heart.fill" : "heart")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(liked ? SparkVTheme.choose(apple: Color.pink, sparkv: SparkVTheme.red)
+                                       : (hover.isOn ? LabsBStyle.hoverGlyph : SparkVTheme.textSecondary))
+                .contentTransition(.symbolEffect(.replace))
+                .symbolEffect(.bounce, value: liked)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(hover.isOn ? LabsBStyle.hoverFill : Color.clear).frame(width: 20, height: 20))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(SparkVPressStyle())
+        .onHover { hover.isOn = $0 }
+        .help(liked ? "Remove from Favorites" : (media.scriptablePlayer == .spotify ? "Save to Your Library" : "Favorite"))
+        .accessibilityLabel(liked ? "Remove from Favorites" : "Favorite")
+        .accessibilityAddTraits(liked ? .isSelected : [])
+    }
+}
+
+/// Registers interest in lyrics while on screen.
+struct LyricsVisibility: View {
+    var body: some View {
+        Color.clear
+            .mpReportsOnScreen { LyricsController.shared.setViewVisible($0) }
+            .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Compact ticker
 
 /// One-line "Title · Artist" that scrolls, for the compact pill or the
 /// live-activity band: tiny artwork, the marquee, and an optional thin
 /// progress line along the bottom.
 struct MediaTicker: View {
+    @ObservedObject private var energy = SparkVEnergy.shared
     @EnvironmentObject private var media: MediaEngine
     var artworkSide: CGFloat = 16
     var showsProgress = true
@@ -378,7 +524,7 @@ struct MediaTicker: View {
 
     private var progress: some View {
         let timing = media.timing
-        return TimelineView(.animation(minimumInterval: 1.0 / 15, paused: previewDate != nil || timing.rate == 0)) { context in
+        return TimelineView(.animation(minimumInterval: energy.frameInterval(1.0 / 15), paused: previewDate != nil || timing.rate == 0 || energy.pausesDecoration)) { context in
             let fraction = timing.progress(at: previewDate ?? context.date)
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {

@@ -219,6 +219,9 @@ struct NetworkSpeedWidget: View {
             }
         }
         .help("\(sampler.summary) on \(NetworkSpeedMath.friendlyName(sampler.activeInterface)) (\(sampler.activeInterface ?? "no interface")). Updates every 2 seconds.")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Network speed, \(NetworkSpeedMath.friendlyName(sampler.activeInterface))")
+        .accessibilityValue("Down \(sampler.down.map(NetworkSpeedMath.format) ?? "unknown"), up \(sampler.up.map(NetworkSpeedMath.format) ?? "unknown")")
         .whileVisible(start: { if samples { sampler.start() } }, stop: { if samples { sampler.stop() } })
     }
 

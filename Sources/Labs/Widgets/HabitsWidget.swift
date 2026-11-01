@@ -290,6 +290,7 @@ private struct HabitsTodayView: View {
                         }
                         .buttonStyle(SparkVPressStyle())
                         .help("\(habit.name): \(on ? "done today" : "not yet today")\(store.streak(habit) > 1 ? ", \(store.streak(habit))-day streak" : "")")
+                        .accessibilityLabel("\(habit.name): \(on ? "done today" : "not yet today")\(store.streak(habit) > 1 ? ", \(store.streak(habit))-day streak" : "")")
                     }
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
@@ -429,6 +430,7 @@ private struct HabitRow: View {
                 }
                 .buttonStyle(SparkVPressStyle())
                 .help("\(habit.name), \(day.formatted(.dateTime.weekday(.wide).month().day())): \(on ? "done" : "not done")")
+                .accessibilityLabel("\(habit.name), \(day.formatted(.dateTime.weekday(.wide).month().day())): \(on ? "done" : "not done")")
             }
             Text(streak > 0 ? "\(streak)" : "-")
                 .font(.system(size: 8.5, weight: .bold).monospacedDigit())

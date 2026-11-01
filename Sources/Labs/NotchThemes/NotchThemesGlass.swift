@@ -341,7 +341,7 @@ struct LiquidGlassBubbleNotchLayer: View {
     var body: some View {
         GeometryReader { geo in
             // The sheen turns ~22 deg/s: 30 fps is plenty and halves the cost.
-            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: context.phase == .resting || context.reduceMotion)) { timeline in
+            TimelineView(.animation(minimumInterval: context.frameInterval(1.0 / 30), paused: context.phase == .resting || context.reduceMotion)) { timeline in
                 rim(size: geo.size, time: (NotchGlassThemesDebug.now ?? timeline.date).timeIntervalSinceReferenceDate)
             }
         }
@@ -475,7 +475,7 @@ struct FrostedHaloNotchLayer: View {
         GeometryReader { geo in
             ZStack {
                 halo(size: geo.size)
-                TimelineView(.animation(minimumInterval: nil, paused: pulse.start == nil)) { timeline in
+                TimelineView(.animation(minimumInterval: context.frameInterval(nil), paused: pulse.start == nil)) { timeline in
                     pulseRing(at: NotchGlassThemesDebug.now ?? timeline.date)
                 }
             }
@@ -614,7 +614,7 @@ struct DewdropNotchLayer: View {
         GeometryReader { geo in
             let target = dropTarget(size: geo.size)
             let paused = context.phase == .resting || context.reduceMotion || !motion.needsTicks(toward: target)
-            TimelineView(.animation(minimumInterval: nil, paused: paused)) { timeline in
+            TimelineView(.animation(minimumInterval: context.frameInterval(nil), paused: paused)) { timeline in
                 let position = motion.advance(
                     to: target,
                     at: NotchGlassThemesDebug.now ?? timeline.date,

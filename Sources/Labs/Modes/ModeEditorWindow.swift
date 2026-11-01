@@ -396,6 +396,7 @@ private struct ModeSidebar: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .help("More")
+                .accessibilityLabel("More")
             }
             .padding(.horizontal, 8)
             .frame(height: 36)
@@ -483,6 +484,7 @@ private struct ModeBarButton: View {
         }
         .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -666,6 +668,7 @@ private struct ModeDetail: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(SparkVPressStyle())
+                    .accessibilityLabel(symbol.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
                 }
             }
         }
@@ -775,6 +778,7 @@ private struct ModeDetail: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+                .accessibilityLabel("Turn off automatically")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -841,6 +845,7 @@ private struct ModeToggleRow: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+                .accessibilityLabel(title)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -908,6 +913,7 @@ private struct ModeActionRow: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Remove Action")
+            .accessibilityLabel("Remove Action")
         }
         .padding(.horizontal, 14)
         .frame(height: 48)
@@ -927,6 +933,7 @@ private struct ModeActionRow: View {
         .buttonStyle(SparkVPressStyle())
         .disabled(disabled)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -965,6 +972,7 @@ private struct ModeActionEditor: View {
             .labelsHidden()
             .frame(width: 180)
             .modeNote("macOS asks once to let SparkV control System Events.")
+            .accessibilityLabel("Appearance")
         case .pomodoro(let focus, let rest):
             VStack(alignment: .leading, spacing: 8) {
                 Stepper("Focus for \(focus) min", value: Binding(get: { focus }, set: { action = .pomodoro(focusMinutes: $0, breakMinutes: rest) }), in: 5...180, step: 5)
@@ -1022,6 +1030,7 @@ private struct ModePercentSlider: View {
                 Image(systemName: lowSymbol).font(.system(size: 11)).foregroundStyle(.secondary)
                 Slider(value: $value, in: 0...1)
                     .controlSize(.small)
+                    .accessibilityLabel(label)
                 Image(systemName: highSymbol).font(.system(size: 11)).foregroundStyle(.secondary)
                 Text("\(Int((value * 100).rounded()))%")
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
@@ -1050,6 +1059,7 @@ private struct ModeOnOffPicker: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 180)
+            .accessibilityLabel("\(onTitle) or \(offTitle)")
             if let note {
                 Text(note)
                     .font(.system(size: 11))
@@ -1092,6 +1102,7 @@ struct ModeWallpaperSwatch: View {
 @MainActor
 enum ModeThumbnailCache {
     private static var cache: [String: NSImage] = [:]
+    private static var purgeRegistered = false
 
     static func image(_ path: String) -> NSImage? {
         if let hit = cache[path] { return hit }
@@ -1104,6 +1115,12 @@ enum ModeThumbnailCache {
               ] as CFDictionary)
         else { return nil }
         let image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+        // 640 px thumbnails: bounded, and dropped under memory pressure.
+        if !purgeRegistered {
+            purgeRegistered = true
+            SparkVEnergy.shared.onMemoryPressure { cache.removeAll() }
+        }
+        if cache.count >= 24 { cache.removeAll() }
         cache[path] = image
         return image
     }
@@ -1483,6 +1500,7 @@ private struct ModeAppListEditor: View {
                             }
                             .buttonStyle(SparkVPressStyle())
                             .help("Remove \(ModeAppCatalog.name(id))")
+                            .accessibilityLabel("Remove \(ModeAppCatalog.name(id))")
                         }
                         .padding(.leading, 6)
                         .padding(.trailing, 5)
@@ -1611,6 +1629,7 @@ private struct ModeURLListEditor: View {
                     }
                     .buttonStyle(SparkVPressStyle())
                     .help("Remove")
+                    .accessibilityLabel("Remove")
                 }
             }
             Button {

@@ -611,7 +611,14 @@ final class ClipboardController: ObservableObject {
         pollTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 self?.poll()
-                try? await Task.sleep(for: ClipboardController.pollInterval, tolerance: .milliseconds(100))
+                // Nobody copies while the displays sleep; Low Power Mode or a
+                // warm Mac checks a third as often.
+                let energy = SparkVEnergy.shared
+                // Copies are detected by changeCount only, so a slower poll would
+                // drop quick successive copies: stay at 0.5 s while anyone can
+                // copy, and slow down only with the displays asleep.
+                let wait: Duration = energy.screensAsleep ? .seconds(5) : ClipboardController.pollInterval
+                try? await Task.sleep(for: wait, tolerance: energy.isConstrained ? .milliseconds(200) : .milliseconds(100))
             }
         }
     }

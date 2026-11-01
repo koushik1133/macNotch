@@ -39,6 +39,7 @@ struct MeetingRecordingBand: View {
                     }
                     .buttonStyle(SparkVPressStyle())
                     .help("Bookmark this moment")
+                    .accessibilityLabel("Bookmark this moment")
                 }
             }
         }
@@ -139,18 +140,29 @@ struct MeetingPulsingDot: View {
     let isOn: Bool
 
     var body: some View {
+        // Differentiate Without Color: a record glyph, not only a red dot.
+        // Reduce Motion: steady.
+        let pulses = !SparkVMotion.reduceMotion
         ZStack {
-            Circle()
-                .fill(SparkVTheme.recording.opacity(0.35))
-                .frame(width: 14, height: 14)
-                .scaleEffect(isOn ? 1 : 0.55)
-            Circle()
-                .fill(SparkVTheme.recording)
-                .frame(width: 8, height: 8)
-                .opacity(isOn ? 1 : 0.6)
+            if SparkVTheme.differentiateWithoutColor {
+                Image(systemName: "record.circle.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(SparkVTheme.recording)
+                    .opacity(isOn || !pulses ? 1 : 0.6)
+            } else {
+                Circle()
+                    .fill(SparkVTheme.recording.opacity(0.35))
+                    .frame(width: 14, height: 14)
+                    .scaleEffect(isOn || !pulses ? 1 : 0.55)
+                Circle()
+                    .fill(SparkVTheme.recording)
+                    .frame(width: 8, height: 8)
+                    .opacity(isOn || !pulses ? 1 : 0.6)
+            }
         }
         .frame(width: 14, height: 14)
-        .animation(.easeInOut(duration: 0.9), value: isOn)
+        .animation(pulses ? .easeInOut(duration: 0.9) : nil, value: isOn)
+        .accessibilityLabel("Recording")
     }
 }
 

@@ -21,7 +21,7 @@ enum NotchThemeLayout {
     /// Extra room the notch panel needs on its left, right and bottom edges
     /// for this theme. Plain gets none, so its window is exactly as before.
     static func outset(for theme: NotchThemeID) -> CGFloat {
-        theme == .plain ? 0 : NotchThemeMetrics.maxOutset
+        theme == .plain || !LookOptions.current.themesAllowed ? 0 : NotchThemeMetrics.maxOutset
     }
 
     static func layerSize(bodySize: CGSize, topRadius: CGFloat) -> CGSize {
@@ -56,7 +56,7 @@ enum NotchThemeLayout {
 /// before the drawer opens. Plain opens at once, as it always has.
 enum NotchThemeTiming {
     static func hoverDwell(for theme: NotchThemeID) -> Duration {
-        theme == .plain ? .zero : .milliseconds(350)
+        theme == .plain || !LookOptions.current.themesAllowed ? .zero : .milliseconds(350)
     }
 
     /// How long "Preview on my notch" holds the hovered look.
@@ -67,7 +67,7 @@ enum NotchThemeTiming {
     /// (which the host makes without an animation) still eases in, and an
     /// open or close (which the host animates with this same spring) stays in
     /// step with the body.
-    static let islandSpring: Animation = .spring(response: 0.35, dampingFraction: 0.8)
+    static var islandSpring: Animation { NotchMetrics.hoverAnimation }
 }
 
 extension NotchThemeID {
@@ -198,12 +198,16 @@ struct NotchThemeBackdrop: View {
 
     @ObservedObject private var settings = NotchThemeSettings.shared
     @ObservedObject private var hover = NotchThemeHoverState.shared
+    @ObservedObject private var energy = SparkVEnergy.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        let theme = settings.theme
-        if theme != .plain {
+        // Plain while Appearance › Decorative Glows is off, and while the
+        // Liquid Glass drawer is open (it would show through the glass and
+        // make it re-blur every frame).
+        let theme = settings.effectiveTheme
+        if theme != .plain, !LookDrawerMaterial.hidesBackdrops(isExpanded: isExpanded) {
             let phase: NotchThemePhase = isExpanded ? .open : (hover.isHovered ? .hovered : .resting)
             let pointer: CGPoint? = theme.usesPointer && phase != .resting
                 ? hover.pointerFromTopCenter.map {
@@ -217,8 +221,10 @@ struct NotchThemeBackdrop: View {
                     topRadius: topRadius,
                     bottomRadius: bottomRadius,
                     pointer: pointer,
-                    reduceMotion: reduceMotion,
-                    reduceTransparency: reduceTransparency
+                    // A hot Mac or sleeping displays: the still look.
+                    reduceMotion: reduceMotion || energy.pausesDecoration,
+                    reduceTransparency: reduceTransparency,
+                    lowPower: energy.isConstrained
                 ),
                 theme: theme
             )
@@ -293,9 +299,10 @@ struct NotchThemePickerView: View {
                     Label("Preview on my notch", systemImage: "sparkles")
                 }
                 .buttonStyle(SparkVSecondaryButtonStyle())
-                .disabled(settings.theme == .plain)
+                .disabled(settings.effectiveTheme == .plain)
                 .help("Shows the selected theme's hover look on the real notch for a moment.")
-                Text(settings.theme == .plain ? "Plain has no hover look." : "Or just point at your notch.")
+                Text(!LookOptions.current.themesAllowed ? "Decorative Glows is off in Appearance."
+                     : (settings.theme == .plain ? "Plain has no hover look." : "Or just point at your notch."))
                     .font(SparkVTheme.caption())
                     .foregroundStyle(SparkVTheme.textTertiary)
             }
@@ -318,9 +325,11 @@ struct NotchThemePickerView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 240)
-                Text(settings.background == .albumGlow
-                     ? "A soft glow tinted from the playing track's album art."
-                     : "Pure black, the original island.")
+                Text(settings.background == .albumGlow && settings.effectiveBackground != .albumGlow
+                     ? "Album Glow is paused: Decorative Glows is off, or Reduce Transparency or higher contrast is on."
+                     : (settings.background == .albumGlow
+                        ? "A soft glow tinted from the playing track's album art."
+                        : "Pure black, the original island."))
                     .font(SparkVTheme.caption())
                     .foregroundStyle(SparkVTheme.textSecondary)
             }
@@ -670,5 +679,71 @@ struct NotchThemeMenuItems: View {
 struct NotchThemeMenu: View {
     var body: some View {
         Menu("Notch Theme") { NotchThemeMenuItems() }
+    }
+}
+
+// MARK: - Settings section
+
+/// Settings › Appearance: the notch theme (with its still preview) and the
+/// island background, with a way to the full picker.
+struct NotchThemeSettingsSection: View {
+    @ObservedObject private var settings = NotchThemeSettings.shared
+    @ObservedObject private var appearance = AppearanceSettings.shared
+
+    var body: some View {
+        Section {
+            HStack(alignment: .center, spacing: 14) {
+                NotchThemeMiniPreview(theme: settings.theme, phase: .hovered, animated: false)
+                    .frame(width: 190, height: NotchThemeMiniPreview.height)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(SparkVTheme.stroke))
+                    .opacity(settings.effectiveTheme == settings.theme ? 1 : 0.45)
+                    .accessibilityLabel("Preview of \(settings.theme.title)")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(settings.theme.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(SparkVTheme.text)
+                    Text(settings.theme.blurb)
+                        .font(.system(size: 11))
+                        .foregroundStyle(SparkVTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if settings.theme != .plain, settings.effectiveTheme == .plain {
+                        Label("Paused: Decorative Glows is off.", systemImage: "pause.circle")
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(SparkVTheme.warning)
+                    }
+                    HStack(spacing: 8) {
+                        Button("Choose Theme…") { NotchThemeSettingsWindowController.shared.show() }
+                        Button("Preview on My Notch") {
+                            NotificationCenter.default.post(name: .notchThemePreviewRequested, object: nil)
+                        }
+                        .disabled(settings.effectiveTheme == .plain)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .padding(.vertical, 4)
+            Picker(selection: $settings.background) {
+                Text("Black").tag(NotchBackgroundStyle.black)
+                Text("Album Glow").tag(NotchBackgroundStyle.albumGlow)
+            } label: {
+                Text("Island Background")
+                Text(backgroundNote)
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Notch Theme")
+        } footer: {
+            LookFormFooter("How the island lights up when your pointer reaches the notch.")
+        }
+    }
+
+    private var backgroundNote: String {
+        if settings.background == .albumGlow, settings.effectiveBackground != .albumGlow {
+            return "Paused: Decorative Glows is off, or Reduce Transparency or higher contrast is on."
+        }
+        return settings.background == .albumGlow
+            ? "A soft glow from the playing track's artwork behind Home."
+            : "Pure black, the original island."
     }
 }

@@ -125,6 +125,7 @@ struct FileDropActionStrip: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Clear (files stay where they are)")
+            .accessibilityLabel("Clear (files stay where they are)")
         }
     }
 
@@ -220,6 +221,7 @@ private struct FileDropRenameRow: View {
                         .buttonStyle(SparkVPressStyle())
                         .disabled(draft?.isSuggesting == true)
                         .help("Suggest another name")
+                        .accessibilityLabel("Suggest another name")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -280,6 +282,7 @@ private struct FileDropSpaceRow: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Back")
+            .accessibilityLabel("Back")
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     FileDropSpaceChip(name: "Auto", icon: "sparkles", color: SparkVTheme.accent,
@@ -386,11 +389,20 @@ private struct FileDropResultRow: View {
                         .help("Make one .zip of the originals instead")
                 }
                 if !result.outputs.isEmpty {
+                    FileDropPill(title: nil, systemImage: "square.and.arrow.up", prominent: false) {
+                        let outputs = result.outputs
+                        ShelfShare.presentAtPointer(outputs.map { $0 as NSURL }, localSendFiles: { outputs })
+                    }
+                    .help("Share: AirDrop, Messages, NearDrop, LocalSend…")
+                    .accessibilityLabel("Share")
                     FileDropPill(title: nil, systemImage: "folder", prominent: false) { controller.reveal(result.outputs) }
                         .help("Show in Finder")
+                        .accessibilityLabel("Show in Finder")
                 }
                 FileDropPill(title: "Done", systemImage: nil, prominent: true) { controller.back() }
             }
+            // The buttons keep their labels; the headline truncates instead.
+            .fixedSize()
         }
     }
 
@@ -620,12 +632,21 @@ struct FileDropPill: View {
 /// "File Drop" submenu for the gear menu.
 struct FileDropSettingsMenu: View {
     @ObservedObject var controller: FileDropController
+    @ObservedObject private var shelf = ShelfSettings.shared
 
     var body: some View {
         Menu("File Drop") {
             Toggle("File Drop Actions", isOn: $controller.isEnabled)
             Toggle("Show Drop Shelf Under the Notch While Dragging", isOn: $controller.showsShelf)
                 .disabled(!controller.isEnabled)
+            Toggle("Shake a File Drag for a Shelf at the Pointer", isOn: $shelf.shakeForShelf)
+                .disabled(!controller.isEnabled)
+            Picker("Hold Key for a Shelf at the Pointer", selection: $shelf.holdKey) {
+                ForEach(ShelfSettings.HoldKey.allCases) { key in
+                    Text(key.title).tag(key)
+                }
+            }
+            .disabled(!controller.isEnabled)
             Picker("AI Rename Style", selection: $controller.nameStyle) {
                 ForEach(FileDropSettings.NameStyle.allCases) { style in
                     Text(style.title).tag(style)
@@ -641,4 +662,65 @@ struct FileDropSettingsMenu: View {
 enum FileDropStyle {
     /// A hovered tile's outline: a soft white lift in Apple, a red hairline in SparkV Red.
     static var hoverStroke: Color { SparkVTheme.isApple ? Color.white.opacity(0.20) : SparkVTheme.red.opacity(0.6) }
+}
+
+// MARK: - Settings window
+
+/// Settings › Shelf: File Drop's switches and the drop shelf triggers.
+struct FileDropSettingsSection: View {
+    @ObservedObject private var shelf = ShelfSettings.shared
+
+    var body: some View {
+        if let controller = FileDropController.current {
+            FileDropSettingsSectionContent(controller: controller, shelf: shelf)
+        } else {
+            Section {
+                Text("File Drop starts with the notch.")
+                    .foregroundStyle(SparkVTheme.textSecondary)
+            } header: {
+                Text("File Drop")
+            }
+        }
+    }
+}
+
+private struct FileDropSettingsSectionContent: View {
+    @ObservedObject var controller: FileDropController
+    @ObservedObject var shelf: ShelfSettings
+
+    var body: some View {
+        Section {
+            Toggle(isOn: $controller.isEnabled) {
+                Text("File Drop actions")
+                Text("Drop files to rename them with on-device AI, compress, convert, file them in a Space or AirDrop them.")
+            }
+            Toggle(isOn: $controller.showsShelf) {
+                Text("Show a drop shelf under the notch while dragging files")
+                Text("Tray, Actions, Compress, To Space and AirDrop, in one place.")
+            }
+            .disabled(!controller.isEnabled)
+            Toggle(isOn: $shelf.shakeForShelf) {
+                Text("Shake a file drag to open the shelf at the pointer")
+                Text("Three quick left-right flicks while dragging. Saves the trip to the notch, on any display.")
+            }
+            .disabled(!controller.isEnabled)
+            Picker(selection: $shelf.holdKey) {
+                ForEach(ShelfSettings.HoldKey.allCases) { key in
+                    Text(key.title).tag(key)
+                }
+            } label: {
+                Text("Or hold a key while dragging")
+                Text("Press it during the drag (not before) to open the shelf at the pointer.")
+            }
+            .disabled(!controller.isEnabled)
+            Picker("AI rename style", selection: $controller.nameStyle) {
+                ForEach(FileDropSettings.NameStyle.allCases) { style in
+                    Text(style.title).tag(style)
+                }
+            }
+            .disabled(!controller.isEnabled)
+        } header: {
+            Text("File Drop")
+        }
+    }
 }

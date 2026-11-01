@@ -474,6 +474,7 @@ struct ScreenToolTileMenu<Content: View>: View {
         .tint(SparkVTheme.textSecondary)
         .fixedSize()
         .padding(.trailing, 3)
+        .accessibilityLabel("More options")
     }
 }
 

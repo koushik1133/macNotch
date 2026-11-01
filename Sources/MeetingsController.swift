@@ -3,11 +3,13 @@ import Carbon.HIToolbox
 import Combine
 import EventKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Model
 
-/// One of today's remaining calendar events, copied out of EventKit so it can
-/// cross from the fetch queue to the main actor.
+/// One calendar event (a remaining meeting today, or any event in the
+/// Planner's agenda), copied out of EventKit so it can cross from the fetch
+/// queue to the main actor.
 struct CalendarMeeting: Identifiable, Sendable, Equatable {
     /// Unique per occurrence (recurring events share an event identifier).
     let id: String
@@ -18,8 +20,36 @@ struct CalendarMeeting: Identifiable, Sendable, Equatable {
     let end: Date
     let calendarColor: CalendarRGBA
     let link: MeetingLink?
+    var isAllDay = false
+    /// `EKCalendar.calendarIdentifier`.
+    var calendarID = ""
+    var calendarTitle = ""
+    var location: String? = nil
+    /// The event's own URL when it isn't the call link.
+    var eventURL: URL? = nil
+    /// Marked "free" (holds, reminders): shown in the agenda, never a heads-up.
+    var isFree = false
 
     func hasStarted(at now: Date) -> Bool { start <= now }
+}
+
+/// A calendar the user can show or hide (Settings, the Calendars menu).
+struct CalendarInfo: Identifiable, Sendable, Equatable {
+    /// `EKCalendar.calendarIdentifier`.
+    let id: String
+    let title: String
+    let color: CalendarRGBA
+    /// Account ("iCloud", "Google", "Exchange", "On My Mac").
+    let sourceTitle: String
+}
+
+/// What one refresh of today returns.
+struct CalendarSnapshot: Sendable, Equatable {
+    /// Timed events that haven't ended (heads-up filter applied), soonest first.
+    var meetings: [CalendarMeeting] = []
+    /// Today's all-day events (display only: they never alert).
+    var allDay: [CalendarMeeting] = []
+    var calendars: [CalendarInfo] = []
 }
 
 /// Where a meeting stands relative to the clock.
@@ -396,49 +426,178 @@ private final class CalendarSource: @unchecked Sendable {
     }
 
     /// Events that haven't ended yet, from now to the end of today (or a bit
-    /// past it, so a meeting just after midnight still gets its heads-up).
-    func remainingMeetings(now: Date, lookahead: TimeInterval) async -> [CalendarMeeting] {
+    /// past it, so a meeting just after midnight still gets its heads-up),
+    /// today's all-day events, and the calendar list. Hidden calendars are
+    /// left out everywhere.
+    func today(now: Date, lookahead: TimeInterval, hidden: Set<String>) async -> CalendarSnapshot {
         await withCheckedContinuation { continuation in
             queue.async { [self] in
-                continuation.resume(returning: fetch(now: now, lookahead: lookahead))
+                continuation.resume(returning: fetchToday(now: now, lookahead: lookahead, hidden: hidden))
             }
         }
     }
 
-    private func fetch(now: Date, lookahead: TimeInterval) -> [CalendarMeeting] {
+    /// Every event between the dates (all-day ones included; cancelled and
+    /// declined ones left out), for the Planner's day, week and month views.
+    func events(from start: Date, to end: Date, hidden: Set<String>) async -> [CalendarMeeting] {
+        await withCheckedContinuation { continuation in
+            queue.async { [self] in
+                continuation.resume(returning: fetchRange(from: start, to: end, hidden: hidden))
+            }
+        }
+    }
+
+    /// The calendars to search: nil for all, [] when every one is hidden.
+    private func calendars(in store: EKEventStore, hidden: Set<String>) -> [EKCalendar]? {
+        guard !hidden.isEmpty else { return nil }
+        return store.calendars(for: .event).filter { !hidden.contains($0.calendarIdentifier) }
+    }
+
+    private func calendarList(_ store: EKEventStore) -> [CalendarInfo] {
+        store.calendars(for: .event)
+            .map { CalendarInfo(id: $0.calendarIdentifier, title: $0.title, color: CalendarRGBA($0.color), sourceTitle: $0.source?.title ?? "Other") }
+            .sorted { $0.sourceTitle == $1.sourceTitle ? $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                                                       : $0.sourceTitle.localizedCaseInsensitiveCompare($1.sourceTitle) == .orderedAscending }
+    }
+
+    private func fetchToday(now: Date, lookahead: TimeInterval, hidden: Set<String>) -> CalendarSnapshot {
         let store = self.store
         let calendar = Calendar.current
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        let startOfDay = calendar.startOfDay(for: now)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? now
+        var snapshot = CalendarSnapshot(calendars: calendarList(store))
+        let selected = calendars(in: store, hidden: hidden)
+        if let selected, selected.isEmpty { return snapshot }
         let end = max(endOfDay, now.addingTimeInterval(lookahead))
         // Start a day back so a long meeting that is still running is included;
         // `finish > now` below drops the ones that are over.
         let from = calendar.date(byAdding: .day, value: -1, to: now) ?? now
-        let predicate = store.predicateForEvents(withStart: from, end: end, calendars: nil)
+        let predicate = store.predicateForEvents(withStart: from, end: end, calendars: selected)
+        var meetings: [CalendarMeeting] = []
+        var allDay: [CalendarMeeting] = []
+        for event in store.events(matching: predicate) {
+            guard let start = event.startDate, let finish = event.endDate else { continue }
+            let me = event.attendees?.first(where: \.isCurrentUser)
+            let isCanceled = event.status == .canceled
+            let isDeclined = me?.participantStatus == .declined
+            if event.isAllDay {
+                // All-day events touching today, for display only.
+                guard !isCanceled, !isDeclined, start < endOfDay, finish > startOfDay else { continue }
+                allDay.append(Self.meeting(from: event, start: start, end: finish))
+                continue
+            }
+            guard finish > now else { continue }
+            let skip = MeetingFilter.shouldSkip(
+                isAllDay: false,
+                isCanceled: isCanceled,
+                isDeclined: isDeclined,
+                isFree: event.availability == .free
+            )
+            guard !skip else { continue }
+            meetings.append(Self.meeting(from: event, start: start, end: finish))
+        }
+        snapshot.meetings = meetings.sorted(by: Self.order)
+        snapshot.allDay = allDay.sorted(by: Self.order)
+        return snapshot
+    }
+
+    private func fetchRange(from start: Date, to end: Date, hidden: Set<String>) -> [CalendarMeeting] {
+        let store = self.store
+        let selected = calendars(in: store, hidden: hidden)
+        if let selected, selected.isEmpty { return [] }
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: selected)
         return store.events(matching: predicate)
             .compactMap { event -> CalendarMeeting? in
-                guard let start = event.startDate, let finish = event.endDate, finish > now else { return nil }
+                guard let s = event.startDate, let e = event.endDate else { return nil }
                 let me = event.attendees?.first(where: \.isCurrentUser)
-                let skip = MeetingFilter.shouldSkip(
-                    isAllDay: event.isAllDay,
-                    isCanceled: event.status == .canceled,
-                    isDeclined: me?.participantStatus == .declined,
-                    isFree: event.availability == .free
-                )
-                guard !skip else { return nil }
-                let eventID = event.eventIdentifier ?? event.calendarItemIdentifier
-                let rawTitle = (event.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                return CalendarMeeting(
-                    id: "\(eventID)@\(Int(start.timeIntervalSince1970))",
-                    eventID: eventID,
-                    title: rawTitle.isEmpty ? "Untitled event" : rawTitle,
-                    start: start,
-                    end: finish,
-                    calendarColor: CalendarRGBA(event.calendar?.color),
-                    link: MeetingLinkDetector.detect(url: event.url, location: event.location, notes: event.notes)
-                )
+                guard event.status != .canceled, me?.participantStatus != .declined else { return nil }
+                return Self.meeting(from: event, start: s, end: e)
             }
-            .sorted { $0.start == $1.start ? $0.title < $1.title : $0.start < $1.start }
+            .sorted(by: Self.order)
     }
+
+    /// All-day first, then by start, then by title.
+    private static func order(_ a: CalendarMeeting, _ b: CalendarMeeting) -> Bool {
+        if a.isAllDay != b.isAllDay { return a.isAllDay }
+        return a.start == b.start ? a.title < b.title : a.start < b.start
+    }
+
+    private static func meeting(from event: EKEvent, start: Date, end: Date) -> CalendarMeeting {
+        let eventID = event.eventIdentifier ?? event.calendarItemIdentifier
+        let rawTitle = (event.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let link = MeetingLinkDetector.detect(url: event.url, location: event.location, notes: event.notes)
+        let ownURL = event.url.flatMap { url in link?.url == url || link?.nativeURL == url ? nil : url }
+        let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return CalendarMeeting(
+            id: "\(eventID)@\(Int(start.timeIntervalSince1970))",
+            eventID: eventID,
+            title: rawTitle.isEmpty ? "Untitled event" : rawTitle,
+            start: start,
+            end: end,
+            calendarColor: CalendarRGBA(event.calendar?.color),
+            link: link,
+            isAllDay: event.isAllDay,
+            calendarID: event.calendar?.calendarIdentifier ?? "",
+            calendarTitle: event.calendar?.title ?? "",
+            location: location?.isEmpty == false ? location : nil,
+            eventURL: ownURL,
+            isFree: event.availability == .free
+        )
+    }
+}
+
+// MARK: - Calendar settings
+
+/// Which calendars show, all-day events, the first weekday and where events
+/// open. Saved under `meetings.*` in UserDefaults. Calendars are stored as
+/// the hidden ones, so a calendar added later shows up on its own.
+@MainActor
+final class CalendarPreferences: ObservableObject {
+    static let shared = CalendarPreferences()
+
+    enum Keys {
+        static let hidden = "meetings.hiddenCalendarIDs"
+        static let allDay = "meetings.showsAllDay"
+        static let weekStart = "meetings.weekStart"
+        static let openIn = "meetings.openIn"
+    }
+
+    @Published var hiddenCalendarIDs: Set<String> {
+        didSet { defaults.set(Array(hiddenCalendarIDs).sorted(), forKey: Keys.hidden) }
+    }
+    /// All-day events as chips in Today and the agenda (they never alert).
+    @Published var showsAllDay: Bool { didSet { defaults.set(showsAllDay, forKey: Keys.allDay) } }
+    /// 0 follows the system; 1 = Sunday … 7 = Saturday.
+    @Published var weekStart: Int { didSet { defaults.set(weekStart, forKey: Keys.weekStart) } }
+    @Published var openTarget: CalendarOpenTarget { didSet { defaults.set(openTarget.rawValue, forKey: Keys.openIn) } }
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        hiddenCalendarIDs = Set(defaults.stringArray(forKey: Keys.hidden) ?? [])
+        showsAllDay = defaults.object(forKey: Keys.allDay) as? Bool ?? true
+        let start = defaults.integer(forKey: Keys.weekStart)
+        weekStart = (0...7).contains(start) ? start : 0
+        openTarget = defaults.string(forKey: Keys.openIn).flatMap(CalendarOpenTarget.init(rawValue:)) ?? .calendarApp
+    }
+
+    func isShown(_ calendarID: String) -> Bool { !hiddenCalendarIDs.contains(calendarID) }
+
+    func setShown(_ calendarID: String, _ shown: Bool) {
+        if shown { hiddenCalendarIDs.remove(calendarID) } else { hiddenCalendarIDs.insert(calendarID) }
+    }
+
+    func binding(for calendarID: String) -> Binding<Bool> {
+        Binding(get: { self.isShown(calendarID) }, set: { self.setShown(calendarID, $0) })
+    }
+
+    /// The user's calendar with the chosen first weekday.
+    var calendar: Calendar { CalendarGrid.calendar(weekStart: weekStart) }
+
+    static let weekStartChoices: [(value: Int, title: String)] = [
+        (0, "System Setting"), (1, "Sunday"), (2, "Monday"), (7, "Saturday"),
+    ]
 }
 
 /// Which events never get a heads-up or a Join (the MeetingBar defaults):
@@ -509,14 +668,28 @@ final class MeetingsController: ObservableObject {
     }
 
     @Published private(set) var access: Access {
-        didSet { if access != oldValue { updateAccessWatch() } }
+        didSet {
+            guard access != oldValue else { return }
+            updateAccessWatch()
+            // What the agenda may show changed.
+            calendarRevision &+= 1
+        }
     }
     /// Today's remaining events (not all-day, not declined, not cancelled,
-    /// not free), soonest first.
+    /// not free, not in a hidden calendar), soonest first.
     @Published private(set) var meetings: [CalendarMeeting] = []
+    /// Today's all-day events from the shown calendars (display only).
+    @Published private(set) var allDayEvents: [CalendarMeeting] = []
+    /// Every event calendar, for the Calendars menu and Settings.
+    @Published private(set) var calendars: [CalendarInfo] = []
+    /// Bumped when the calendar database or the calendar settings change,
+    /// so the Planner's agenda knows to fetch again.
+    @Published private(set) var calendarRevision = 0
     /// Updated every refresh so "Now" labels stay current.
     @Published private(set) var now = Date()
     @Published private(set) var isRequestingAccess = false
+    /// When EventKit was last read (the minute tick reuses that result).
+    private var lastFetchAt: Date?
     /// False when macOS refused the shortcut (another app owns it).
     @Published private(set) var isShortcutRegistered = false
 
@@ -548,6 +721,9 @@ final class MeetingsController: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     /// Follows calendar access through PermissionCenter (no polling here).
     private var accessWatch: AnyCancellable?
+    /// Follows the calendar settings (hidden calendars, all-day).
+    private var preferencesWatch: AnyCancellable?
+    private let preferences: CalendarPreferences
     /// Occurrences (`CalendarMeeting.id`) the user already joined: their
     /// "Now" band stops holding the space under the notch and rests in the
     /// wings beside the camera instead.
@@ -557,16 +733,34 @@ final class MeetingsController: ObservableObject {
     /// The live activity currently posted and the text it shows, so it is
     /// re-posted only when the minute count changes.
     private var postedActivity: (id: String, signature: String)?
+    /// The calendar settings the fetches depend on, as last seen: only a
+    /// change to these refetches (not the first weekday or "open in").
+    private var fetchSettings: (hidden: Set<String>, allDay: Bool) = ([], true)
 
-    init(activities: ActivityCenter, defaults: UserDefaults = .standard) {
+    init(activities: ActivityCenter, defaults: UserDefaults = .standard, preferences: CalendarPreferences? = nil) {
         self.activities = activities
         self.defaults = defaults
+        self.preferences = preferences ?? .shared
         isEnabled = (defaults.object(forKey: Self.enabledKey) as? Bool) ?? true
         leadMinutes = Self.clampLead((defaults.object(forKey: Self.leadKey) as? Int) ?? Self.defaultLeadMinutes)
         joinShortcutEnabled = (defaults.object(forKey: Self.shortcutKey) as? Bool) ?? true
         access = Self.currentAccess(refused: false)
         hotkey.onPress = { [weak self] in self?.joinNextMeeting() }
         Self.current = self
+        fetchSettings = (self.preferences.hiddenCalendarIDs, self.preferences.showsAllDay)
+        preferencesWatch = self.preferences.objectWillChange.sink { [weak self] _ in
+            // After the change lands.
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    let settings = (hidden: self.preferences.hiddenCalendarIDs, allDay: self.preferences.showsAllDay)
+                    guard settings != self.fetchSettings else { return }
+                    self.fetchSettings = settings
+                    self.calendarRevision &+= 1
+                    self.scheduleRefresh()
+                }
+            }
+        }
     }
 
     var leadTime: TimeInterval { TimeInterval(leadMinutes) * 60 }
@@ -739,10 +933,16 @@ final class MeetingsController: ObservableObject {
     }
 
     /// The next three rows for the Today tab.
-    var upcoming: [CalendarMeeting] {
+    var upcoming: [CalendarMeeting] { upcoming(limit: 3) }
+
+    /// Today's meetings that haven't ended, at most `limit`.
+    func upcoming(limit: Int) -> [CalendarMeeting] {
         let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? now
-        return Array(meetings.filter { $0.end > now && $0.start < endOfDay }.prefix(3))
+        return Array(meetings.filter { $0.end > now && $0.start < endOfDay }.prefix(max(0, limit)))
     }
+
+    /// Today's remaining meetings (all of them), for counts.
+    var remainingToday: Int { upcoming(limit: .max).count }
 
     func timing(for meeting: CalendarMeeting) -> MeetingTiming {
         Self.timing(for: meeting, now: now)
@@ -803,7 +1003,10 @@ final class MeetingsController: ObservableObject {
 
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: .EKEventStoreChanged, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.scheduleRefresh() }
+            Task { @MainActor in
+                self?.calendarRevision &+= 1
+                self?.scheduleRefresh()
+            }
         })
         observers.append(center.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.scheduleRefresh() }
@@ -828,10 +1031,24 @@ final class MeetingsController: ObservableObject {
         tickTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let delay = self?.nextTickDelay() else { return }
-                try? await Task.sleep(for: .seconds(delay))
+                try? await Task.sleep(for: .seconds(delay), tolerance: .milliseconds(200))
                 guard !Task.isCancelled, let self else { return }
-                self.scheduleRefresh()
+                self.tick()
             }
+        }
+    }
+
+    /// The minute tick only moves the band's countdown on, from the cached
+    /// meetings: EventKit is fetched again on EKEventStoreChanged, a day
+    /// change, wake and calendar-settings changes, plus a safety refetch
+    /// when the last one is over 15 minutes old. Displays asleep: nothing
+    /// to show, the next tick after they wake catches up.
+    private func tick() {
+        guard isMonitoring, !SparkVEnergy.shared.screensAsleep else { return }
+        if let lastFetchAt, Date().timeIntervalSince(lastFetchAt) < 15 * 60 {
+            apply(meetings, now: Date())
+        } else {
+            scheduleRefresh()
         }
     }
 
@@ -847,6 +1064,7 @@ final class MeetingsController: ObservableObject {
     private func endMonitoring(clear: Bool) {
         if isMonitoring { AppLog.log("Meetings: stopped monitoring") }
         isMonitoring = false
+        lastFetchAt = nil
         tickTask?.cancel()
         tickTask = nil
         refreshTask?.cancel()
@@ -857,7 +1075,10 @@ final class MeetingsController: ObservableObject {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
         observers.removeAll()
-        if clear { meetings = [] }
+        if clear {
+            meetings = []
+            allDayEvents = []
+        }
         dismissActivity()
     }
 
@@ -867,11 +1088,15 @@ final class MeetingsController: ObservableObject {
         let generation = refreshGeneration
         let source = self.source
         let lookahead = TimeInterval(Self.leadChoices.max() ?? 15) * 60 + 60
+        let hidden = preferences.hiddenCalendarIDs
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
-            let fetched = await source.remainingMeetings(now: Date(), lookahead: lookahead)
+            let snapshot = await source.today(now: Date(), lookahead: lookahead, hidden: hidden)
             guard let self, !Task.isCancelled, generation == self.refreshGeneration, self.isMonitoring else { return }
-            self.apply(fetched, now: Date())
+            self.lastFetchAt = Date()
+            if snapshot.allDay != self.allDayEvents { self.allDayEvents = snapshot.allDay }
+            if snapshot.calendars != self.calendars { self.calendars = snapshot.calendars }
+            self.apply(snapshot.meetings, now: Date())
         }
     }
 
@@ -881,6 +1106,108 @@ final class MeetingsController: ObservableObject {
         if fetched != meetings { meetings = fetched }
         if !joinedIDs.isEmpty { joinedIDs.formIntersection(fetched.map(\.id)) }
         updateActivity(now: now)
+    }
+
+    /// Tests and renders: all-day events and the calendar list.
+    func applyExtras(allDay: [CalendarMeeting], calendars: [CalendarInfo]) {
+        allDayEvents = allDay
+        self.calendars = calendars
+    }
+
+    // MARK: Agenda and opening events
+
+    /// Events between the dates from the shown calendars (all-day included),
+    /// for the Planner's day, week and month views. Empty without access.
+    func agenda(from start: Date, to end: Date) async -> [CalendarMeeting] {
+        guard access == .granted, isEnabled else { return [] }
+        return await source.events(from: start, to: end, hidden: preferences.hiddenCalendarIDs)
+    }
+
+    /// Opens the event where Settings say (Calendar by default). Calendar
+    /// gets the event itself through its ical:// link when it can find it;
+    /// the web calendars open at the event's day.
+    func open(_ meeting: CalendarMeeting, in target: CalendarOpenTarget? = nil) {
+        let choice = target ?? preferences.openTarget
+        // No title in the log: it is a plain file in ~/Library/Logs.
+        AppLog.log("Meetings: opening an event in \(choice.rawValue)")
+        switch choice {
+        case .calendarApp:
+            if let url = CalendarLinks.calendarApp(eventIdentifier: meeting.eventID), NSWorkspace.shared.open(url) { return }
+            Self.openCalendarApp()
+        case .googleWeb:
+            NSWorkspace.shared.open(CalendarLinks.googleDay(meeting.start, calendar: .current))
+        case .outlookWeb:
+            NSWorkspace.shared.open(CalendarLinks.outlookDay(meeting.start, calendar: .current))
+        case .defaultApp:
+            if Self.defaultCalendarAppIsCalendar {
+                if let url = CalendarLinks.calendarApp(eventIdentifier: meeting.eventID), NSWorkspace.shared.open(url) { return }
+            }
+            Self.openDefaultCalendarApp()
+        }
+    }
+
+    /// Opens the calendar at a day (the web calendars), or Calendar itself.
+    func openDay(_ date: Date) {
+        switch preferences.openTarget {
+        case .calendarApp: Self.openCalendarApp()
+        case .googleWeb: NSWorkspace.shared.open(CalendarLinks.googleDay(date, calendar: .current))
+        case .outlookWeb: NSWorkspace.shared.open(CalendarLinks.outlookDay(date, calendar: .current))
+        case .defaultApp: Self.openDefaultCalendarApp()
+        }
+    }
+
+    static func openCalendarApp() {
+        if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iCal") {
+            NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
+        }
+    }
+
+    /// The app macOS opens calendar files (.ics) with, else the one for
+    /// webcal:// links. Read when asked (a menu or a click), never polled.
+    static var defaultCalendarAppURL: URL? {
+        if let ics = UTType("com.apple.ical.ics"), let url = NSWorkspace.shared.urlForApplication(toOpen: ics) { return url }
+        if let probe = URL(string: "webcal://localhost/calendar.ics") { return NSWorkspace.shared.urlForApplication(toOpen: probe) }
+        return nil
+    }
+
+    /// "Fantastical", for the "Open Events In" choices. Menus ask on every
+    /// update, so the answer is kept for half a minute.
+    static var defaultCalendarAppName: String? {
+        if let cached = defaultAppNameCache, Date().timeIntervalSince(cached.date) < 30 { return cached.name }
+        var name: String?
+        if let url = defaultCalendarAppURL {
+            var display = FileManager.default.displayName(atPath: url.path)
+            if display.hasSuffix(".app") { display = String(display.dropLast(4)) }
+            name = display
+        }
+        defaultAppNameCache = (Date(), name)
+        return name
+    }
+
+    private static var defaultAppNameCache: (date: Date, name: String?)?
+
+    /// "Default calendar app (Fantastical)".
+    static func title(for target: CalendarOpenTarget) -> String {
+        guard target == .defaultApp, let name = defaultCalendarAppName else { return target.title }
+        return "\(target.title) (\(name))"
+    }
+
+    /// Choices worth offering: the default-app one only when it isn't Calendar.
+    static var openTargets: [CalendarOpenTarget] {
+        let name = defaultCalendarAppName
+        let chosen = CalendarPreferences.shared.openTarget
+        return CalendarOpenTarget.allCases.filter { $0 != .defaultApp || $0 == chosen || (name != nil && name != "Calendar") }
+    }
+
+    private static var defaultCalendarAppIsCalendar: Bool {
+        guard let url = defaultCalendarAppURL else { return true }
+        return Bundle(url: url)?.bundleIdentifier == "com.apple.iCal"
+    }
+
+    /// Opens the default calendar app; Calendar when there is none.
+    static func openDefaultCalendarApp() {
+        guard let app = defaultCalendarAppURL else { return openCalendarApp() }
+        NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
     }
 
     // MARK: Live activity
@@ -943,7 +1270,8 @@ final class MeetingsController: ObservableObject {
         .minimal {
             MeetingProviderBadge(provider: provider, appIcon: icon, calendarColor: calendarColor, size: 14)
         }
-        activities.post(activity)
+        let minutesLeft = isNow ? 0 : max(1, Int((meeting.start.timeIntervalSinceNow / 60).rounded(.up)))
+        activities.post(activity.announcing(ActivityAnnouncementText.meeting(title: title, minutes: minutesLeft), as: .meeting))
         // "Now" announces itself for a little longer than the 4 s peek, then
         // rests in the wings as a green "Now" (hover opens Today with Join),
         // so an unjoined meeting never keeps the band over the page.

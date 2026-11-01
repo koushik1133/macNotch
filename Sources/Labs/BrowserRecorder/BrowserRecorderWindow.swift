@@ -239,12 +239,14 @@ private struct BRSidebar: View {
                         Image(systemName: "square.and.arrow.down")
                     }
                     .help("Import flow files (.json)")
+                    .accessibilityLabel("Import flow files (.json)")
                     Button {
                         NSWorkspace.shared.open(BrowserFlowStore.defaultDirectory)
                     } label: {
                         Image(systemName: "folder")
                     }
                     .help("Show the Flows folder")
+                    .accessibilityLabel("Show the Flows folder")
                 }
                 Text(controller.runtimeStatus)
                     .font(.system(size: 9.5))
@@ -304,6 +306,7 @@ private struct BRDetailHeader: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 150)
+                    .accessibilityLabel("Detail")
 
                     BRAddStepMenu(controller: controller, flowID: flow.id, afterStepID: nil)
 
@@ -512,10 +515,13 @@ private struct BRStepRow: View {
                 .controlSize(.mini)
                 .labelsHidden()
                 .help(step.isDisabled ? "Skipped during replay" : "Runs during replay")
+                .accessibilityLabel("Run this step during replay")
                 Button { controller.moveStep(flowID: flowID, stepID: step.id, by: -1) } label: { Image(systemName: "chevron.up") }
                     .disabled(index == 0)
+                    .accessibilityLabel("Move step up")
                 Button { controller.moveStep(flowID: flowID, stepID: step.id, by: 1) } label: { Image(systemName: "chevron.down") }
                     .disabled(index == count - 1)
+                    .accessibilityLabel("Move step down")
                 BRAddStepMenu(controller: controller, flowID: flowID, afterStepID: step.id, compact: true, template: step)
                 Button(role: .destructive) { controller.deleteStep(flowID: flowID, stepID: step.id) } label: { Image(systemName: "trash") }
                     .help("Delete step")
@@ -670,7 +676,7 @@ private struct BRLiveRecordingView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Circle().fill(SparkVTheme.recording).frame(width: 9, height: 9)
+                SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 9, label: "")
                 Text("Recording in the Chromium window")
                     .font(.system(size: 13, weight: .semibold))
                 Text("Use the overlay's “Wait for element” to add waits. Passwords are masked.")
@@ -737,6 +743,7 @@ private struct BRMessageBar: View {
                 Spacer()
                 Button { controller.clearMessages() } label: { Image(systemName: "xmark") }
                     .buttonStyle(.borderless)
+                    .accessibilityLabel("Dismiss messages")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)

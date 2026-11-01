@@ -58,6 +58,7 @@ struct MeetingCapsuleView: View {
         .opacity(assistant.phase == .summarizing ? 0.5 : 1)
         .disabled(assistant.phase == .summarizing)
         .help(assistant.phase == .recording ? "Stop and write notes" : "Record a meeting")
+        .accessibilityLabel(assistant.phase == .recording ? "Stop recording and write notes" : (assistant.phase == .summarizing ? "Writing notes" : "Record a meeting"))
     }
 
     @ViewBuilder

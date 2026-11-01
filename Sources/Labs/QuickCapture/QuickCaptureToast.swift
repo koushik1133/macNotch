@@ -72,7 +72,9 @@ final class QuickCaptureToastController {
                         return
                     }
                 }
-                try? await Task.sleep(for: .milliseconds(250))
+                // Wake at the deadline (re-checked at least every 2 s), not 4x a second.
+                let wait = min(max(self.deadline.timeIntervalSinceNow, 0.05), 2)
+                try? await Task.sleep(for: .seconds(wait))
             }
         }
     }
@@ -92,7 +94,7 @@ final class QuickCaptureToastController {
     }
 
     private func position(_ panel: NSPanel) {
-        guard let screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.screens.first else { return }
+        guard let screen = IslandScreen.current else { return }
         let frame = screen.frame
         let notch = screen.safeAreaInsets.top > 0 ? screen.safeAreaInsets.top : max(24, frame.maxY - screen.visibleFrame.maxY)
         let top = frame.maxY - notch - NotchMetrics.activityBandHeight - 6
@@ -129,6 +131,7 @@ final class QuickCaptureToastController {
         menu.popUp(positioning: nil, at: below, in: view)
         // popUp blocks until the menu closes; give the user a moment to see the result.
         deadline = Date().addingTimeInterval(3)
+        scheduleHide()
     }
 }
 

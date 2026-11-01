@@ -340,6 +340,7 @@ struct FocusHeaderButton: View {
             .onHover { hover.isOn = $0 }
             .animation(SparkVMotion.hover(), value: hover.isOn)
             .help("Focus: mute notifications and start a \(focus.settings.focusMinutes)-minute round")
+            .accessibilityLabel("Focus: mute notifications and start a \(focus.settings.focusMinutes)-minute round")
         }
     }
 }
@@ -546,13 +547,14 @@ struct FocusTabView: View {
                 .overlay(Circle().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
                 .overlay(alignment: .topTrailing) {
                     if focus.doNotDisturbNotice != nil {
-                        Circle().fill(SparkVTheme.warning).frame(width: 7, height: 7)
+                        SparkVStatusDot(kind: .warning, color: SparkVTheme.warning, size: 7, label: "")
                     }
                 }
                 .contentShape(Circle())
         }
         .buttonStyle(SparkVPressStyle())
         .help(focus.doNotDisturbNotice ?? "Focus settings: durations, Do Not Disturb, distractions")
+        .accessibilityLabel(focus.doNotDisturbNotice ?? "Focus settings: durations, Do Not Disturb, distractions")
     }
 
     private var runningControls: some View {
@@ -640,6 +642,7 @@ struct FocusRoundButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -660,6 +663,9 @@ struct FocusWeekBars: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .bottom)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Focus this week")
+        .accessibilityValue(days.map { FocusText.compact($0) }.joined(separator: ", "))
     }
 }
 
@@ -721,6 +727,7 @@ struct FocusSummaryCard: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Close")
+            .accessibilityLabel("Close")
         }
     }
 

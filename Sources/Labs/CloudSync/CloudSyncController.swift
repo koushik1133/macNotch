@@ -345,8 +345,12 @@ final class CloudSyncController: ObservableObject {
         pollTask = Task { [weak self] in
             var lastFull = Date()
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(Self.pollInterval * 1_000_000_000))
+                // Low Power Mode or a warm Mac: a third as often.
+                let wait = SparkVEnergy.shared.interval(Self.pollInterval)
+                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
                 guard !Task.isCancelled, let self else { return }
+                // Displays asleep: nobody is waiting; the wake catches up.
+                if SparkVEnergy.shared.screensAsleep { continue }
                 if Date().timeIntervalSince(lastFull) >= Self.fullCheckInterval {
                     lastFull = Date()
                     self.schedule(full: true, after: 0)

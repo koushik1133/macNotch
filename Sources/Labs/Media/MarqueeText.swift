@@ -29,15 +29,16 @@ struct MarqueeText: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var clock = MarqueeClock()
+    @ObservedObject private var energy = SparkVEnergy.shared
 
     var body: some View {
         let width = Self.textWidth(text, font: font)
         GeometryReader { geometry in
             let available = geometry.size.width
-            let scrolls = isActive && !reduceMotion && width > available + 0.5
+            let scrolls = isActive && !reduceMotion && !energy.pausesDecoration && width > available + 0.5
             Group {
                 if scrolls {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
+                    TimelineView(.animation(minimumInterval: energy.frameInterval(1.0 / 30))) { context in
                         let offset = Self.offset(
                             elapsed: previewElapsed ?? context.date.timeIntervalSince(clock.start(for: text, now: context.date)),
                             textWidth: width, gap: gap, speed: speed, pause: pause

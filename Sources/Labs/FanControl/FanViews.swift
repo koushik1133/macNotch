@@ -62,6 +62,9 @@ struct FanRPMBar: View {
             }
         }
         .frame(height: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Fan speed")
+        .accessibilityValue("\(Int(fan.actual ?? 0)) RPM\(fan.maximum.map { " of \(Int($0))" } ?? "")\(manual ? ", manual" : "")")
     }
 }
 
@@ -306,6 +309,7 @@ struct FanTabView: View {
             }
             .buttonStyle(FanSmallButtonStyle())
             .help("Open Fan Control")
+            .accessibilityLabel("Open Fan Control")
         }
         .frame(height: 20)
     }

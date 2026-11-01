@@ -136,6 +136,7 @@ struct OnboardingDragCard: View {
             .buttonStyle(SparkVPressStyle())
 
             .padding(8)
+            .accessibilityLabel("Close")
         }
         .environment(\.colorScheme, .dark)
     }

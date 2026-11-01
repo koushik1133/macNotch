@@ -109,7 +109,9 @@ final class ClickyOverlay {
                     // The label pops in like a tooltip: ease-out, 180 ms.
                     withAnimation(SparkVMotion.easeOut(SparkVMotion.Duration.small)) { self.model.arrived = true }
                     // Constant ripple: ease-out reads as a wave spreading.
-                    withAnimation(.easeOut(duration: 1.3).repeatForever(autoreverses: false)) { self.model.pulse = true }
+                    if !SparkVMotion.reduceMotion, !SparkVEnergy.shared.pausesDecoration {
+                        withAnimation(.easeOut(duration: 1.3).repeatForever(autoreverses: false)) { self.model.pulse = true }
+                    }
                 }
             }
         }

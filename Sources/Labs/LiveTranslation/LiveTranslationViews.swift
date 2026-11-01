@@ -269,6 +269,7 @@ struct LiveTranslationCaptionView: View {
             }
             .buttonStyle(SparkVPressStyle())
             .help("Hide captions")
+            .accessibilityLabel("Hide captions")
         }
     }
 }

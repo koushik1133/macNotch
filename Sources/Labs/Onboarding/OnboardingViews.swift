@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 // MARK: - Palette
@@ -127,7 +128,9 @@ struct OnboardingRootView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            OnboardingHeader(step: controller.step)
+            OnboardingHeader(step: controller.step, steps: controller.isFullTour
+                             ? OnboardingController.Step.allCases
+                             : [.welcome, .terms, .permissions])
                 .padding(.top, 30)
                 .padding(.horizontal, 28)
             ZStack {
@@ -138,8 +141,14 @@ struct OnboardingRootView: View {
                 case .terms:
                     OnboardingTermsPage(controller: controller)
                         .transition(pageTransition)
+                case .tryIt:
+                    OnboardingTryItPage(controller: controller)
+                        .transition(pageTransition)
                 case .permissions:
                     OnboardingPermissionsPage(controller: controller)
+                        .transition(pageTransition)
+                case .finish:
+                    OnboardingFinishPage(controller: controller)
                         .transition(pageTransition)
                 }
             }
@@ -178,6 +187,8 @@ struct OnboardingRootView: View {
 
 private struct OnboardingHeader: View {
     let step: OnboardingController.Step
+    /// Opened at Terms or Permissions only: Try It and Finish aren't part of it.
+    var steps: [OnboardingController.Step] = OnboardingController.Step.allCases
 
     var body: some View {
         HStack(spacing: 10) {
@@ -187,7 +198,7 @@ private struct OnboardingHeader: View {
                 .tracking(-0.3)
             Spacer()
             HStack(spacing: 6) {
-                ForEach(OnboardingController.Step.allCases) { item in
+                ForEach(Array(steps.enumerated()), id: \.element) { number, item in
                     let isCurrent = item == step
                     let isDone = item.rawValue < step.rawValue
                     HStack(spacing: 6) {
@@ -199,7 +210,7 @@ private struct OnboardingHeader: View {
                             if isDone {
                                 Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Color.white)
                             } else {
-                                Text("\(item.rawValue + 1)").font(.system(size: 10, weight: .bold, design: .monospaced))
+                                Text("\(number + 1)").font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(isCurrent ? Color.white : SparkVTheme.textSecondary)
                             }
                         }
@@ -211,8 +222,8 @@ private struct OnboardingHeader: View {
                     .frame(height: 28)
                     .background(Capsule().fill(isCurrent ? SparkVTheme.surface : Color.clear))
                     .overlay(Capsule().strokeBorder(isCurrent ? SparkVTheme.stroke : Color.clear))
-                    if item != OnboardingController.Step.allCases.last {
-                        Rectangle().fill(SparkVTheme.stroke).frame(width: 14, height: 1)
+                    if item != steps.last {
+                        Rectangle().fill(SparkVTheme.stroke).frame(width: 12, height: 1)
                     }
                 }
             }
@@ -246,6 +257,20 @@ private struct OnboardingFooter: View {
                     .buttonStyle(OnboardingPrimaryButtonStyle(isEnabled: controller.agreesToTerms))
                     .disabled(!controller.agreesToTerms)
                     .keyboardShortcut(.defaultAction)
+            case .tryIt:
+                Button("Back") { controller.back() }
+                    .buttonStyle(OnboardingSecondaryButtonStyle())
+                Spacer()
+                // One way forward: Skip until the drawer has opened, then Continue.
+                if controller.islandTried {
+                    Button("Continue") { controller.next() }
+                        .buttonStyle(OnboardingPrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                } else {
+                    Button("Skip") { controller.skip() }
+                        .buttonStyle(OnboardingSecondaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                }
             case .permissions:
                 Button("Back") { controller.back() }
                     .buttonStyle(OnboardingSecondaryButtonStyle())
@@ -254,7 +279,24 @@ private struct OnboardingFooter: View {
                     .foregroundStyle(SparkVTheme.textSecondary)
                     .padding(.leading, 4)
                 Spacer()
-                Button(controller.essentialsGranted ? "Done" : "Done for Now") { controller.finish() }
+                if controller.isFullTour {
+                    Button(controller.essentialsGranted ? "Continue" : "Continue for Now") { controller.next() }
+                        .buttonStyle(OnboardingPrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                } else {
+                    Button(controller.essentialsGranted ? "Done" : "Done for Now") { controller.finish() }
+                        .buttonStyle(OnboardingPrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                }
+            case .finish:
+                Button("Back") { controller.back() }
+                    .buttonStyle(OnboardingSecondaryButtonStyle())
+                Text("Reopen this tour any time: gear menu › Welcome Tour…")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(SparkVTheme.textSecondary)
+                    .padding(.leading, 4)
+                Spacer()
+                Button("Done") { controller.finish() }
                     .buttonStyle(OnboardingPrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
@@ -420,7 +462,7 @@ private struct OnboardingPermissionsPage: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    LabsBEyebrow("Step 3 / Permissions")
+                    LabsBEyebrow(controller.isFullTour ? "Step 4 / Permissions" : "Step 3 / Permissions")
                         .padding(.bottom, 4)
                     Text("Permissions")
                         .font(.system(size: 26, weight: .bold))
@@ -611,6 +653,7 @@ private struct OnboardingPermissionRow: View {
                     }
                     .buttonStyle(OnboardingSecondaryButtonStyle(compact: true))
                     .help("Open \(permission.title) in System Settings")
+                    .accessibilityLabel("Open \(permission.title) in System Settings")
                 }
             }
         }
@@ -677,6 +720,7 @@ private struct OnboardingStaleGrantCard: View {
 
                 .foregroundStyle(.secondary)
                 .help("Hide")
+                .accessibilityLabel("Hide")
             }
             VStack(alignment: .leading, spacing: 6) {
                 step(1, "Open \(names), select SparkV and click the minus (−) button to remove the old entry.")
@@ -772,5 +816,356 @@ private struct OnboardingSigningNote: View {
             return "This build is signed ad hoc, so macOS asks again after each rebuild. Scripts/create-signing-identity.sh fixes that."
         }
         return "This copy isn’t code signed, so macOS may not keep its permissions."
+    }
+}
+
+// MARK: - Try It
+
+/// "Try your notch": the user rests the pointer on the notch and the drawer
+/// opens (the notch window posts `.sparkVIslandDidExpand`). The step checks
+/// itself off; after ten seconds without it, a hint says where to look. It
+/// asks for nothing and can be skipped.
+private struct OnboardingTryItPage: View {
+    @ObservedObject var controller: OnboardingController
+    @StateObject private var appearance = OnboardingAppearance()
+
+    var body: some View {
+        let notch = controller.hasNotchedDisplay
+        VStack(spacing: 0) {
+            Spacer(minLength: 8)
+            LabsBEyebrow("Step 3 / Try It")
+                .padding(.bottom, 10)
+            Text(controller.islandTried ? "That’s the drawer" : "Try your notch")
+                .font(.system(size: 30, weight: .bold))
+                .tracking(-1)
+                .contentTransition(.opacity)
+            Text(controller.islandTried
+                 ? "It opened on its own and closes when you move away. Everything in SparkV lives in there."
+                 : (notch
+                    ? "Move your pointer onto the notch at the top of your screen and rest it there. The drawer opens by itself."
+                    : "Move your pointer onto the black island in the middle of your menu bar and rest it there. The drawer opens by itself."))
+                .font(.system(size: 13.5))
+                .foregroundStyle(SparkVTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 500)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
+
+            OnboardingIslandDemo(opened: controller.islandTried, hasNotch: notch, hint: controller.showsTryHint)
+                .frame(width: 540, height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerLarge, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerLarge, style: .continuous).strokeBorder(OnboardingStyle.cardBorder))
+                .padding(.top, 24)
+                .modifier(OnboardingStaggeredEntrance(index: 0, shown: appearance.shown))
+
+            ZStack {
+                if controller.showsTryHint && !controller.islandTried {
+                    Label(notch
+                          ? "Can’t find it? It’s the black shape around the camera, top center. Rest the pointer on it for a moment."
+                          : "Can’t find it? Look at the middle of the menu bar on the screen with SparkV, and rest the pointer there.",
+                          systemImage: "hand.point.up.left.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(OnboardingStyle.warning)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(OnboardingStyle.warning.opacity(0.12)))
+                        .transition(.sparkVEnter)
+                } else if controller.islandTried {
+                    Label("Opened. You’re ready.", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(SparkVTheme.success)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(SparkVTheme.success.opacity(0.12)))
+                        .transition(.sparkVEnter)
+                }
+            }
+            .frame(height: 40)
+            .padding(.top, 12)
+            .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.standard)), value: controller.showsTryHint)
+            .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.standard)), value: controller.islandTried)
+
+            HStack(spacing: 12) {
+                tip("cursorarrow.motionlines", "Rest to open", "The pointer on the notch opens the drawer.", .blue, index: 1)
+                tip("arrow.down.doc.fill", "Drop files on it", "Drag a file to the notch: it lands in the Tray.", .orange, index: 2)
+                tip("arrow.down.right.and.arrow.up.left", "Move away to close", "Leave it and the drawer tucks back in.", .purple, index: 3)
+            }
+            .padding(.horizontal, 44)
+            .padding(.top, 8)
+            Spacer(minLength: 8)
+        }
+        .onAppear { appearance.shown = true }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func tip(_ symbol: String, _ title: String, _ detail: String, _ tint: Color, index: Int) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
+                .fill(SparkVTheme.isApple ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(SparkVTheme.surfaceHover))
+                .frame(width: 28, height: 28)
+                .overlay(Image(systemName: symbol).font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SparkVTheme.isApple ? Color.white : SparkVTheme.accentText))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(size: 12.5, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(SparkVTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).fill(OnboardingStyle.card))
+        .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).strokeBorder(OnboardingStyle.cardBorder))
+        .modifier(OnboardingStaggeredEntrance(index: index, shown: appearance.shown))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// A desktop with a menu bar and the island at half size: resting with three
+/// short "rest here" pulses (again when the hint appears) until the real
+/// drawer opens, then open (with the island spring) showing a few tiles.
+/// Nothing loops, so the window is still while it waits.
+private struct OnboardingIslandDemo: View {
+    let opened: Bool
+    let hasNotch: Bool
+    var hint = false
+    @StateObject private var pulse = OnboardingAppearance()
+
+    var body: some View {
+        let resting = CGSize(width: 110, height: 19)
+        let open = CGSize(width: 280, height: 104)
+        let size = opened ? open : resting
+        ZStack(alignment: .top) {
+            NotchThemeWallpaper()
+            // Menu bar
+            HStack(spacing: 6) {
+                Image(systemName: "apple.logo").font(.system(size: 8, weight: .semibold))
+                Capsule().frame(width: 18, height: 3.5)
+                Capsule().frame(width: 12, height: 3.5)
+                Capsule().frame(width: 15, height: 3.5)
+                Spacer()
+                Capsule().frame(width: 10, height: 3.5)
+                Capsule().frame(width: 14, height: 3.5)
+                Text("9:41").font(.system(size: 7.5, weight: .semibold))
+            }
+            .foregroundStyle(Color.white.opacity(0.8))
+            .padding(.horizontal, 10)
+            .frame(height: 19)
+            .background(Color.black.opacity(hasNotch ? 0.25 : 0.32))
+
+            ZStack(alignment: .top) {
+                if !opened && !SparkVMotion.reduceMotion {
+                    // "Rest here": a ring that swells and fades out, three
+                    // times (strong ease-out, 300 ms each), then stops.
+                    IslandShape(topRadius: 4, bottomRadius: 8)
+                        .stroke(Color.white.opacity(0.9), lineWidth: 1.5)
+                        .frame(width: resting.width + 8, height: resting.height + 4)
+                        .scaleEffect(pulse.shown ? 1.35 : 1, anchor: .top)
+                        .opacity(pulse.shown ? 0 : 0.8)
+                }
+                IslandShape(topRadius: opened ? 8 : 4, bottomRadius: opened ? 16 : 6)
+                    .fill(Color.black)
+                    .frame(width: size.width + (opened ? 16 : 8), height: size.height)
+                    .overlay(alignment: .top) {
+                        if opened {
+                            drawerContent
+                                .frame(width: open.width, height: open.height)
+                                .transition(.opacity.animation(SparkVMotion.easeOut(SparkVMotion.Duration.small).delay(0.08)))
+                        }
+                    }
+                    .shadow(color: Color.black.opacity(opened ? 0.35 : 0), radius: 12, y: 6)
+            }
+            .animation(SparkVMotion.respecting(SparkVMotion.island), value: opened)
+
+            if !opened {
+                Image(systemName: "cursorarrow")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(Color.white)
+                    .shadow(color: .black.opacity(0.45), radius: 2, y: 1)
+                    .offset(x: 34, y: 34)
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+            }
+        }
+        .onAppear { playPulses() }
+        .onChange(of: hint) { _, shows in if shows { playPulses() } }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(opened ? "The drawer is open." : (hasNotch ? "The notch at the top of the screen." : "The island in the menu bar."))
+    }
+
+    /// Three 300 ms pulses from the start (Reduce Motion: none).
+    private func playPulses() {
+        guard !opened, !SparkVMotion.reduceMotion else { return }
+        var reset = Transaction()
+        reset.disablesAnimations = true
+        withTransaction(reset) { pulse.shown = false }
+        DispatchQueue.main.async {
+            withAnimation(SparkVMotion.easeOut(0.3).repeatCount(3, autoreverses: false)) { pulse.shown = true }
+        }
+    }
+
+    private var drawerContent: some View {
+        let tints: [Color] = [.indigo, .orange, .green, .cyan, .purple, .pink, .yellow, .blue]
+        let symbols = ["magnifyingglass", "square.and.arrow.down.on.square.fill", "text.viewfinder", "viewfinder",
+                       "wand.and.stars", "doc.on.clipboard", "arrow.down.doc.fill", "arrow.down.circle"]
+        return VStack(spacing: 7) {
+            HStack(spacing: 3) {
+                ForEach(["house.fill", "rectangle.3.group.fill", "tray.full.fill"], id: \.self) { symbol in
+                    Image(systemName: symbol).font(.system(size: 6.5, weight: .semibold))
+                        .foregroundStyle(symbol == "house.fill" ? Color.white : Color.white.opacity(0.5))
+                        .frame(width: 13, height: 10)
+                }
+                Spacer()
+                ForEach(["square.grid.2x2.fill", "waveform", "gearshape.fill"], id: \.self) { symbol in
+                    Image(systemName: symbol).font(.system(size: 6.5, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.5))
+                        .frame(width: 13, height: 10)
+                }
+            }
+            .frame(height: 19)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
+                ForEach(0..<8, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.white.opacity(0.09))
+                        .frame(height: 30)
+                        .overlay(Image(systemName: symbols[index]).font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(SparkVTheme.isApple ? tints[index] : Color.white.opacity(0.85)))
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+    }
+}
+
+// MARK: - Finish
+
+/// The last step: Launch at Login and the menu bar icon (AppShell's models,
+/// the same switches as Settings › General), the look and the text size,
+/// and the way to Customize Layout. Centered in the page.
+private struct OnboardingFinishPage: View {
+    @ObservedObject var controller: OnboardingController
+    @ObservedObject private var login = AppShellLoginItem.shared
+    @ObservedObject private var menuBar = StatusItemController.shared
+    @ObservedObject private var appearance = AppearanceSettings.shared
+    @StateObject private var shown = OnboardingAppearance()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 12)
+            LabsBEyebrow("Step 5 / Finish")
+                .padding(.bottom, 8)
+            Text("You’re all set")
+                .font(.system(size: 26, weight: .bold))
+                .tracking(-0.8)
+            Text("A few last touches. Change any of them later in Settings.")
+                .font(.system(size: 12.5))
+                .foregroundStyle(SparkVTheme.textSecondary)
+                .padding(.top, 4)
+
+            VStack(spacing: 0) {
+                row(symbol: "power", tint: .green, title: "Launch at Login", detail: loginDetail, index: 0) {
+                    if login.status == .requiresApproval {
+                        Button("Approve…") { SMAppService.openSystemSettingsLoginItems() }
+                            .buttonStyle(OnboardingSecondaryButtonStyle(compact: true))
+                    } else {
+                        Toggle("Launch at Login", isOn: Binding(get: { login.isOn }, set: { login.setEnabled($0) }))
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                    }
+                }
+                separator
+                row(symbol: "menubar.arrow.up.rectangle", tint: .blue, title: "Show SparkV in the Menu Bar",
+                    detail: "A small icon to open the drawer, Settings and updates. Off by default.", index: 1) {
+                    Toggle("Show SparkV in the Menu Bar", isOn: Binding(get: { menuBar.isVisible }, set: { menuBar.setVisible($0) }))
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                separator
+                row(symbol: "paintpalette.fill", tint: .pink, title: "Look",
+                    detail: "Apple matches macOS; SparkV Red is the brand look.", index: 2) {
+                    Picker("Look", selection: $appearance.style) {
+                        Text("Apple").tag(AppearanceStyle.apple)
+                        Text("SparkV Red").tag(AppearanceStyle.sparkvRed)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+                separator
+                row(symbol: "textformat.size", tint: .orange, title: "Text Size",
+                    detail: "Makes the drawer's text and controls larger.", index: 3) {
+                    Picker("Text Size", selection: $appearance.textSize) {
+                        ForEach(TextSize.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 220)
+                }
+                separator
+                row(symbol: "slider.horizontal.3", tint: Color(white: 0.6), title: "Customize Layout",
+                    detail: "Pick the tabs beside the camera, pin favorite tiles, switch off features you don't use.", index: 4) {
+                    Button("Customize…") { LookLayoutWindowController.shared.show(page: .layout) }
+                        .buttonStyle(OnboardingSecondaryButtonStyle(compact: true))
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).fill(OnboardingStyle.card))
+            .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).strokeBorder(OnboardingStyle.cardBorder))
+            .padding(.top, 18)
+            Spacer(minLength: 12)
+        }
+        .padding(.horizontal, 44)
+        .frame(maxHeight: .infinity)
+        .tint(SparkVTheme.accent)
+        .onAppear {
+            login.reload()
+            shown.shown = true
+        }
+    }
+
+    private var separator: some View {
+        Rectangle().fill(SparkVTheme.stroke).frame(height: 1).padding(.leading, 56)
+    }
+
+    /// SMAppService registers the copy that is running.
+    private var runsFromApplications: Bool {
+        Bundle.main.bundlePath.hasPrefix("/Applications/")
+            || Bundle.main.bundlePath.hasPrefix(NSHomeDirectory() + "/Applications/")
+    }
+
+    private var loginDetail: String {
+        if let error = login.lastError { return "macOS refused the change: \(error)" }
+        if login.status == .requiresApproval { return "Approve SparkV in System Settings › General › Login Items." }
+        if !runsFromApplications { return "Starts SparkV when you log in. Move it to Applications first so the login item keeps working." }
+        return "Starts SparkV when you log in, so the notch is always ready."
+    }
+
+    private func row<Control: View>(symbol: String, tint: Color, title: String, detail: String, index: Int,
+                                    @ViewBuilder control: () -> Control) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
+                .fill(SparkVTheme.isApple ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(SparkVTheme.surfaceHover))
+                .frame(width: 32, height: 32)
+                .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
+                    .strokeBorder(SparkVTheme.choose(apple: Color.white.opacity(0.14), sparkv: SparkVTheme.stroke)))
+                .overlay(Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SparkVTheme.isApple ? Color.white : SparkVTheme.text))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(SparkVTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            control()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .modifier(OnboardingStaggeredEntrance(index: index, shown: shown.shown))
+        .accessibilityElement(children: .contain)
     }
 }

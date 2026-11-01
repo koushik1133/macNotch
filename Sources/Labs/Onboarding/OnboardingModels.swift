@@ -293,6 +293,10 @@ struct OnboardingStore {
         static let trustedBuildIsAdHoc = "SparkV.onboarding.accessibilityTrustedBuildIsAdHoc"
         /// Build for which the stale-grant window already opened on launch.
         static let staleNoticeBuild = "SparkV.onboarding.staleNoticeBuild"
+        /// The drawer opened during Try It at least once.
+        static let triedIsland = "SparkV.onboarding.triedIsland"
+        /// When the full tour reached Finish and Done was clicked.
+        static let finishSeenAt = "SparkV.onboarding.finishSeenAt"
     }
 
     let defaults: UserDefaults
@@ -332,4 +336,12 @@ struct OnboardingStore {
         get { defaults.string(forKey: Key.staleNoticeBuild) }
         nonmutating set { defaults.set(newValue, forKey: Key.staleNoticeBuild) }
     }
+
+    var triedIsland: Bool {
+        get { defaults.bool(forKey: Key.triedIsland) }
+        nonmutating set { defaults.set(newValue, forKey: Key.triedIsland) }
+    }
+
+    var finishSeenAt: Date? { defaults.object(forKey: Key.finishSeenAt) as? Date }
+    func markFinishSeen(at date: Date = Date()) { defaults.set(date, forKey: Key.finishSeenAt) }
 }

@@ -6,6 +6,7 @@ final class WidgetsTabUI: ObservableObject {
         case widgets = "Widgets"
         case clocks = "Cities"
         case habits = "Habits"
+        case weather = "Weather"
         var id: String { rawValue }
     }
 
@@ -36,6 +37,8 @@ struct WidgetModels {
     var volume: VolumeKnobModel
     var gauges: SystemGaugesSampler
     var network: NetworkSpeedSampler
+    var weather: WeatherController = .shared
+    var reminders: RemindersController = .shared
     /// False draws the samplers' current values without starting them.
     var samples = true
     /// Fixed clock for renders.
@@ -154,11 +157,20 @@ struct WidgetsTabView: View {
             case .habits: HabitsWidget(store: models.habits, size: size, onEdit: { ui.edit(.habits) }, fixedDate: models.fixedDate)
             case .gauges: SystemGaugesWidget(sampler: models.gauges, size: size, samples: models.samples)
             case .network: NetworkSpeedWidget(sampler: models.network, size: size, samples: models.samples)
+            case .script: ScriptWidgetCell(compact: size == .small)
+            case .weather: WeatherWidget(controller: models.weather, size: size, onEdit: { ui.edit(.weather) }, fixedDate: models.fixedDate)
+            case .reminders: RemindersWidget(controller: models.reminders, size: size, fixedDate: models.fixedDate)
+            case .brightness: HUDBrightnessWidget()
             }
         }
         .contextMenu {
             if kind == .clocks { Button("Choose Cities…") { ui.edit(.clocks) } }
             if kind == .habits { Button("Edit Habits…") { ui.edit(.habits) } }
+            if kind == .weather {
+                Button("Weather City…") { ui.edit(.weather) }
+                Button("Refresh Weather") { models.weather.refresh() }.disabled(!models.weather.isConfigured)
+            }
+            if kind == .reminders { Button("Open Reminders") { models.reminders.openRemindersApp() } }
             Button("Move Earlier") { settings.move(kind, by: -1) }.disabled(settings.enabled.first == kind)
             Button("Move Later") { settings.move(kind, by: 1) }.disabled(settings.enabled.last == kind)
             Divider()
@@ -172,7 +184,7 @@ struct WidgetsTabView: View {
             VStack(spacing: 5) {
                 Image(systemName: "square.grid.2x2").font(.system(size: 16, weight: .semibold)).foregroundStyle(WidgetStyle.secondaryText)
                 Text("Choose widgets").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(SparkVTheme.text)
-                Text("World clocks, volume, habits, system and network")
+                Text("World clocks, volume, habits, system, network, weather and reminders")
                     .font(.system(size: 9)).foregroundStyle(WidgetStyle.tertiaryText)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -261,6 +273,7 @@ private struct RailButton: View {
         .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -326,6 +339,7 @@ private struct WidgetsEditPage: View {
                 case .widgets: WidgetPicker(settings: settings)
                 case .clocks: WorldClockEditor(store: models.clocks)
                 case .habits: HabitEditor(store: models.habits)
+                case .weather: WeatherCityEditor(controller: models.weather)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -337,6 +351,7 @@ private struct WidgetsEditPage: View {
         case .widgets: "Order follows the numbers; right-click a widget to move it"
         case .clocks: "Up to 3 cities"
         case .habits: "Up to \(HabitStore.maxHabits) habits"
+        case .weather: OpenMeteo.attribution
         }
     }
 }
@@ -408,9 +423,20 @@ private struct WidgetToggleTile: View {
 // MARK: - Home accessory
 
 /// Fits beside the media column in the Home view (56x56 pt): the volume
-/// knob without its card, which pairs with the playback controls.
+/// knob without its card, which pairs with the playback controls. Once a
+/// weather city is set (and unless "Show on Home" is off), the day's
+/// weather takes its place.
 struct WidgetsHomeAccessory: View {
+    @ObservedObject private var weather = WeatherController.shared
+
     var body: some View {
-        VolumeKnobWidget(compact: true)
+        if weather.showsHomeGlance {
+            WeatherHomeGlance(controller: weather)
+                .transition(.sparkVCrossfade)
+        } else {
+            VolumeKnobWidget(compact: true)
+                .contextMenu { SoundOutputMenuItems() }
+                .transition(.sparkVCrossfade)
+        }
     }
 }

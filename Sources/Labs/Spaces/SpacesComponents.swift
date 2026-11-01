@@ -465,6 +465,7 @@ struct SpacesChip: View {
                 }
                 .buttonStyle(SparkVPressStyle())
                 .foregroundStyle(tint.opacity(0.7))
+                .accessibilityLabel("Remove \(text)")
             }
         }
         .font(.system(size: 10.5, weight: .medium))
@@ -567,6 +568,7 @@ struct SpacesIconButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 

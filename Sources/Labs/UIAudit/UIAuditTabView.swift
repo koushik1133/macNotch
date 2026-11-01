@@ -168,6 +168,7 @@ struct UIAuditTabView: View {
         }
         .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
     }
 
     private func textButton(_ title: String, action: @escaping () -> Void) -> some View {

@@ -9,6 +9,18 @@ enum WidgetKind: String, CaseIterable, Codable, Identifiable, Sendable {
     case habits
     case gauges
     case network
+    /// The first reviewed script's output (Labs/DevStatus).
+    case script
+    /// Open-Meteo forecast for a typed city (off until one is chosen).
+    case weather
+    /// Apple Reminders due today, with check-off.
+    case reminders
+    /// The island's display brightness with a slider (Labs/HUDPlus).
+    case brightness
+
+    /// Shown on a fresh install. Weather and Reminders wait in "Add widget"
+    /// (they need a city or access first).
+    static let defaultEnabled: [WidgetKind] = [.clocks, .volume, .habits, .gauges, .network]
 
     var id: String { rawValue }
 
@@ -19,6 +31,10 @@ enum WidgetKind: String, CaseIterable, Codable, Identifiable, Sendable {
         case .habits: "Daily Habits"
         case .gauges: "System"
         case .network: "Network"
+        case .script: "Script"
+        case .weather: "Weather"
+        case .reminders: "Reminders"
+        case .brightness: "Brightness"
         }
     }
 
@@ -29,6 +45,10 @@ enum WidgetKind: String, CaseIterable, Codable, Identifiable, Sendable {
         case .habits: "checklist.checked"
         case .gauges: "cpu"
         case .network: "arrow.up.arrow.down"
+        case .script: "terminal.fill"
+        case .weather: "cloud.sun.fill"
+        case .reminders: "checklist"
+        case .brightness: "sun.max.fill"
         }
     }
 
@@ -43,6 +63,10 @@ enum WidgetKind: String, CaseIterable, Codable, Identifiable, Sendable {
         case .habits: Color.green
         case .gauges: Color.blue
         case .network: Color.teal
+        case .script: Color.gray
+        case .weather: Color.cyan
+        case .reminders: Color.orange
+        case .brightness: Color.yellow
         }
     }
 
@@ -55,6 +79,10 @@ enum WidgetKind: String, CaseIterable, Codable, Identifiable, Sendable {
         case .habits: [.large, .wide, .small]
         case .gauges: [.wide, .small]
         case .network: [.wide, .small]
+        case .script: [.wide, .small]
+        case .weather: [.large, .wide, .small]
+        case .reminders: [.large, .wide, .small]
+        case .brightness: [.small]
         }
     }
 
@@ -63,10 +91,14 @@ enum WidgetKind: String, CaseIterable, Codable, Identifiable, Sendable {
     var shrinkPriority: Int {
         switch self {
         case .network: 0
+        case .script: 0
         case .gauges: 1
-        case .clocks: 2
-        case .habits: 3
-        case .volume: 4
+        case .weather: 2
+        case .clocks: 3
+        case .reminders: 4
+        case .brightness: 6
+        case .habits: 5
+        case .volume: 6
         }
     }
 }
@@ -104,7 +136,7 @@ final class WidgetsSettings: ObservableObject {
             var seen = Set<WidgetKind>()
             enabled = raw.compactMap(WidgetKind.init(rawValue:)).filter { seen.insert($0).inserted }
         } else {
-            enabled = WidgetKind.allCases
+            enabled = WidgetKind.defaultEnabled
         }
     }
 
@@ -134,7 +166,7 @@ final class WidgetsSettings: ObservableObject {
     }
 
     func resetToDefaults() {
-        enabled = WidgetKind.allCases
+        enabled = WidgetKind.defaultEnabled
         save()
     }
 
@@ -438,7 +470,8 @@ final class WidgetSamplingLoop {
             var wait = first
             while !Task.isCancelled {
                 try? await Task.sleep(for: wait)
-                wait = interval
+                // Low Power Mode or a warm Mac: sample a third as often.
+                wait = SparkVEnergy.shared.duration(interval)
                 guard !Task.isCancelled, let self else { return }
                 self.tick()
             }

@@ -285,6 +285,7 @@ private struct SpacesTabHeader: View {
                             .foregroundStyle(SparkVTheme.textTertiary)
                     }
                     .buttonStyle(SparkVPressStyle())
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 7)

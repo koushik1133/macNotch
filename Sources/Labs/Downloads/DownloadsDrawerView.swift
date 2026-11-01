@@ -12,9 +12,11 @@ private enum DLLayout {
 }
 
 /// Drawer tab (about 508×114 pt): a header with Undo, Rules and settings,
-/// then a horizontally scrolling row of download cards, newest first.
+/// then a horizontally scrolling row of cards, newest first: copies and
+/// sends in flight (Finder, LocalSend) ahead of the downloads.
 struct DownloadsDrawerView: View {
     @ObservedObject var controller: DownloadsController
+    @ObservedObject private var transfers = ShelfTransfersMonitor.shared
     /// Off until the drawer is on screen, so the cards fade in in turn.
     @StateObject private var appeared = ViewFlag()
 
@@ -44,6 +46,34 @@ struct DownloadsDrawerView: View {
 
     @ViewBuilder
     private func content(cardHeight: CGFloat) -> some View {
+        if !transfers.transfers.isEmpty, controller.status != .running || controller.items.isEmpty {
+            // Copies and sends show even while the download watcher is off.
+            cardRow(cardHeight: cardHeight, downloads: [])
+        } else {
+            statusContent(cardHeight: cardHeight)
+        }
+    }
+
+    private func cardRow(cardHeight: CGFloat, downloads: [DownloadItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: DLLayout.cardSpacing) {
+                ForEach(Array(transfers.transfers.enumerated()), id: \.element.id) { index, transfer in
+                    ShelfTransferCard(monitor: transfers, transfer: transfer)
+                        .frame(width: DLLayout.cardWidth, height: cardHeight)
+                        .sparkVStaggeredEntrance(appeared.isOn, index: index)
+                }
+                ForEach(Array(downloads.enumerated()), id: \.element.id) { index, item in
+                    DownloadCard(controller: controller, item: item)
+                        .frame(width: DLLayout.cardWidth, height: cardHeight)
+                        .sparkVStaggeredEntrance(appeared.isOn, index: index + transfers.transfers.count)
+                }
+            }
+            .padding(DLLayout.wellPadding)
+        }
+    }
+
+    @ViewBuilder
+    private func statusContent(cardHeight: CGFloat) -> some View {
         switch controller.status {
         case .off:
             DownloadsNotice(symbol: "arrow.down.circle",
@@ -68,16 +98,7 @@ struct DownloadsDrawerView: View {
                                 detail: "New files in Downloads show up here with progress, speed and a suggested folder.",
                                 button: nil)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: DLLayout.cardSpacing) {
-                        ForEach(Array(controller.items.enumerated()), id: \.element.id) { index, item in
-                            DownloadCard(controller: controller, item: item)
-                                .frame(width: DLLayout.cardWidth, height: cardHeight)
-                                .sparkVStaggeredEntrance(appeared.isOn, index: index)
-                        }
-                    }
-                    .padding(DLLayout.wellPadding)
-                }
+                cardRow(cardHeight: cardHeight, downloads: controller.items)
             }
         }
     }
@@ -85,6 +106,7 @@ struct DownloadsDrawerView: View {
 
 struct DownloadsDrawerHeader: View {
     @ObservedObject var controller: DownloadsController
+    @ObservedObject private var transfers = ShelfTransfersMonitor.shared
 
     var body: some View {
         HStack(spacing: 8) {
@@ -117,8 +139,11 @@ struct DownloadsDrawerHeader: View {
                 Button("Edit Rules…") { controller.openRulesEditor() }
                 Button("Open Downloads Folder") { NSWorkspace.shared.open(controller.folder) }
                 Divider()
-                Button("Clear Finished") { controller.clearFinished() }
-                    .disabled(!controller.items.contains { !$0.isActive })
+                Button("Clear Finished") {
+                    controller.clearFinished()
+                    transfers.clearFinished()
+                }
+                .disabled(!controller.items.contains { !$0.isActive } && !transfers.transfers.contains { !$0.isActive })
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .font(.system(size: 12, weight: .medium))
@@ -128,11 +153,16 @@ struct DownloadsDrawerHeader: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .help("Download watcher settings")
+            .accessibilityLabel("Download watcher settings")
         }
     }
 
     private var statusText: String {
         if let notice = controller.notice { return notice }
+        let copying = transfers.activeTransfers.count
+        if copying > 0, controller.activeItems.isEmpty {
+            return copying == 1 ? "1 transfer in progress" : "\(copying) transfers in progress"
+        }
         switch controller.status {
         case .running:
             let active = controller.activeItems.count
@@ -281,6 +311,7 @@ struct DownloadCard: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .help("Other folders")
+            .accessibilityLabel("Other folders")
             if thinking {
                 ProgressView().controlSize(.mini).scaleEffect(0.7).frame(width: 12, height: 12)
                     .help("Apple Intelligence is picking a folder")
@@ -310,6 +341,23 @@ struct DownloadCard: View {
 
     private var actions: some View {
         HStack(spacing: 2) {
+            if item.isActive, let controls = controller.controls[item.id] {
+                // The browser's own Pause / Cancel, through its published progress.
+                if controls.canPause {
+                    DownloadsIconButton(symbol: controls.isPaused ? "play.fill" : "pause.fill",
+                                        help: controls.isPaused ? "Resume" : "Pause", enabled: true) { controller.togglePause(item.id) }
+                }
+                DownloadsIconButton(symbol: "xmark", help: "Cancel Download", enabled: controls.canCancel) { controller.cancelDownload(item.id) }
+                DownloadsIconButton(symbol: "magnifyingglass", help: "Show in Finder", enabled: true) { controller.reveal(item.id) }
+                Spacer(minLength: 0)
+            } else {
+                finishedActions
+            }
+        }
+    }
+
+    private var finishedActions: some View {
+        HStack(spacing: 2) {
             DownloadsIconButton(symbol: "arrow.up.forward.app", help: "Open", enabled: !item.isActive) { controller.open(item.id) }
             DownloadsIconButton(symbol: "magnifyingglass", help: "Show in Finder", enabled: true) { controller.reveal(item.id) }
             DownloadsIconButton(symbol: item.addedToTray ? "tray.full.fill" : "tray.and.arrow.down", help: "Add to Tray",
@@ -329,6 +377,7 @@ struct DownloadCard: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .help("More")
+            .accessibilityLabel("More")
         }
     }
 
@@ -338,10 +387,23 @@ struct DownloadCard: View {
             Button("Open") { controller.open(item.id) }
         }
         Button("Show in Finder") { controller.reveal(item.id) }
+        if item.isActive, let controls = controller.controls[item.id] {
+            if controls.canPause {
+                Button(controls.isPaused ? "Resume Download" : "Pause Download") { controller.togglePause(item.id) }
+            }
+            if controls.canCancel {
+                Button("Cancel Download") { controller.cancelDownload(item.id) }
+            }
+        }
         if !item.isActive {
             Button("Add to Tray") { controller.addToTray(item.id) }
             Button("Send to Space") { controller.sendToSpace(item.id) }
             Button("AirDrop…") { controller.airDrop(item.id) }
+            Button("Share…") {
+                let url = item.url
+                ShelfShare.presentAtPointer([url as NSURL], localSendFiles: { [url] })
+            }
+            Button("Send to Android / Windows…") { LocalSendPanelController.shared.open(files: [item.url]) }
             Divider()
             if item.move != nil {
                 Button("Undo Sort") { controller.undo(item.id) }
@@ -382,6 +444,7 @@ struct DownloadsIconButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 

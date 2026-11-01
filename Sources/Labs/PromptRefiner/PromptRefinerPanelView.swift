@@ -497,6 +497,7 @@ private struct PRHistoryRow: View {
     @ObservedObject var controller: PromptRefinerController
     let record: PromptRefinementRecord
     @StateObject private var isHovered = ViewFlag()
+    @ObservedObject private var assistive = SparkVAssistive.shared
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -522,7 +523,7 @@ private struct PRHistoryRow: View {
                 PRButton(title: "Delete", systemImage: "trash", isPrimary: false, isDestructive: true) {
                     controller.deleteHistory(id: record.id)
                 }
-            } else if isHovered.isOn {
+            } else if isHovered.isOn || assistive.revealsHoverControls {
                 TrayAICircleButton(systemImage: "doc.on.doc", help: "Copy") { controller.copy(record) }
                 TrayAICircleButton(systemImage: "trash", help: "Delete…") { controller.requestDelete(id: record.id) }
             }
@@ -533,6 +534,16 @@ private struct PRHistoryRow: View {
         .onHover { isHovered.isOn = $0 }
         .animation(SparkVMotion.hover(), value: isHovered.isOn)
         .onTapGesture { controller.restore(record) }
+        .contextMenu {
+            Button("Open") { controller.restore(record) }
+            Button("Copy") { controller.copy(record) }
+            Divider()
+            Button("Delete…", role: .destructive) { controller.requestDelete(id: record.id) }
+        }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { controller.restore(record) }
+        .accessibilityAction(named: "Copy") { controller.copy(record) }
+        .accessibilityAction(named: "Delete") { controller.requestDelete(id: record.id) }
         .help("Open this refinement")
     }
 }
@@ -649,6 +660,7 @@ struct PRMicButton: View {
         }
         .buttonStyle(SparkVPressStyle())
         .help(isOn ? "Stop dictating" : "Dictate")
+        .accessibilityLabel(isOn ? "Stop dictating" : "Dictate")
     }
 }
 

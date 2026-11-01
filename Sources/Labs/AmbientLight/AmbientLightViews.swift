@@ -22,6 +22,7 @@ struct AmbientLightSettingsView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "sun.min").foregroundStyle(SparkVTheme.textSecondary)
                         Slider(value: $settings.intensity, in: 0.2...1)
+                            .accessibilityLabel("Brightness")
                         Image(systemName: "sun.max.fill").foregroundStyle(SparkVTheme.textSecondary)
                     }
                 }
@@ -31,10 +32,12 @@ struct AmbientLightSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                    .accessibilityLabel("Where")
                     if settings.scope == .notchAndEdges {
                         HStack(spacing: 10) {
                             Text("Edge Width").font(.system(size: 12)).foregroundStyle(SparkVTheme.textSecondary)
                             Slider(value: $settings.edgeWidth, in: 6...40)
+                                .accessibilityLabel("Edge width")
                         }
                         Text("A thin strip of light along every screen edge, like a car's door lights. It hides itself over full-screen apps and while your screen is shared, and never shows up in screenshots or recordings.")
                             .font(.system(size: 11))
@@ -84,6 +87,7 @@ struct AmbientLightSettingsView: View {
             Toggle("", isOn: Binding(get: { settings.isEnabled }, set: { controller.setEnabled($0) }))
                 .toggleStyle(.switch)
                 .labelsHidden()
+                .accessibilityLabel("Ambient Light")
         }
     }
 

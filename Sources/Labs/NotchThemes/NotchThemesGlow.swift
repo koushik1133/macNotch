@@ -179,6 +179,7 @@ struct NotchGlowTimeline<Content: View>: View {
     let duration: TimeInterval?
     let content: (Double) -> Content
     @StateObject private var clock = NotchGlowClock()
+    @ObservedObject private var energy = SparkVEnergy.shared
 
     init(interval: TimeInterval = 1.0 / 30.0, duration: TimeInterval? = nil, @ViewBuilder content: @escaping (Double) -> Content) {
         self.interval = interval
@@ -188,7 +189,9 @@ struct NotchGlowTimeline<Content: View>: View {
 
     var body: some View {
         let start = clock.start
-        TimelineView(NotchGlowSchedule(start: start, interval: interval, duration: duration)) { timeline in
+        // Half the frame rate in Low Power Mode or on a warm Mac.
+        let step = energy.isConstrained ? interval * 2 : interval
+        TimelineView(NotchGlowSchedule(start: start, interval: step, duration: duration)) { timeline in
             content(max(0, timeline.date.timeIntervalSince(start)))
         }
     }

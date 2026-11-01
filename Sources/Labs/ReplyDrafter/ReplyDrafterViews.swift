@@ -129,6 +129,7 @@ struct ReplyDrafterNotchButton: View {
         .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(controller.shortcutLabel.isEmpty ? "Draft a reply" : "Draft a reply  \(controller.shortcutLabel)")
+        .accessibilityLabel(controller.shortcutLabel.isEmpty ? "Draft a reply" : "Draft a reply  \(controller.shortcutLabel)")
     }
 }
 

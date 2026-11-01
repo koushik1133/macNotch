@@ -1241,6 +1241,8 @@ private struct SpacesSidebarInboxRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { model.select(.inbox) }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.select(.inbox) }
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .onDrop(of: SpacesDropIngestor.acceptedTypes, delegate: SpacesSidebarDropDelegate(target: .inbox, model: model, allowsReorder: false))
@@ -1273,6 +1275,7 @@ private struct SpacesSidebarSpaceRow: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(SparkVPressStyle())
+                    .accessibilityLabel(model.expanded.contains(space.id) ? "Collapse \(space.name)" : "Expand \(space.name)")
                 } else {
                     Color.clear.frame(width: 14, height: 20)
                 }
@@ -1313,6 +1316,8 @@ private struct SpacesSidebarSpaceRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { model.select(.space(space.id)) }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.select(.space(space.id)) }
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .onDrag { SpacesDropIngestor.dragProvider(spaceID: space.id) }
@@ -1507,6 +1512,7 @@ private struct SpacesItemHeader: View {
                                 .foregroundStyle(SpacesPalette.tertiaryText)
                         }
                         .buttonStyle(SparkVPressStyle())
+                        .accessibilityLabel("Clear search")
                     }
                 }
                 .padding(.horizontal, 9)
@@ -1728,6 +1734,8 @@ private struct SpacesItemRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { model.selectedItemID = item.id }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.selectedItemID = item.id }
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .onDrag { SpacesDropIngestor.dragProvider(itemID: item.id) }
@@ -1893,6 +1901,8 @@ private struct SpacesSuggestionCard: View {
                         .foregroundStyle(SpacesPalette.primaryText)
                         .lineLimit(2)
                         .onTapGesture { onTitleTap?() }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { onTitleTap?() }
                     SpacesConfidenceBadge(confidence: confidence)
                 }
                 if !detail.isEmpty {
@@ -2285,6 +2295,7 @@ private struct SpacesAgentPanel: View {
             .labelsHidden()
             .padding(.horizontal, 16)
             .padding(.bottom, 10)
+            .accessibilityLabel("Inspector")
 
             switch model.inspectorTab {
             case .agent:
@@ -2332,6 +2343,9 @@ private struct SpacesAgentPanel: View {
                                 Circle().strokeBorder(Color.white, lineWidth: draft.color.lowercased() == hex.lowercased() ? 1.5 : 0)
                             )
                             .onTapGesture { draft.color = hex }
+                            .accessibilityLabel("Color \(hex)")
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { draft.color = hex }
                     }
                 }
             }
@@ -2610,6 +2624,7 @@ private struct SpacesAgentRulesView: View {
             HStack(spacing: 10) {
                 Slider(value: $draft.threshold, in: 0.5...1.0, step: 0.05)
                     .controlSize(.small)
+                    .accessibilityLabel("Auto-file confidence")
                 Text("\(Int((draft.threshold * 100).rounded()))%")
                     .font(.system(size: 11.5, weight: .semibold).monospacedDigit())
                     .foregroundStyle(SpacesPalette.primaryText)
@@ -2893,6 +2908,7 @@ private struct SpacesAskView: View {
                     .buttonStyle(SparkVPressStyle())
                     .disabled(model.askDraft.trimmingCharacters(in: .whitespaces).isEmpty)
                     .keyboardShortcut(.return, modifiers: .command)
+                    .accessibilityLabel("Ask")
                 }
             }
             .padding(10)
@@ -3115,6 +3131,7 @@ private struct SpacesManualEntrySheet: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(width: 150)
+                        .accessibilityLabel("Kind")
                     }
                     field("Space") {
                         Picker("", selection: $entry.spaceID) {
@@ -3128,6 +3145,7 @@ private struct SpacesManualEntrySheet: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(width: 210)
+                        .accessibilityLabel("Space")
                     }
                 }
             }

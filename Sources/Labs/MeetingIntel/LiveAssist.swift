@@ -850,6 +850,7 @@ struct MeetingCaptionBand: View {
                     }
                     .buttonStyle(SparkVPressStyle())
                     .help("Bookmark this moment")
+                    .accessibilityLabel("Bookmark this moment")
                     Button {
                         assist.captionsVisible = false
                     } label: {
@@ -859,6 +860,7 @@ struct MeetingCaptionBand: View {
                     }
                     .buttonStyle(SparkVPressStyle())
                     .help("Hide captions (recording continues)")
+                    .accessibilityLabel("Hide captions (recording continues)")
                 }
                 if assist.showsTalkMeter {
                     HStack(spacing: 6) {

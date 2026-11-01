@@ -1035,6 +1035,7 @@ struct TrayAISettingsView: View {
                     .labelsHidden()
                     .fixedSize()
                     .controlSize(.small)
+                    .accessibilityLabel("Translate to")
                 }
                 .padding(12)
                 .background(
@@ -1076,6 +1077,7 @@ struct TrayAIMessageField: View {
             .buttonStyle(SparkVPressStyle())
             .disabled(!canSend)
             .help("Send")
+            .accessibilityLabel("Send")
         }
         .padding(.leading, 14)
         .padding(.trailing, 5)

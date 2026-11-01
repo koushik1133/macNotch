@@ -322,6 +322,7 @@ struct FCCanvasArea: View {
         }
         .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -354,6 +355,7 @@ struct FCSidebar: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .help("New canvas")
+                .accessibilityLabel("New canvas")
                 Button {
                     editor.sidebarVisible = false
                 } label: {
@@ -361,6 +363,7 @@ struct FCSidebar: View {
                 }
                 .buttonStyle(SparkVPressStyle())
                 .help("Hide sidebar")
+                .accessibilityLabel("Hide sidebar")
             }
             .padding(.horizontal, 14)
             .frame(height: 38)
@@ -485,5 +488,6 @@ struct FlowCanvasNotchButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }

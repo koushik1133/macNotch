@@ -191,6 +191,8 @@ final class MeetingAssistant: ObservableObject {
         case .idle, .failed: break
         }
         failureResetTask?.cancel()
+        // Your side of the call would be silent (System Status mic mute).
+        MicMuteController.shared.warnIfMuted(feature: "Meeting notes")
         // Recording now (from anywhere): the "Take notes?" offer is answered.
         if let call = callDetector.activeCall { declinedCallKeys.insert(call.key) }
         clearCallPrompt()
@@ -228,7 +230,7 @@ final class MeetingAssistant: ObservableObject {
                     await recorder.stop()
                     return
                 }
-                AppLog.log("Meetings: recording \"\(record.title)\"")
+                AppLog.log("Meetings: recording started")
                 // Load the answer model now so the first suggested answer
                 // doesn't pay the on-device model's cold start.
                 if suggestAnswers {
@@ -287,7 +289,7 @@ final class MeetingAssistant: ObservableObject {
             }
 
             guard !record.segments.isEmpty else {
-                AppLog.log("Meetings: no speech captured in \"\(record.title)\"")
+                AppLog.log("Meetings: no speech captured")
                 finishSession()
                 activities.post(LiveActivity(
                     id: ActivityID.notes, kind: .meeting, priority: 75, duration: 5
@@ -310,7 +312,7 @@ final class MeetingAssistant: ObservableObject {
                 upsertLibrary(record)
                 await store.saveAndWait(record)
                 SpaceIngestCenter.meeting(record)
-                AppLog.log("Meetings: notes ready for \"\(record.title)\" (\(notes.generatedBy))")
+                AppLog.log("Meetings: notes ready (\(notes.generatedBy))")
                 finishSession()
                 let mine = notes.myTasks.count
                 activities.post(LiveActivity(
@@ -567,7 +569,7 @@ final class MeetingAssistant: ObservableObject {
                 let finished = notes
                 update(meetingID) { $0.notes = finished }
                 if let updated = self.record(id: meetingID) { SpaceIngestCenter.meeting(updated) }
-                AppLog.log("Meetings: regenerated notes for \"\(record.title)\"")
+                AppLog.log("Meetings: notes regenerated")
             } catch {
                 AppLog.log("Meetings: regenerating notes failed: \(error.localizedDescription)")
                 notesWindow.flash("Couldn't regenerate notes: \(error.localizedDescription)")

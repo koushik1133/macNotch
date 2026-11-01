@@ -1218,6 +1218,7 @@ enum MeetingCallIcon {
             }
             let found = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
                 .map { NSWorkspace.shared.icon(forFile: $0.path) }
+            if cache.count >= 64 { cache.removeAll() }
             cache[bundleID] = found
             if let found { return found }
         }
@@ -1231,8 +1232,10 @@ enum MeetingCallIcon {
 /// elsewhere), for hover and press on the call prompt.
 @MainActor
 enum MeetingHaptics {
-    static func hover() { NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now) }
-    static func press() { NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now) }
+    /// Hovering never taps the trackpad (Trackpad Haptics: only presses,
+    /// swipes, drops and detents do).
+    static func hover() {}
+    static func press() { SparkVHaptics.perform(.levelChange) }
 }
 
 // MARK: - Views
@@ -1330,6 +1333,8 @@ private struct DetectedCallRow: View {
             }
             .frame(width: 12)
             .onAppear {
+                // Constant ripple; still under Reduce Motion or on a hot Mac.
+                guard !SparkVMotion.reduceMotion, !SparkVEnergy.shared.pausesDecoration else { return }
                 withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { pulse.isOn = true }
             }
 

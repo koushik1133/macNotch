@@ -274,6 +274,7 @@ private struct ModeStripIconButton: View {
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -289,8 +290,8 @@ struct ModeActivityView: View {
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 HStack(spacing: 8) {
                     ModeBadge(symbol: mode.symbol, colorHex: mode.colorHex, size: 18)
-                    (Text(mode.name).fontWeight(.semibold).foregroundColor(SparkVTheme.text)
-                     + Text(" on").foregroundColor(SparkVTheme.textSecondary))
+                    Text("\(Text(mode.name).fontWeight(.semibold).foregroundColor(SparkVTheme.text)) on")
+                        .foregroundColor(SparkVTheme.textSecondary)
                         .font(.system(size: 12))
                         .lineLimit(1)
                     Spacer(minLength: 8)

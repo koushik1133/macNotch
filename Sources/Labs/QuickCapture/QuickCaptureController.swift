@@ -193,7 +193,7 @@ final class QuickCaptureController: ObservableObject {
             case .failure(let error):
                 return problem(error.message)
             case .success(let tab):
-                AppLog.log("Quick Capture: web page from \(browser.name) (\(SpaceConnectors.domain(of: tab.url) ?? "file"))")
+                AppLog.log("Quick Capture: web page from \(browser.name)")
                 if tab.url.isFileURL {
                     guard let input = await SpaceConnectors.fileInput(tab.url, source: .web) else {
                         return problem("Couldn't read that file")

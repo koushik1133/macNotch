@@ -37,6 +37,12 @@ final class DownloadsController: ObservableObject {
     @Published private(set) var undoItemID: UUID?
     /// Folders directly inside Downloads (sort targets).
     @Published private(set) var subfolders: [URL] = []
+    /// Cancel / Pause the browser offers for each in-flight download (from
+    /// its published progress; empty for browsers that publish none).
+    @Published private(set) var controls: [UUID: DownloadsProgressSubscriber.Controls] = [:]
+
+    /// The app's controller, for Settings sections.
+    private(set) static weak var current: DownloadsController?
 
     @Published private(set) var isEnabled: Bool
     @Published var showsActivity: Bool {
@@ -113,6 +119,7 @@ final class DownloadsController: ObservableObject {
         showsActivity = defaults.object(forKey: Keys.showsActivity) as? Bool ?? true
         suggestsWithAI = defaults.object(forKey: Keys.suggestsWithAI) as? Bool ?? true
         loadHistory()
+        Self.current = self
     }
 
     // MARK: Lifecycle
@@ -296,6 +303,7 @@ final class DownloadsController: ObservableObject {
         self.stream = stream
         let subscriber = DownloadsProgressSubscriber(folder: tracker.folder) { [weak self] update in
             self?.tracker?.handle(progress: update)
+            self?.refreshControls()
             self?.ensureTicking()
         }
         subscriber.start()
@@ -316,6 +324,7 @@ final class DownloadsController: ObservableObject {
         tickTask = nil
         tracker = nil
         items.removeAll { $0.isActive }
+        controls = [:]
         dismissActivities()
     }
 
@@ -420,10 +429,53 @@ final class DownloadsController: ObservableObject {
         // In-flight items the tracker no longer reports were finished or cancelled separately.
         list.removeAll { $0.isActive && !activeIDs.contains($0.id) }
         items = list.sorted(by: Self.order)
+        refreshControls()
         updateProgressActivity()
     }
 
+    // MARK: Cancel / Pause (the browser's own, through its progress)
+
+    /// The paths a download is known by: the partial file now, the final name.
+    private func progressPaths(for item: DownloadItem) -> Set<String> {
+        let root = tracker?.rootPath ?? DownloadsPath.real(folder.path)
+        return [DownloadsPath.real(item.url.path), root + "/" + item.name]
+    }
+
+    private func refreshControls() {
+        guard let progressSubscriber else {
+            if !controls.isEmpty { controls = [:] }
+            return
+        }
+        var next: [UUID: DownloadsProgressSubscriber.Controls] = [:]
+        for item in items where item.isActive {
+            let found = progressSubscriber.controls(matching: progressPaths(for: item))
+            if found != .none { next[item.id] = found }
+        }
+        if next != controls { controls = next }
+    }
+
+    /// Cancels a download in the browser that's downloading it.
+    func cancelDownload(_ id: UUID) {
+        guard let item = item(id), item.isActive, let progressSubscriber else { return }
+        if progressSubscriber.cancel(matching: progressPaths(for: item)) {
+            AppLog.log("Downloads: cancelled a download in \(item.browser.displayName)")
+            show("Cancelling \(item.name)…")
+        } else {
+            show("\(item.browser.displayName) doesn't let other apps cancel this download")
+        }
+    }
+
+    /// Pauses or resumes a download in its browser.
+    func togglePause(_ id: UUID) {
+        guard let item = item(id), item.isActive, let progressSubscriber else { return }
+        if !progressSubscriber.togglePause(matching: progressPaths(for: item)) {
+            show("\(item.browser.displayName) doesn't let other apps pause this download")
+        }
+        refreshControls()
+    }
+
     private func finished(_ item: DownloadItem) {
+        controls[item.id] = nil
         var item = item
         if item.browser == .other { item.browser = Self.browser(forAgent: item.agentName) }
         if let index = items.firstIndex(where: { $0.id == item.id }) {
@@ -479,6 +531,7 @@ final class DownloadsController: ObservableObject {
 
     private func cancelled(_ item: DownloadItem) {
         items.removeAll { $0.id == item.id }
+        controls[item.id] = nil
         updateProgressActivity()
     }
 

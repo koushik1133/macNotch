@@ -217,6 +217,8 @@ final class SmartMomentsLiveSources: ObservableObject {
         }
 
         updateScreenshotQuery()
+        // A settings change turned on a moment that needs the fast loop.
+        if fastLoop == nil, wantsFastLoop { scheduleFast(after: 0.6) }
     }
 
     // MARK: - Fast loop: screen sharing, presentations
@@ -232,11 +234,20 @@ final class SmartMomentsLiveSources: ObservableObject {
         return !running.isDisjoint(with: MomentPresentationHeuristics.slideshowApps.keys)
     }
 
+    /// The fast loop is only scheduled while a moment needs it (sharing or
+    /// presentation detection, or one still in effect): idle, nothing wakes.
+    private var wantsFastLoop: Bool {
+        guard let engine else { return false }
+        return pollsSharing || engine.wants(.presentation) || presentDebouncer.isOn
+    }
+
     private func scheduleFast(after delay: TimeInterval) {
         guard isRunning else { return }
         fastLoop?.cancel()
+        fastLoop = nil
+        guard wantsFastLoop else { return }
         fastLoop = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
+            try? await Task.sleep(for: .seconds(delay), tolerance: .seconds(max(0.2, delay * 0.1)))
             guard !Task.isCancelled, let self, self.isRunning else { return }
             self.sampleFast()
             self.scheduleFast(after: self.isHot ? Self.hotInterval : Self.idleInterval)

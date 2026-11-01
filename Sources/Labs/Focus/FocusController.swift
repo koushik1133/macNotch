@@ -684,7 +684,8 @@ final class FocusController: ObservableObject {
         let kick = kickDate(Date())
         activities.post(LiveActivity(id: Self.doneActivityID, kind: .timer, priority: 86, duration: 5, opensTab: bandOpensTab) {
             FocusDoneBandView(message: message, accent: accent, kickedAt: kick)
-        })
+        }
+        .announcing(message, as: .timer, important: true))
     }
 
     private func postSummaryBand(_ record: FocusSessionRecord, kick: Bool) {

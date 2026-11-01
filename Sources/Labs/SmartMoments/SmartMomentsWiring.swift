@@ -80,9 +80,7 @@ final class SmartMomentsWiring {
 
     /// Actions with no owner in this build: no hook, so the chip never shows
     /// and Settings says "Not available yet".
-    static let unavailableActions: Set<MomentAction> = [
-        .quietNotchActivities, .moveIslandToDisplay,
-    ]
+    static let unavailableActions: Set<MomentAction> = []
 
     /// `settings` nil = the saved Smart Moments settings.
     init(app: SmartMomentsAppControllers, settings: SmartMomentsSettings? = nil) {
@@ -692,6 +690,38 @@ final class SmartMomentsWiring {
             guard !text.isEmpty else { return .skipped("No text in it") }
             self.writeToPasteboard(text)
             return .done("Text copied")
+        }
+
+        // Island Placement (Labs/IslandPlacement) ----------------------------
+
+        // Presenting: the island and its live activities step aside until
+        // the presentation ends (volume/brightness and dictation bands still
+        // pass through, per the Island settings).
+        h.actions[.quietNotchActivities] = { _ in
+            let reason = IslandPlacementController.smartMomentsQuietReason
+            guard let placement = IslandPlacementController.current else { return .skipped("Island unavailable") }
+            guard !placement.quietReasons.contains(reason) else { return .skipped("Already quiet") }
+            placement.setQuiet(true, reason: reason)
+            return .done("Notch quiet")
+        }
+        engine.putBack[.quietNotchActivities] = { _ in
+            let reason = IslandPlacementController.smartMomentsQuietReason
+            guard let placement = IslandPlacementController.current, placement.quietReasons.contains(reason) else {
+                return .skipped("Unchanged")
+            }
+            placement.setQuiet(false, reason: reason)
+            return .done("Notch back")
+        }
+        // A display connected: one tap pins the island to it (saved by UUID).
+        h.actions[.moveIslandToDisplay] = { context in
+            guard case .displayConnected(let id, let name) = context.trigger else { return .skipped("No display") }
+            guard context.userInitiated else { return .skipped("Needs a tap") }
+            guard let placement = IslandPlacementController.current else { return .failed("Island unavailable") }
+            return placement.moveIsland(toDisplayID: id) ? .done("Island on \(name)") : .failed("\(name) isn’t connected")
+        }
+        h.isAvailable[.moveIslandToDisplay] = { trigger in
+            guard case .displayConnected(let id, _) = trigger, let placement = IslandPlacementController.current else { return false }
+            return placement.islandDisplayID != id
         }
 
         engine.hooks = h

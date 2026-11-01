@@ -356,7 +356,7 @@ private struct MeetingRow: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
                 if isLive {
-                    Circle().fill(SparkVTheme.recording).frame(width: 7, height: 7)
+                    SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 7, label: "Live")
                 }
                 Text(record.title)
                     .font(.system(size: 13, weight: .medium))
@@ -429,6 +429,7 @@ private struct MeetingDetail: View {
             .frame(maxWidth: 360)
             .padding(.horizontal, 24)
             .padding(.bottom, 10)
+            .accessibilityLabel("Section")
 
             Divider()
 
@@ -491,6 +492,7 @@ private struct MeetingDetail: View {
                         }
                         .buttonStyle(SparkVPressStyle())
                         .help("Rename")
+                        .accessibilityLabel("Rename")
                     }
                 }
                 metadata
@@ -514,7 +516,7 @@ private struct MeetingDetail: View {
             if isLive && assistant.phase == .recording {
                 TimelineView(.periodic(from: record.startedAt, by: 1)) { context in
                     HStack(spacing: 4) {
-                        Circle().fill(SparkVTheme.recording).frame(width: 6, height: 6)
+                        SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 6, label: "")
                         Text("Recording " + MeetingFormat.clock(context.date.timeIntervalSince(record.startedAt)))
                             .monospacedDigit()
                     }
@@ -818,6 +820,7 @@ private struct MeetingTaskRow: View {
             Toggle("", isOn: Binding(get: { task.isDone }, set: { onToggle($0) }))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
+                .accessibilityLabel(task.task)
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.task)
                     .font(.system(size: 13))
@@ -983,6 +986,7 @@ private struct MeetingAnswersTab: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Copy answer")
+                                .accessibilityLabel("Copy answer")
                             }
                         }
                         .padding(14)

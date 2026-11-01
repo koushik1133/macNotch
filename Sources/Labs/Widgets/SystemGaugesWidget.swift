@@ -250,6 +250,9 @@ struct SystemGaugesWidget: View {
             }
         }
         .help(helpText)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("System gauges")
+        .accessibilityValue(helpText.replacingOccurrences(of: "\n", with: ", "))
         .whileVisible(start: { if samples { sampler.start() } }, stop: { if samples { sampler.stop() } })
     }
 

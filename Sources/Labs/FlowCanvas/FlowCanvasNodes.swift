@@ -92,7 +92,8 @@ struct FCStatusChip: View {
             if status.phase == .loading {
                 ProgressView().controlSize(.mini).scaleEffect(0.7).frame(width: 10, height: 10)
             } else {
-                Circle().fill(palette.status(status.phase)).frame(width: 6, height: 6)
+                SparkVStatusDot(kind: status.phase == .ready ? .good : (status.phase == .failed ? .error : .idle),
+                                color: palette.status(status.phase), size: 6, label: "")
             }
             if !compact {
                 Text(status.phase == .idle && status.message != nil ? "Stale" : status.label)
@@ -105,6 +106,9 @@ struct FCStatusChip: View {
         .padding(.vertical, 3)
         .background(Capsule().fill(palette.status(status.phase).opacity(0.12)))
         .help(status.message ?? status.label)
+        // Compact chips are a dot only: the status is still spoken.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(status.phase == .idle && status.message != nil ? "Stale" : status.label)
     }
 }
 
@@ -583,6 +587,7 @@ struct FCChatCard: View {
                 }
                 .buttonStyle(SparkVPressStyle())
                 .disabled(editor.runningIDs.contains(node.id))
+                .accessibilityLabel("Send")
             }
             .disabled(isGhost)
         }

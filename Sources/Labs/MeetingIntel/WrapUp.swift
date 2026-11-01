@@ -1387,6 +1387,7 @@ struct MeetingWrapUpView: View {
                     }
                     .buttonStyle(SparkVPressStyle())
                     .help("No due date")
+                    .accessibilityLabel("No due date")
                 }
             } else {
                 Button("Add date") {

@@ -494,6 +494,7 @@ final class ClickyController: ObservableObject {
         liveQuestion = ""
         phase = .listening
         listeningSince = now()
+        MicMuteController.shared.warnIfMuted(feature: "Clicky")
         haptic(.listen)
         if hasAPIKey { prewarm() }
         let current = session

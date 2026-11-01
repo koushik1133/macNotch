@@ -363,6 +363,12 @@ final class FCThumbnails: ObservableObject {
     private var cache: [String: NSImage] = [:]
     private var pending: Set<String> = []
     @Published private(set) var revision = 0
+    /// 640 px previews are ~1.6 MB each: keep at most this many.
+    static let capacity = 48
+
+    init() {
+        SparkVEnergy.shared.onMemoryPressure { [weak self] in self?.cache.removeAll() }
+    }
 
     func image(for url: URL, isPDF: Bool) -> NSImage? {
         let key = url.path
@@ -374,6 +380,7 @@ final class FCThumbnails: ObservableObject {
             await MainActor.run {
                 self.pending.remove(key)
                 if let cgImage {
+                    if self.cache.count >= Self.capacity { self.cache.removeAll() }
                     self.cache[key] = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
                     self.revision &+= 1
                 }

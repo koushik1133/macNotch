@@ -15,7 +15,8 @@ enum AmbientNotchGlowMetrics {
     static var outset: CGFloat { NotchThemeMetrics.maxOutset }
     static let canvasSize = CGSize(width: 1_100, height: 760)
     /// Matches `NotchMetrics.hoverAnimation` / `NotchThemeTiming.islandSpring`.
-    static let springResponse = 0.35
+    /// nil with Island Motion › Instant: the outline jumps.
+    static var springResponse: Double? { IslandInteractionStore.current.motion.coreAnimationResponse }
 
     /// The island outline (`IslandShape`) for the given geometry in the
     /// canvas, without the closing segment along the screen edge (that edge

@@ -107,5 +107,6 @@ private struct DrawerIconButton: View {
         }
         .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
     }
 }

@@ -2,12 +2,22 @@ import AppKit
 import Combine
 import CoreBluetooth
 import IOBluetooth
+import IOKit
 import IOKit.ps
 import SwiftUI
 
 /// Battery and Bluetooth-audio HUDs: a short band when the charger goes in or
-/// out, low-battery warnings at 20% and 10%, and the AirPods (or any Bluetooth
-/// headset) battery when one connects.
+/// out (with the charger's wattage), low-battery warnings at the thresholds
+/// the user picked (20 % and 10 % by default), a critical alert that stays in
+/// the wings until the charger goes in, and the AirPods (or any Bluetooth
+/// headset) battery when one connects. Also keeps the battery's health
+/// (maximum capacity, cycle count, condition) and Low Power Mode for the
+/// Status page.
+///
+/// Event driven only: IOKit power-source notifications, Low Power Mode's
+/// `NSProcessInfoPowerStateDidChange`, IOBluetooth connect notifications.
+/// The battery registry (health, cycles) is read on plug / unplug, when the
+/// Status page opens and at most every 10 minutes from those notifications.
 ///
 /// Bluetooth needs the TCC "Bluetooth" permission. Registering IOBluetooth
 /// notifications while that permission is undetermined shows the system
@@ -20,7 +30,12 @@ final class PowerMonitor: ObservableObject {
         case notDetermined, allowed, denied
     }
 
-    /// Persisted; when false nothing is posted and nothing is monitored.
+    /// The running monitor (set in `init`), for settings sections and the
+    /// Status page, which take no arguments.
+    static weak var current: PowerMonitor?
+
+    /// Persisted; when false no band is posted and Bluetooth is not watched
+    /// (the battery reading stays live for the Status page).
     @Published var isEnabled: Bool {
         didSet {
             guard isEnabled != oldValue else { return }
@@ -29,28 +44,60 @@ final class PowerMonitor: ObservableObject {
         }
     }
 
+    /// Low-battery warnings, in percent, highest first (each fires once per
+    /// discharge). Change with `setLowThresholds(_:)`.
+    @Published private(set) var lowThresholds: [Int]
+
+    /// At or below this level on battery, a red alert stays in the wings
+    /// until the charger goes in; 0 is off. Change with `setCriticalLevel(_:)`.
+    @Published private(set) var criticalLevel: Int
+
+    /// Show the charger's wattage in the plug-in band.
+    @Published var showsWattage: Bool {
+        didSet { UserDefaults.standard.set(showsWattage, forKey: Self.wattageKey) }
+    }
+
     /// Bluetooth permission as last seen (for a settings row).
     @Published private(set) var bluetoothAccess: BluetoothAccess
     /// Latest internal-battery reading; nil on Macs without a battery.
     @Published private(set) var battery: BatteryReading?
+    /// Health, cycles, charger and charge-hold details; nil until read (and
+    /// on Macs without a battery).
+    @Published private(set) var details: BatteryDetails?
+    /// Low Power Mode as macOS reports it right now.
+    @Published private(set) var isLowPowerMode: Bool
+    /// The Bluetooth headset that connected last and is still connected.
+    @Published private(set) var connectedAudio: BluetoothAudioDevice?
 
     static let enabledKey = "power.isEnabled"
+    static let thresholdsKey = "power.lowThresholds"
+    static let criticalKey = "power.criticalLevel"
+    static let wattageKey = "power.showsWattage"
     static let batteryActivityID = "battery"
+    static let criticalActivityID = "battery.critical"
     static let airPodsActivityID = "airpods"
+    static let batterySettingsURL = URL(string: "x-apple.systempreferences:com.apple.Battery-Settings.extension")
 
     private static let plugDuration: TimeInterval = 3
     private static let lowDuration: TimeInterval = 4
     private static let airPodsDuration: TimeInterval = 4
+    /// Health and cycle counts change slowly: re-read at most this often
+    /// from power-source notifications.
+    private static let detailsRefreshInterval: TimeInterval = 600
 
     private let activities: ActivityCenter
     private var isStarted = false
 
     // Battery
     private var runLoopSource: CFRunLoopSource?
-    private var tracker = BatteryTransitionTracker()
-    /// The plug-in band currently on screen, so a time-to-full estimate that
-    /// arrives a moment later can fill it in.
-    private var plugBand: (expires: Date, hadTime: Bool)?
+    private var tracker: BatteryTransitionTracker
+    /// The plug-in band currently on screen, so a time-to-full estimate (or
+    /// the charger's wattage) that arrives a moment later can fill it in.
+    private var plugBand: (expires: Date, hadTime: Bool, hadWatts: Bool, mode: BatteryActivityMode, hold: BatteryHoldReason?)?
+    /// Level the critical alert shows, while it is up.
+    private var criticalShownLevel: Int?
+    private var detailsReadAt: Date?
+    private var powerStateObserver: NSObjectProtocol?
 
     // Bluetooth
     private var bluetooth: BluetoothConnectionObserver?
@@ -64,7 +111,15 @@ final class PowerMonitor: ObservableObject {
         self.activities = activities
         let defaults = UserDefaults.standard
         isEnabled = defaults.object(forKey: Self.enabledKey) as? Bool ?? true
+        let thresholds = BatteryThresholds.sanitize(defaults.array(forKey: Self.thresholdsKey) as? [Int] ?? BatteryThresholds.defaultLow)
+        lowThresholds = thresholds
+        let critical = BatteryThresholds.sanitizeCritical(defaults.object(forKey: Self.criticalKey) as? Int ?? BatteryThresholds.defaultCritical)
+        criticalLevel = critical
+        showsWattage = defaults.object(forKey: Self.wattageKey) as? Bool ?? true
+        tracker = BatteryTransitionTracker(thresholds: thresholds)
         bluetoothAccess = Self.currentBluetoothAccess()
+        isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        Self.current = self
     }
 
     func start() {
@@ -75,12 +130,27 @@ final class PowerMonitor: ObservableObject {
             self.bluetoothAccess = Self.currentBluetoothAccess()
             if self.bluetoothAccess == .allowed { self.startBluetooth() }
         }
+        // Low Power Mode: posted on an arbitrary thread when it flips.
+        powerStateObserver = NotificationCenter.default.addObserver(
+            forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let on = ProcessInfo.processInfo.isLowPowerModeEnabled
+                if self.isLowPowerMode != on {
+                    self.isLowPowerMode = on
+                    AppLog.log("Power: Low Power Mode \(on ? "on" : "off")")
+                }
+            }
+        }
         applyEnabled(userInitiated: false)
     }
 
     func stop() {
         isStarted = false
         bluetoothWatch = nil
+        if let powerStateObserver { NotificationCenter.default.removeObserver(powerStateObserver) }
+        powerStateObserver = nil
         stopMonitoring()
     }
 
@@ -108,15 +178,62 @@ final class PowerMonitor: ObservableObject {
         }
     }
 
+    func setLowThresholds(_ values: [Int]) {
+        let clean = BatteryThresholds.sanitize(values)
+        guard clean != lowThresholds else { return }
+        lowThresholds = clean
+        UserDefaults.standard.set(clean, forKey: Self.thresholdsKey)
+        tracker.thresholds = clean
+        AppLog.log("Power: low-battery warnings at \(BatteryThresholds.summary(clean))")
+    }
+
+    /// Adds or removes one threshold (the settings checkboxes).
+    func setLowThreshold(_ value: Int, enabled: Bool) {
+        var set = Set(lowThresholds)
+        if enabled { set.insert(value) } else { set.remove(value) }
+        setLowThresholds(Array(set))
+    }
+
+    func setCriticalLevel(_ value: Int) {
+        let clean = BatteryThresholds.sanitizeCritical(value)
+        guard clean != criticalLevel else { return }
+        criticalLevel = clean
+        UserDefaults.standard.set(clean, forKey: Self.criticalKey)
+        if let battery { updateCritical(battery) }
+    }
+
+    /// Re-reads the battery, its health and Low Power Mode once (the Status
+    /// page calls this when it appears). Works while the HUD is off too.
+    func refreshForDisplay() {
+        isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        let reading = Self.readBattery()
+        if battery != reading { battery = reading }
+        refreshDetails(force: true)
+    }
+
+    /// Opens System Settings › Battery (Low Power Mode, Optimized Charging,
+    /// the charge limit and "Charge to Full Now" live there or in the
+    /// battery menu).
+    func openBatterySettings() {
+        guard let url = Self.batterySettingsURL else { return }
+        NSWorkspace.shared.open(url)
+    }
+
     // MARK: - Lifecycle
 
     private func applyEnabled(userInitiated: Bool) {
         guard isStarted else { return }
+        // The reading itself (one IOPS notification source, no polling) runs
+        // whenever the monitor is started, so the Status page and the hub
+        // badge stay current with the HUD off; only the bands are gated.
+        startBattery()
         guard isEnabled else {
-            stopMonitoring()
+            stopBands()
             return
         }
-        startBattery()
+        // Fresh baseline: the HUD coming back on is not a plug event.
+        tracker = BatteryTransitionTracker(thresholds: lowThresholds)
+        if let battery { _ = tracker.update(battery); updateCritical(battery) }
         bluetoothAccess = Self.currentBluetoothAccess()
         switch bluetoothAccess {
         case .allowed:
@@ -137,6 +254,11 @@ final class PowerMonitor: ObservableObject {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
             self.runLoopSource = nil
         }
+        stopBands()
+    }
+
+    /// HUD off: Bluetooth and every band go; the battery reading stays.
+    private func stopBands() {
         bluetooth?.stop()
         bluetooth = nil
         accessRequest?.cancel()
@@ -144,8 +266,11 @@ final class PowerMonitor: ObservableObject {
         lookupTask?.cancel()
         lookupTask = nil
         plugBand = nil
+        criticalShownLevel = nil
         shownAudioAddress = nil
+        connectedAudio = nil
         activities.dismiss(id: Self.batteryActivityID)
+        activities.dismiss(id: Self.criticalActivityID)
         activities.dismiss(id: Self.airPodsActivityID)
     }
 
@@ -174,54 +299,159 @@ final class PowerMonitor: ObservableObject {
         }
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         runLoopSource = source
-        tracker = BatteryTransitionTracker()
+        tracker = BatteryTransitionTracker(thresholds: lowThresholds)
         powerSourcesChanged()
     }
 
     private func powerSourcesChanged() {
-        guard isEnabled, runLoopSource != nil else { return }
+        guard runLoopSource != nil else { return }
         let reading = Self.readBattery()
         if battery != reading { battery = reading }
         guard let reading else { return }
+        guard isEnabled else {
+            // HUD off: keep the plug-event health re-read for the Status page.
+            if let last = tracker.last, last.isOnAC != reading.isOnAC { refreshDetails(force: true) }
+            _ = tracker.update(reading)
+            return
+        }
 
-        switch tracker.update(reading) {
+        let event = tracker.update(reading)
+        // Plug / unplug changes the charger and the hold state: read now.
+        refreshDetails(force: event == .pluggedIn || event == .unplugged)
+
+        switch event {
         case .pluggedIn:
-            AppLog.log("Power: plugged in at \(reading.level)%")
-            postBattery(reading, mode: BatteryActivityMode(chargingReading: reading), duration: Self.plugDuration)
-            plugBand = (Date().addingTimeInterval(Self.plugDuration), reading.minutesToFull != nil)
+            AppLog.log("Power: plugged in at \(reading.level)%\(details?.adapter?.watts.map { " (\($0) W)" } ?? "")")
+            let watts = adapterWatts()
+            let mode = BatteryActivityMode(chargingReading: reading)
+            postBattery(reading, mode: mode, duration: Self.plugDuration, watts: watts)
+            plugBand = (Date().addingTimeInterval(Self.plugDuration), reading.minutesToFull != nil, watts != nil,
+                        mode, holdFor(reading, mode: mode))
         case .unplugged:
             AppLog.log("Power: unplugged at \(reading.level)%")
             plugBand = nil
             postBattery(reading, mode: .onBattery, duration: Self.plugDuration)
         case .low(let threshold):
-            AppLog.log("Power: low battery \(reading.level)% (threshold \(threshold)%)")
             plugBand = nil
-            postBattery(reading, mode: .low, duration: Self.lowDuration)
+            // The critical alert covers levels at or under its own threshold.
+            if !BatteryCriticalPolicy.isCritical(reading, criticalLevel: criticalLevel) {
+                AppLog.log("Power: low battery \(reading.level)% (threshold \(threshold)%)")
+                postBattery(reading, mode: .low, duration: Self.lowDuration)
+            }
         case nil:
-            // The charger estimate usually lands a second after plugging in.
-            if let band = plugBand, !band.hadTime, reading.isOnAC, reading.minutesToFull != nil {
+            // The charger estimate and wattage usually land a second after
+            // plugging in, and IOPS can say "not charging" for a moment
+            // before charging starts: re-post when any of that changes.
+            if let band = plugBand, reading.isOnAC {
+                let watts = adapterWatts()
+                let mode = BatteryActivityMode(chargingReading: reading)
+                if mode != band.mode { refreshDetails(force: true) }
+                let hold = holdFor(reading, mode: mode)
+                let newTime = !band.hadTime && reading.minutesToFull != nil
+                let newWatts = !band.hadWatts && watts != nil
                 let remaining = band.expires.timeIntervalSinceNow
-                if remaining > 0.5 {
-                    postBattery(reading, mode: BatteryActivityMode(chargingReading: reading), duration: remaining)
-                    plugBand = (band.expires, true)
+                if newTime || newWatts || mode != band.mode || hold != band.hold, remaining > 0.5 {
+                    postBattery(reading, mode: mode, duration: remaining, watts: watts)
+                    plugBand = (band.expires, band.hadTime || newTime, band.hadWatts || newWatts, mode, hold)
                 }
             }
         }
+        updateCritical(reading)
     }
 
-    private func postBattery(_ reading: BatteryReading, mode: BatteryActivityMode, duration: TimeInterval) {
+    /// Wattage for the band, when the user wants it and macOS reports it.
+    private func adapterWatts() -> Int? {
+        guard showsWattage else { return nil }
+        return PowerAdapterReading.current()?.watts
+    }
+
+    /// Shows, updates or clears the critical alert for `reading`.
+    private func updateCritical(_ reading: BatteryReading) {
+        guard isEnabled, isStarted else { return }
+        if BatteryCriticalPolicy.isCritical(reading, criticalLevel: criticalLevel) {
+            guard criticalShownLevel != reading.level else { return }
+            if criticalShownLevel == nil {
+                AppLog.log("Power: critical battery \(reading.level)% (at or under \(criticalLevel)%)")
+            }
+            criticalShownLevel = reading.level
+            postCritical(reading)
+        } else if criticalShownLevel != nil {
+            criticalShownLevel = nil
+            activities.dismiss(id: Self.criticalActivityID)
+        }
+    }
+
+    private func holdFor(_ reading: BatteryReading, mode: BatteryActivityMode) -> BatteryHoldReason? {
+        mode == .notCharging ? details?.holdReason(for: reading) : nil
+    }
+
+    private func postBattery(_ reading: BatteryReading, mode: BatteryActivityMode, duration: TimeInterval, watts: Int? = nil) {
+        let hold = holdFor(reading, mode: mode)
         activities.post(LiveActivity(
             id: Self.batteryActivityID,
             kind: .battery,
             priority: 50,
             duration: duration
         ) {
-            BatteryActivityView(reading: reading, mode: mode)
-        })
+            BatteryActivityView(reading: reading, mode: mode, watts: watts, hold: hold)
+        }
+        .announcing(ActivityAnnouncementText.battery(reading, mode: mode), as: .charging,
+                    important: ActivityAnnouncementText.isImportant(mode)))
+    }
+
+    /// Persistent: introduces itself in the band each time the level drops,
+    /// then rests in the wings as a red battery and the percentage, so it
+    /// never covers the menu bar for long. Cleared when the charger goes in.
+    private func postCritical(_ reading: BatteryReading) {
+        let level = reading.level
+        activities.post(LiveActivity(
+            id: Self.criticalActivityID,
+            kind: .battery,
+            priority: 85,
+            duration: nil,
+            symbol: "battery.0percent",
+            tint: SparkVTheme.destructive,
+            compactText: "\(level)%",
+            peekKey: "\(level)"
+        ) {
+            BatteryActivityView(reading: reading, mode: .critical)
+        }
+        .announcing(ActivityAnnouncementText.battery(reading, mode: .critical), as: .charging, important: true)
+        .compact {
+            BatteryGlyph(level: level, isCharging: false, tint: SparkVTheme.destructive)
+                .accessibilityLabel("Battery critically low")
+        } trailing: {
+            Text("\(level)%")
+                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                .foregroundStyle(SparkVTheme.destructive)
+                .fixedSize()
+        }
+        .minimal {
+            Image(systemName: "battery.0percent")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(SparkVTheme.destructive)
+                .frame(width: 18, height: 18)
+                .background(Circle().fill(SparkVTheme.destructive.opacity(0.18)))
+                .accessibilityLabel("Battery \(level) percent")
+        }
+        .titled("Battery Critically Low"))
+    }
+
+    /// Health and charger details, throttled (see `detailsRefreshInterval`).
+    private func refreshDetails(force: Bool) {
+        if !force, let at = detailsReadAt, Date().timeIntervalSince(at) < Self.detailsRefreshInterval { return }
+        detailsReadAt = Date()
+        let fresh = BatteryDetails.read()
+        if details != fresh { details = fresh }
     }
 
     /// The internal battery from IOKit power sources, or nil without one.
-    private static func readBattery() -> BatteryReading? {
+    nonisolated static func readBattery() -> BatteryReading? {
+        powerSourceDescription().flatMap(BatteryReading.init(description:))
+    }
+
+    /// The IOPS description of the internal battery, or nil without one.
+    nonisolated static func powerSourceDescription() -> [String: Any]? {
         guard let blob = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let list = IOPSCopyPowerSourcesList(blob)?.takeRetainedValue() as? [CFTypeRef]
         else { return nil }
@@ -229,7 +459,7 @@ final class PowerMonitor: ObservableObject {
             guard let description = IOPSGetPowerSourceDescription(blob, source)?
                 .takeUnretainedValue() as? [String: Any]
             else { continue }
-            if let reading = BatteryReading(description: description) { return reading }
+            if description["Type"] as? String == "InternalBattery" { return description }
         }
         return nil
     }
@@ -286,6 +516,7 @@ final class PowerMonitor: ObservableObject {
     }
 
     private func audioDeviceDisconnected(_ address: String) {
+        if connectedAudio?.address == address { connectedAudio = nil }
         guard shownAudioAddress == address else { return }
         lookupTask?.cancel()
         lookupTask = nil
@@ -295,6 +526,7 @@ final class PowerMonitor: ObservableObject {
 
     private func postAirPods(_ device: BluetoothAudioDevice, duration: TimeInterval) {
         shownAudioAddress = device.address
+        connectedAudio = device
         activities.post(LiveActivity(
             id: Self.airPodsActivityID,
             kind: .airPods,
@@ -302,7 +534,43 @@ final class PowerMonitor: ObservableObject {
             duration: duration
         ) {
             AirPodsActivityView(device: device)
-        })
+        }
+        .announcing(ActivityAnnouncementText.airPods(device), as: .charging))
+    }
+}
+
+// MARK: - Battery registry and charger (IOKit)
+
+extension BatteryDetails {
+    /// Reads AppleSmartBattery (cycle count, capacities, condition), the
+    /// IOPS description and the external adapter. A handful of single-key
+    /// registry reads: cheap, but only on plug events and on demand.
+    static func read() -> BatteryDetails? {
+        guard let source = PowerMonitor.powerSourceDescription() else { return nil }
+        var registry: [String: Any] = [:]
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
+        if service != 0 {
+            defer { IOObjectRelease(service) }
+            for key in BatteryHealthReading.registryKeys {
+                if let value = IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() {
+                    registry[key] = value
+                }
+            }
+        }
+        return BatteryDetails(
+            health: BatteryHealthReading(registry: registry, powerSource: source),
+            adapter: PowerAdapterReading.current(),
+            isOptimizedChargingEngaged: BatteryDetails.optimizedFlag(in: source),
+            lowPowerModeActive: (source["LPM Active"] as? NSNumber)?.boolValue
+        )
+    }
+}
+
+extension PowerAdapterReading {
+    /// The connected charger, or nil on battery.
+    static func current() -> PowerAdapterReading? {
+        guard let details = IOPSCopyExternalPowerAdapterDetails()?.takeRetainedValue() as? [String: Any] else { return nil }
+        return PowerAdapterReading(details: details)
     }
 }
 
@@ -372,7 +640,7 @@ private final class BluetoothConnectionObserver: NSObject {
         onDisconnect(address)
     }
 
-    private static func isAudio(_ device: IOBluetoothDevice) -> Bool {
+    static func isAudio(_ device: IOBluetoothDevice) -> Bool {
         if Int(device.deviceClassMajor) == Int(kBluetoothDeviceClassMajorAudio) { return true }
         let name = (device.name ?? "").lowercased()
         return ["airpods", "beats", "buds", "headphone", "headset"].contains { name.contains($0) }
@@ -485,6 +753,34 @@ struct BatteryReading: Equatable, Sendable {
     }
 }
 
+/// The user's low-battery thresholds and the critical level.
+enum BatteryThresholds {
+    static let defaultLow = [20, 10]
+    static let defaultCritical = 5
+    /// Offered in the pickers.
+    static let lowChoices = [50, 40, 30, 25, 20, 15, 10]
+    static let criticalChoices = [0, 3, 5, 7, 10]
+
+    /// Distinct, 1...99, highest first, at most four.
+    static func sanitize(_ values: [Int]) -> [Int] {
+        Array(Set(values.filter { (1...99).contains($0) })).sorted(by: >).prefix(4).map { $0 }
+    }
+
+    /// 0 (off) or 1...25.
+    static func sanitizeCritical(_ value: Int) -> Int {
+        value <= 0 ? 0 : min(25, value)
+    }
+
+    /// "20 % and 10 %", "Off".
+    static func summary(_ values: [Int]) -> String {
+        let clean = sanitize(values)
+        guard !clean.isEmpty else { return "Off" }
+        let parts = clean.map { "\($0)%" }
+        if parts.count == 1 { return parts[0] }
+        return parts.dropLast().joined(separator: ", ") + " and " + parts[parts.count - 1]
+    }
+}
+
 /// Turns a stream of readings into plug / unplug / low-battery events. Low
 /// warnings fire once per threshold per discharge; plugging in re-arms them.
 struct BatteryTransitionTracker {
@@ -492,9 +788,15 @@ struct BatteryTransitionTracker {
         case pluggedIn, unplugged, low(threshold: Int)
     }
 
-    static let thresholds = [20, 10]
+    /// The defaults; the live thresholds are `thresholds`.
+    static let thresholds = BatteryThresholds.defaultLow
+    var thresholds: [Int]
     private(set) var last: BatteryReading?
     private var alerted: Set<Int> = []
+
+    init(thresholds: [Int] = BatteryTransitionTracker.thresholds) {
+        self.thresholds = BatteryThresholds.sanitize(thresholds)
+    }
 
     mutating func update(_ reading: BatteryReading) -> Event? {
         defer { last = reading }
@@ -520,12 +822,19 @@ struct BatteryTransitionTracker {
     }
 
     private func passed(at level: Int) -> Set<Int> {
-        Set(Self.thresholds.filter { level <= $0 })
+        Set(thresholds.filter { level <= $0 })
+    }
+}
+
+/// The persistent critical alert: on battery at or under the critical level.
+enum BatteryCriticalPolicy {
+    static func isCritical(_ reading: BatteryReading, criticalLevel: Int) -> Bool {
+        criticalLevel > 0 && !reading.isOnAC && reading.level <= criticalLevel
     }
 }
 
 enum BatteryActivityMode: Equatable, Sendable {
-    case charging, charged, notCharging, onBattery, low
+    case charging, charged, notCharging, onBattery, low, critical
 
     init(chargingReading reading: BatteryReading) {
         if reading.isCharging {
@@ -536,6 +845,172 @@ enum BatteryActivityMode: Equatable, Sendable {
             // On power but held (Optimized Battery Charging or a charge limit).
             self = .notCharging
         }
+    }
+}
+
+/// Why the battery isn't charging on power.
+enum BatteryHoldReason: Equatable, Sendable {
+    /// Optimized Battery Charging is waiting (macOS learns your routine).
+    case optimized
+    /// Held at a charge limit (macOS 26's limit, or one set by another app).
+    case chargeLimit
+    /// On power, but not charging for another reason (heat, a weak charger).
+    case other
+
+    var title: String {
+        switch self {
+        case .optimized: "Optimized Charging"
+        case .chargeLimit: "Charge limit"
+        case .other: "Not charging"
+        }
+    }
+}
+
+/// Battery health from the AppleSmartBattery registry entry and the IOPS
+/// description. Key names differ between Intel and Apple silicon and
+/// between macOS versions, so every value is optional.
+struct BatteryHealthReading: Equatable, Sendable {
+    enum Condition: String, Equatable, Sendable {
+        case normal, serviceRecommended, unknown
+    }
+
+    var cycleCount: Int?
+    var designCycleCount: Int?
+    /// mAh.
+    var designCapacity: Int?
+    /// mAh the battery holds when full today (Apple's "nominal" capacity).
+    var fullChargeCapacity: Int?
+    /// Celsius.
+    var temperature: Double?
+    var condition: Condition
+    /// ChargerData › NotChargingReason (0 = charging is allowed).
+    var notChargingReason: Int?
+
+    static let registryKeys = [
+        "CycleCount", "DesignCycleCount9C", "DesignCapacity", "NominalChargeCapacity", "AppleRawMaxCapacity",
+        "MaxCapacity", "BatteryData", "Temperature", "ChargerData", "PermanentFailureStatus",
+    ]
+
+    init(cycleCount: Int? = nil, designCycleCount: Int? = nil, designCapacity: Int? = nil, fullChargeCapacity: Int? = nil,
+         temperature: Double? = nil, condition: Condition = .unknown, notChargingReason: Int? = nil) {
+        self.cycleCount = cycleCount
+        self.designCycleCount = designCycleCount
+        self.designCapacity = designCapacity
+        self.fullChargeCapacity = fullChargeCapacity
+        self.temperature = temperature
+        self.condition = condition
+        self.notChargingReason = notChargingReason
+    }
+
+    init(registry: [String: Any], powerSource: [String: Any]?) {
+        func int(_ value: Any?) -> Int? { (value as? NSNumber)?.intValue }
+        let data = registry["BatteryData"] as? [String: Any] ?? [:]
+        cycleCount = int(registry["CycleCount"]).flatMap { $0 >= 0 && $0 < 100_000 ? $0 : nil }
+        designCycleCount = int(registry["DesignCycleCount9C"]) ?? int(powerSource?["DesignCycleCount"])
+        designCapacity = (int(registry["DesignCapacity"]) ?? int(data["DesignCapacity"])).flatMap { $0 > 100 ? $0 : nil }
+        // Apple silicon: NominalChargeCapacity (top level on older macOS, in
+        // BatteryData on newer). Intel: MaxCapacity is mAh there (on Apple
+        // silicon it is a percentage, so only values over 100 count).
+        let maxCapacity = int(registry["MaxCapacity"]).flatMap { $0 > 100 ? $0 : nil }
+        fullChargeCapacity = (int(registry["NominalChargeCapacity"]) ?? int(data["NominalChargeCapacity"])
+            ?? int(registry["AppleRawMaxCapacity"]) ?? maxCapacity).flatMap { $0 > 0 ? $0 : nil }
+        // Hundredths of a degree on both architectures.
+        temperature = (int(registry["Temperature"]) ?? int(data["Temperature"]) ?? int(registry["VirtualTemperature"])).flatMap { raw in
+            let celsius = Double(raw) / 100
+            return (-20...90).contains(celsius) ? celsius : nil
+        }
+        notChargingReason = int((registry["ChargerData"] as? [String: Any])?["NotChargingReason"])
+        let failure = int(registry["PermanentFailureStatus"]) ?? int(data["PermanentFailureStatus"]) ?? 0
+        let health = (powerSource?["BatteryHealth"] as? String)?.lowercased()
+        let healthCondition = (powerSource?["BatteryHealthCondition"] as? String)?.lowercased()
+        condition = Self.classify(failure: failure, health: health, healthCondition: healthCondition,
+                                   maximumCapacityPercent: Self.percent(full: fullChargeCapacity, design: designCapacity))
+    }
+
+    /// Only what macOS reports: a failure flag, a health string, or a
+    /// maximum capacity under 80 % (where System Settings says "Service
+    /// Recommended"). Apple silicon reports no health key, so a healthy
+    /// battery there is `.unknown`, not a guessed "Normal".
+    static func classify(failure: Int, health: String?, healthCondition: String?, maximumCapacityPercent: Int?) -> Condition {
+        if failure != 0 || healthCondition?.contains("fail") == true || healthCondition?.contains("check") == true
+            || healthCondition?.contains("service") == true || health == "poor" || health == "check battery" {
+            return .serviceRecommended
+        }
+        if let percent = maximumCapacityPercent, percent < 80 { return .serviceRecommended }
+        if health == "good" || healthCondition == "good" { return .normal }
+        return .unknown
+    }
+
+    static func percent(full: Int?, design: Int?) -> Int? {
+        guard let design, design > 0, let full else { return nil }
+        let percent = (Double(full) * 100 / Double(design)).rounded(.up)
+        return Int(min(100, max(1, percent)))
+    }
+
+    /// Full-charge capacity against design, as System Settings shows it
+    /// ("Maximum Capacity"), rounded up like Settings rounds. Nil when either
+    /// is missing.
+    var maximumCapacityPercent: Int? {
+        Self.percent(full: fullChargeCapacity, design: designCapacity)
+    }
+}
+
+/// The external power adapter (IOPSCopyExternalPowerAdapterDetails).
+struct PowerAdapterReading: Equatable, Sendable {
+    var watts: Int?
+    var name: String?
+    var isWireless: Bool
+
+    init(watts: Int?, name: String? = nil, isWireless: Bool = false) {
+        self.watts = watts
+        self.name = name
+        self.isWireless = isWireless
+    }
+
+    init?(details: [String: Any]) {
+        let watts = (details["Watts"] as? NSNumber)?.intValue
+        let name = (details["Name"] as? String) ?? (details["Description"] as? String)
+        guard watts != nil || name != nil else { return nil }
+        self.watts = watts.flatMap { (1...500).contains($0) ? $0 : nil }
+        self.name = name
+        isWireless = (details["IsWireless"] as? NSNumber)?.boolValue ?? false
+    }
+}
+
+/// Everything the Status page's battery card shows beyond the level.
+struct BatteryDetails: Equatable, Sendable {
+    var health: BatteryHealthReading
+    var adapter: PowerAdapterReading?
+    /// IOPS "Optimized Battery Charging Engaged", when macOS reports it.
+    var isOptimizedChargingEngaged: Bool?
+    /// IOPS "LPM Active".
+    var lowPowerModeActive: Bool?
+
+    static func optimizedFlag(in description: [String: Any]) -> Bool? {
+        for key in ["Optimized Battery Charging Engaged", "OptimizedBatteryChargingEngaged"] {
+            if let value = description[key] as? NSNumber { return value.boolValue }
+        }
+        return nil
+    }
+
+    /// Why a reading on power isn't charging; nil while it charges or is full.
+    func holdReason(for reading: BatteryReading) -> BatteryHoldReason? {
+        guard reading.isOnAC, !reading.isCharging, !reading.isCharged, reading.level < 100 else { return nil }
+        return Self.holdReason(level: reading.level, optimized: isOptimizedChargingEngaged,
+                               notChargingReason: health.notChargingReason)
+    }
+
+    /// A hold is reported only when macOS says so: the optimized flag, or a
+    /// non-zero ChargerData › NotChargingReason. Right after plugging in,
+    /// IOPS briefly reports "on AC, not charging" with reason 0 (or none):
+    /// that is `.other` ("Not Charging"), never a made-up charge limit.
+    static func holdReason(level: Int, optimized: Bool?, notChargingReason: Int?) -> BatteryHoldReason {
+        if optimized == true { return .optimized }
+        guard let reason = notChargingReason, reason != 0 else { return .other }
+        // Charging is blocked on purpose; high in the range that is a limit
+        // (macOS 26's charge limit, or another app's), lower down it is heat
+        // or the charger.
+        return level >= 50 ? .chargeLimit : .other
     }
 }
 
@@ -568,6 +1043,11 @@ struct AudioBatteries: Equatable, Sendable {
 
     var summary: String {
         isEmpty ? "(battery unknown)" : items.map { "\($0.label.isEmpty ? "" : $0.label + " ")\($0.percent)%" }.joined(separator: ", ")
+    }
+
+    /// The lowest earbud (or the single) value, for a one-number summary.
+    var lowest: Int? {
+        [left, right, single].compactMap { $0 }.min()
     }
 
     static func valid(_ value: Int, zeroIsUnknown: Bool) -> Int? {

@@ -315,6 +315,7 @@ struct CloudSyncToggleRow: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .accessibilityLabel(title)
         }
     }
 }

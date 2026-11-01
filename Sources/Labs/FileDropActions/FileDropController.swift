@@ -30,6 +30,12 @@ final class FileDropController: ObservableObject {
     /// The Spaces store, resolved lazily so creating the controller never
     /// loads the database (tests swap in their own).
     var spaceStore: () -> SpaceStore = { SpaceStore.shared }
+    /// A file drag from another app ended (the window controller clears the
+    /// drawer's drop highlight here, so it never sticks).
+    var onDragEnded: (() -> Void)?
+
+    /// The app's controller, for Settings sections and the drag filter.
+    private(set) static weak var current: FileDropController?
 
     // MARK: State
 
@@ -84,6 +90,9 @@ final class FileDropController: ObservableObject {
     /// where the shelf was (see `holdsDrawerOpen`).
     private var shelfDropAt: Date?
     private var lastZoneFrame: NSRect?
+    /// The shelf was summoned at the pointer (shake / held key): it stays
+    /// there until the drag ends.
+    private(set) var isPinnedAtPointer = false
     static let activityID = "fileDrop.done"
 
     init(activities: ActivityCenter, defaults: UserDefaults = .standard, dragPasteboard: NSPasteboard = NSPasteboard(name: .drag)) {
@@ -94,11 +103,21 @@ final class FileDropController: ObservableObject {
         showsShelf = defaults.object(forKey: FileDropSettings.zoneKey) as? Bool ?? true
         nameStyle = FileDropSettings.NameStyle(rawValue: defaults.string(forKey: FileDropSettings.nameStyleKey) ?? "") ?? .words
         watcher.onEvent = { [weak self] event in self?.handleDrag(event) }
+        Self.current = self
     }
+
+    /// A file drag from another app is in progress (watcher's view).
+    var isDraggingFiles: Bool { watcher.isDraggingFiles }
+
+    /// The same, checked directly against the drag pasteboard, for the
+    /// window controller's hover handler (see `FileDropDragWatcher.isFileDragLive`).
+    var isFileDragLive: Bool { watcher.isFileDragLive() }
 
     func start() {
         watcher.start()
         AirDrop.pruneTemporaryFolder("SparkV-AirDrop")
+        // Promised files staged for drops (moved out right away; leftovers are a day old).
+        AirDrop.pruneTemporaryFolder("SparkV-Incoming")
         if isEnabled { FileDropNamer.prewarmVision() }
     }
 
@@ -143,18 +162,41 @@ final class FileDropController: ObservableObject {
     func handleDrag(_ event: FileDropDragWatcher.Event) {
         switch event {
         case .began:
-            break
+            isPinnedAtPointer = false
         case .moved(let point):
+            // Summoned at the pointer: it stays put for the rest of the drag.
+            if isPinnedAtPointer { return }
             guard isEnabled, showsShelf, !isDrawerExpanded(), let screen = FileDropDragWatcher.targetScreen() else {
                 if isZoneVisible { hideZone() }
                 return
             }
             let near = FileDropDragWatcher.isNearNotch(point, screen: screen.frame, margin: isZoneVisible ? 40 : 0)
             if near { showZone(on: screen) } else if isZoneVisible { hideZone() }
+        case .summoned(let point):
+            guard isEnabled else { return }
+            showZoneAtPointer(point)
         case .ended:
+            isPinnedAtPointer = false
+            onDragEnded?()
             // Let a drop on the shelf land before it goes away.
             hideZone(after: .milliseconds(350))
         }
+    }
+
+    /// The shelf right next to the pointer, on whichever display it's on.
+    private func showZoneAtPointer(_ point: NSPoint) {
+        guard let screen = FileDropDragWatcher.screen(containing: point) else { return }
+        zoneHide?.cancel()
+        zoneHide = nil
+        let frame = FileDropDragWatcher.pointerZoneFrame(point: point, visible: screen.visibleFrame)
+        let panel = zonePanel ?? FileDropZonePanel(controller: self)
+        zonePanel = panel
+        lastZoneFrame = frame
+        isZoneVisible = true
+        isPinnedAtPointer = true
+        panel.present(at: frame)
+        SparkVHaptics.perform(.generic)
+        AppLog.log("File Drop: shelf summoned at the pointer")
     }
 
     private func showZone(on screen: NSScreen) {
@@ -189,7 +231,9 @@ final class FileDropController: ObservableObject {
 
     // MARK: Taking files
 
-    static let acceptedTypes: [UTType] = [.fileURL, .image]
+    /// `.data` lets promised files through (Mail attachments, Photos,
+    /// Affinity and WeChat exports carry no file URL).
+    static let acceptedTypes: [UTType] = [.fileURL, .image, .data]
 
     /// Accepts one drop (shelf bucket or drawer tab) and runs `instant`.
     @discardableResult
@@ -213,6 +257,15 @@ final class FileDropController: ObservableObject {
     func add(_ rawURLs: [URL], then instant: FileDropInstant = .actions) {
         let urls = rawURLs.map { ($0 as NSURL).filePathURL ?? $0 }.filter { $0.isFileURL && FileManager.default.fileExists(atPath: $0.path) }
         guard !urls.isEmpty else { return }
+        // The Tray bucket: straight onto the shelf, the strip untouched.
+        if instant == .tray {
+            guard let onAddToTray else { return show(FileDropNote(text: "The Tray isn't available", tone: .warning)) }
+            onAddToTray(urls)
+            postBand(icon: FileDropInstant.tray.systemImage, color: SparkVTheme.success,
+                     headline: urls.count == 1 ? "Added \(urls[0].lastPathComponent) to the Tray" : "Added \(urls.count) files to the Tray",
+                     detail: "")
+            return
+        }
         let stagingRoot = FileManager.default.temporaryDirectory.appendingPathComponent("SparkV-AirDrop").resolvingSymlinksInPath().path
         let fresh: [FileDropItem] = urls.map { FileDropItem(url: $0, isStaged: $0.resolvingSymlinksInPath().path.hasPrefix(stagingRoot)) }
         let known = Set(items.map(\.url.path))
@@ -265,6 +318,7 @@ final class FileDropController: ObservableObject {
         loadThumbnails(for: items.map(\.url))
         switch instant {
         case .actions: onOpenStrip?()
+        case .tray: break
         case .compress: compress()
         case .space: send(toSpace: nil)
         case .airDrop: airDrop()

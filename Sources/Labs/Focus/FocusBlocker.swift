@@ -163,7 +163,7 @@ final class FocusDistractionGuard {
                         self.onHit?(Hit(key: key, title: site, bundleID: browser.bundleID, isSite: true))
                     }
                 }
-                try? await Task.sleep(for: Self.browserPollInterval)
+                try? await Task.sleep(for: SparkVEnergy.shared.duration(Self.browserPollInterval))
             }
         }
     }

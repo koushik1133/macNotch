@@ -411,6 +411,7 @@ struct ScreenRecorderResultView: View {
             .buttonStyle(SparkVPressStyle())
             .padding(7)
             .help("Close")
+            .accessibilityLabel("Close")
         }
         .foregroundStyle(SparkVTheme.text)
         .environment(\.colorScheme, .dark)

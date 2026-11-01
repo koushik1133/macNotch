@@ -256,6 +256,7 @@ struct MeetingStartChoices: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .help("Not now (hold for Never for \(service))")
+                .accessibilityLabel("Not now (hold for Never for \(service))")
             }
 
             HStack(spacing: 6) {

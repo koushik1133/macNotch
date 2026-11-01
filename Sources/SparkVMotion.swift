@@ -72,6 +72,13 @@ enum SparkVMotion {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
+    /// Decorative motion only (level bars, spinners, scrolling titles):
+    /// Reduce Motion, or SparkVEnergy pausing decoration (hot Mac, displays
+    /// asleep, Battery Saver). Functional countdowns don't use this.
+    @MainActor static var reduceDecoration: Bool {
+        reduceMotion || SparkVEnergy.shared.pausesDecoration
+    }
+
     /// `animation`, or a short fade-friendly ease when Reduce Motion is on.
     static func respecting(_ animation: Animation) -> Animation {
         reduceMotion ? .easeOut(duration: 0.15) : animation

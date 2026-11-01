@@ -232,7 +232,7 @@ final class VolumeKnobModel: ObservableObject {
     private var pendingWrite: Double?
     private var pendingWriteAt = Date.distantPast
     var haptics: (_ strong: Bool) -> Void = { strong in
-        NSHapticFeedbackManager.defaultPerformer.perform(strong ? .levelChange : .alignment, performanceTime: .now)
+        SparkVHaptics.perform(strong ? .levelChange : .alignment)
     }
 
     init(backend: WidgetVolumeBackend) {

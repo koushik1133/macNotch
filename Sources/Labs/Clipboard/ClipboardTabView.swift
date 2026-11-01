@@ -146,6 +146,7 @@ private struct ClipboardTabHeader: View {
                             .foregroundStyle(SparkVTheme.textTertiary)
                     }
                     .buttonStyle(SparkVPressStyle())
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 6)
@@ -419,7 +420,19 @@ private struct ClipboardCard: View {
         .animation(SparkVMotion.easeOut(SparkVMotion.Duration.hover), value: flashed)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.kind.rawValue): \(item.displayTitle)")
+        .accessibilityValue(item.isPinned ? "Pinned" : "")
         .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Copies it. Paste, pin and delete are in the actions.")
+        // The hover buttons (and the right-click menu) without a pointer.
+        .accessibilityAction { clipboard.copy(item) }
+        .accessibilityActions {
+            Button("Paste") { clipboard.paste(item) }
+            if let smartAction {
+                Button(smartAction.title) { clipboard.perform(smartAction, for: item) }
+            }
+            Button(item.isPinned ? "Unpin" : "Pin") { clipboard.togglePin(item) }
+            Button("Delete") { clipboard.delete(item) }
+        }
     }
 
     /// Position in the stack (1 = newest) when it's one of the first nine.
