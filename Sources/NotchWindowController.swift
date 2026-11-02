@@ -190,7 +190,7 @@ final class NotchWindowController: NSWindowController {
     /// Follow the Pointer waits this long on a new display before moving.
     private static let followPointerDelay: Duration = .seconds(1)
     /// Hover dwell while the display is full screen (even for Plain).
-    private static let fullScreenHoverDwell: Duration = .milliseconds(250)
+    private static let fullScreenHoverDwell: Duration = .milliseconds(150)
     /// A resting island woken from the top-edge strip shows first, then opens.
     private static let restingRevealDwell: Duration = .milliseconds(250)
     /// Rows at the top edge that belong to macOS's full-screen menu bar.
@@ -1901,7 +1901,7 @@ final class NotchWindowController: NSWindowController {
             hoverDwellTask = Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(milliseconds))
                 // Then up to 1.5 s more for the pointer to settle.
-                for _ in 0..<25 {
+                for _ in 0..<40 {
                     guard !Task.isCancelled, let self else { return }
                     guard !self.state.isExpanded, self.isPointerInHotZone(), !FaceUnlock.isUsingNotch,
                                   ShelfDragFilter.allowsHoverOpen(pressBeganInPanel: self.pressBeganInPanel),
@@ -1916,7 +1916,7 @@ final class NotchWindowController: NSWindowController {
                         self.openFromHover()
                         return
                     }
-                    try? await Task.sleep(for: .milliseconds(60))
+                    try? await Task.sleep(for: .milliseconds(25))
                 }
                 self?.hoverDwellTask = nil
             }

@@ -616,6 +616,12 @@ private final class BluetoothConnectionObserver: NSObject {
     }
 
     @objc private func deviceConnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+        // IOBluetooth can call back on its own coordinator queue. Touching
+        // ActivityCenter there deadlocks against SwiftUI on the main thread.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.deviceConnected(notification, device: device) }
+            return
+        }
         guard Self.isAudio(device) else { return }
         let address = BluetoothAudioDevice.normalize(address: device.addressString ?? "")
         if disconnectNotifications[address] == nil {
@@ -635,6 +641,10 @@ private final class BluetoothConnectionObserver: NSObject {
     }
 
     @objc private func deviceDisconnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.deviceDisconnected(notification, device: device) }
+            return
+        }
         let address = BluetoothAudioDevice.normalize(address: device.addressString ?? "")
         disconnectNotifications.removeValue(forKey: address)?.unregister()
         onDisconnect(address)

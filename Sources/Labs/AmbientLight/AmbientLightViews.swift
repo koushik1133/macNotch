@@ -39,18 +39,30 @@ struct AmbientLightSettingsView: View {
                             Slider(value: $settings.edgeWidth, in: 6...40)
                                 .accessibilityLabel("Edge width")
                         }
-                        Text("A thin strip of light along every screen edge, like a car's door lights. It hides itself over full-screen apps and while your screen is shared, and never shows up in screenshots or recordings.")
+                        Toggle("Over Full-Screen Apps", isOn: $settings.overFullScreen)
+                        Text("A strip of light along every screen edge, above every window. It hides while your screen is shared and never shows up in screenshots or recordings.")
                             .font(.system(size: 11))
                             .foregroundStyle(SparkVTheme.textTertiary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                section("Feel") {
+                    Toggle("Music Haptics", isOn: $settings.beatHaptics)
+                    Text("Your trackpad taps with the beat, firmer on the kick. Felt with a finger resting on a Force Touch trackpad; strength follows Settings › Accessibility › Trackpad Haptics.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(SparkVTheme.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 section("Colors") {
                     Toggle("Match the Album Art", isOn: $settings.syncToAlbumColors)
-                    HStack(spacing: 8) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                         ForEach(AmbientBrandPalette.allCases) { brand in
                             paletteChip(brand)
                         }
+                    }
+                    if settings.palette == .custom {
+                        ColorPicker("Your Color", selection: customColor, supportsOpacity: false)
+                            .font(.system(size: 12))
                     }
                     Text(settings.syncToAlbumColors
                          ? "Colors come from the playing track's cover; the palette below is used when the cover has none."
@@ -137,10 +149,27 @@ struct AmbientLightSettingsView: View {
         }
     }
 
+    /// The Custom palette's color as a SwiftUI binding (stored as sRGB).
+    private var customColor: Binding<Color> {
+        Binding(
+            get: {
+                let c = settings.customColor
+                return Color(.sRGB, red: c[0], green: c[1], blue: c[2])
+            },
+            set: { color in
+                guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+                settings.customColor = [Double(rgb.redComponent), Double(rgb.greenComponent), Double(rgb.blueComponent)]
+                if settings.syncToAlbumColors { settings.syncToAlbumColors = false }
+            }
+        )
+    }
+
     private func paletteChip(_ brand: AmbientBrandPalette) -> some View {
         let selected = settings.palette == brand
         return Button {
             settings.palette = brand
+            // Picking a theme means using it, not the album art.
+            if brand == .custom, settings.syncToAlbumColors { settings.syncToAlbumColors = false }
         } label: {
             VStack(spacing: 4) {
                 HStack(spacing: 2) {
@@ -307,6 +336,7 @@ struct AmbientLightMenuItems: View {
             get: { settings.scope == .notchAndEdges },
             set: { settings.scope = $0 ? .notchAndEdges : .notchOnly }
         ))
+        Toggle("Music Haptics", isOn: $settings.beatHaptics)
         Toggle("Match the Album Art", isOn: $settings.syncToAlbumColors)
         Divider()
         Button("Ambient Light Settings…") { AmbientLightSettingsWindowController.shared.show() }

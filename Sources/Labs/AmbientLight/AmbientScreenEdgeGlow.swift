@@ -5,9 +5,8 @@ import QuartzCore
 // Screen edges: one borderless, click-through, non-activating panel per
 // screen, above normal windows and the Dock but below the menu bar and menus,
 // drawing `AmbientEdgeStrips`. Kept out of screenshots and recordings
-// (`sharingType = .none`), left out of full-screen spaces (no
-// `.fullScreenAuxiliary`), and hidden on a screen that shows a full-screen
-// window or while the screen is shared.
+// (`sharingType = .none`), joins full-screen spaces too, and hidden while the
+// screen is shared (and over full-screen windows only if the user asks).
 
 final class AmbientEdgePanel: NSPanel {
     let strips: AmbientEdgeStrips
@@ -20,7 +19,7 @@ final class AmbientEdgePanel: NSPanel {
         // isFloatingPanel resets `level`, so it comes first.
         isFloatingPanel = true
         level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         ignoresMouseEvents = true
         isOpaque = false
         backgroundColor = .clear
@@ -157,7 +156,9 @@ final class AmbientScreenEdgeGlow {
     func refreshSuppression() {
         guard isShown else { return }
         screenShared = AmbientDisplaySuppression.isScreenShared()
-        suppressed = AmbientDisplaySuppression.displaysWithFullScreenWindows()
+        // Over full-screen apps is the default: then the window list (the
+        // costly part of this check) isn't read at all.
+        suppressed = AmbientLightSettings.shared.overFullScreen ? [] : AmbientDisplaySuppression.displaysWithFullScreenWindows()
         let hideAll = screenShared || !externalReasons.isEmpty
         for (id, panel) in panels {
             let visible = !hideAll && !suppressed.contains(id)

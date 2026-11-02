@@ -273,6 +273,7 @@ enum OnboardingTerms {
             "Camera, microphone, speech and screen content are processed on this Mac. Face Unlock data stays in your keychain.",
             "Clipboard history, Tray files, Spaces, notes and settings are stored only on this Mac, in your user account.",
             "SparkV has no account, no analytics and no tracking. It sends nothing to its developers.",
+            "Weather, lyrics and update checks stay offline until you set them up or turn them on; only then do they contact their services.",
             "Cloud AI is off unless you add your own API key and turn it on for a feature. Only the text that feature needs is sent to that provider.",
             "Each macOS permission is optional. You can turn any of them off in System Settings › Privacy & Security at any time.",
         ]),

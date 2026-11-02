@@ -227,7 +227,7 @@ struct IslandMotionTuning: Equatable, Sendable {
     var style: IslandMotionStyle
     var speed: IslandMotionSpeed
 
-    static let baseResponse = 0.35
+    static let baseResponse = 0.3
 
     var isInstant: Bool { style == .instant }
 
@@ -343,9 +343,9 @@ enum IslandHoverPlan: Equatable, Sendable {
 /// whether the pointer has settled enough when that time is up.
 enum IslandHoverIntent {
     /// Automatic's pause that stops a brush-past from opening the drawer.
-    static let intentMilliseconds = 110
+    static let intentMilliseconds = 60
     /// The wings sit in the menu-bar row: a longer, deliberate pause.
-    static let wingMilliseconds = 240
+    static let wingMilliseconds = 180
     /// Faster than this when the wait ends: just passing through.
     static let passThroughSpeed: Double = 1500
     /// Sideways faster than this over a wing: heading for a menu bar item.

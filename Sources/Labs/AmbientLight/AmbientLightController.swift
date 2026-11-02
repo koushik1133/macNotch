@@ -38,6 +38,8 @@ final class AmbientLightController: NSObject, ObservableObject {
     private let edges = AmbientScreenEdgeGlow()
     private let notchViews = NSHashTable<AmbientNotchGlowView>.weakObjects()
     private var link: CADisplayLink?
+    /// Last beat that tapped the trackpad (Music Haptics).
+    private var lastFeltBeat: UInt64 = 0
     private var cancellables: Set<AnyCancellable> = []
     private var mediaCancellables: Set<AnyCancellable> = []
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
@@ -166,7 +168,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             if self.wantsNotchOutset != self.settings.isActive { self.wantsNotchOutset = self.settings.isActive }
-            let paletteKey = "\(self.settings.palette.rawValue)-\(self.settings.syncToAlbumColors)"
+            let paletteKey = "\(self.settings.palette.rawValue)-\(self.settings.syncToAlbumColors)-\(self.settings.customColor)"
             if paletteKey != self.paletteKey { self.rebuildPalette() }
             if self.settings.edgeWidth != self.laidOutEdgeWidth {
                 self.laidOutEdgeWidth = self.settings.edgeWidth
@@ -345,7 +347,7 @@ final class AmbientLightController: NSObject, ObservableObject {
     private var laidOutEdgeWidth: Double = -1
 
     private func rebuildPalette() {
-        paletteKey = "\(settings.palette.rawValue)-\(settings.syncToAlbumColors)"
+        paletteKey = "\(settings.palette.rawValue)-\(settings.syncToAlbumColors)-\(settings.customColor)"
         var next = AmbientLightPalette.brand(settings.palette)
         if settings.syncToAlbumColors, let artwork, let fromArt = AmbientLightPalette.fromArtwork(artwork) {
             next = fromArt
@@ -393,8 +395,8 @@ final class AmbientLightController: NSObject, ObservableObject {
             // A slow breath needs no more than 60.
             link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         } else {
-            // ProMotion screens get 120 for Pulse / Disco / Wave.
-            link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+            // 60 is smooth for light; 120 on ProMotion doubled the GPU cost.
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         }
     }
 
@@ -419,6 +421,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         for view in notchViews.allObjects { view.glow.render(frame, palette: palette) }
         edges.setShown(settings.scope == .notchAndEdges && frame.presence > 0.001)
         edges.render(frame, palette: palette)
+        if live { feelBeat(features) }
 
         if choreographer.isDark, !live {
             stopLink()
@@ -435,6 +438,17 @@ final class AmbientLightController: NSObject, ObservableObject {
             costFrames = 0
             costSince = now
         }
+    }
+
+    /// Music Haptics: one tap per detected beat, firmer on strong (bass)
+    /// beats. Reuses the analyzer's beat counter, so it costs nothing extra.
+    private func feelBeat(_ features: AmbientAudioFeatures) {
+        guard features.beatCount != lastFeltBeat else { return }
+        let isNewBeat = lastFeltBeat != 0
+        lastFeltBeat = features.beatCount
+        guard isNewBeat, settings.beatHaptics, !features.isSilent,
+              CACurrentMediaTime() - features.lastBeatTime < 0.25 else { return }
+        SparkVHaptics.play(features.bass > 0.6 ? .boundary : .detent)
     }
 
     /// A synthetic 120 BPM groove for the Settings preview.

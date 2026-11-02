@@ -56,7 +56,7 @@ enum NotchThemeLayout {
 /// before the drawer opens. Plain opens at once, as it always has.
 enum NotchThemeTiming {
     static func hoverDwell(for theme: NotchThemeID) -> Duration {
-        theme == .plain || !LookOptions.current.themesAllowed ? .zero : .milliseconds(150)
+        theme == .plain || !LookOptions.current.themesAllowed ? .zero : .milliseconds(70)
     }
 
     /// How long "Preview on my notch" holds the hovered look.

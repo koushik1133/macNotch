@@ -322,7 +322,7 @@ private struct OnboardingWelcomePage: View {
     private let highlights: [Highlight] = [
         Highlight(symbol: "music.note", title: "Now Playing", detail: "Album art, controls and a live scrubber in the notch.", tint: .pink),
         Highlight(symbol: "tray.full.fill", title: "Tray & AirDrop", detail: "Drop files on the notch, drag them out anywhere.", tint: .blue),
-        Highlight(symbol: "mic.fill", title: "Dictation & Clicky", detail: "Hold a key to talk, ask about what’s on screen.", tint: .orange),
+        Highlight(symbol: "mic.fill", title: "Dictation & Clicky", detail: "Hold fn and talk: it types into any app, on-device.", tint: .orange),
         Highlight(symbol: "timer", title: "Focus & Timer", detail: "Pomodoro sessions with a calm on-device recap.", tint: .indigo),
         Highlight(symbol: "calendar", title: "Meetings", detail: "“Standup in 4 min” with a one-click Join.", tint: .red),
         Highlight(symbol: "square.grid.2x2.fill", title: "Agents & Spaces", detail: "Clipboard, search, capture and AI helpers.", tint: .teal),
@@ -842,8 +842,8 @@ private struct OnboardingTryItPage: View {
             Text(controller.islandTried
                  ? "It opened on its own and closes when you move away. Everything in SparkV lives in there."
                  : (notch
-                    ? "Move your pointer onto the notch at the top of your screen and rest it there. The drawer opens by itself."
-                    : "Move your pointer onto the black island in the middle of your menu bar and rest it there. The drawer opens by itself."))
+                    ? "Rest your pointer on the notch at the top of your screen. The drawer opens by itself and tucks away when you move off."
+                    : "Rest your pointer on the black island in the middle of your menu bar. The drawer opens by itself and tucks away when you move off."))
                 .font(.system(size: 13.5))
                 .foregroundStyle(SparkVTheme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -888,7 +888,7 @@ private struct OnboardingTryItPage: View {
             HStack(spacing: 12) {
                 tip("cursorarrow.motionlines", "Rest to open", "The pointer on the notch opens the drawer.", .blue, index: 1)
                 tip("arrow.down.doc.fill", "Drop files on it", "Drag a file to the notch: it lands in the Tray.", .orange, index: 2)
-                tip("arrow.down.right.and.arrow.up.left", "Move away to close", "Leave it and the drawer tucks back in.", .purple, index: 3)
+                tip("mic.fill", "Hold fn to talk", "Speak, let go: your words are typed where you are.", .purple, index: 3)
             }
             .padding(.horizontal, 44)
             .padding(.top, 8)
@@ -1050,6 +1050,7 @@ private struct OnboardingFinishPage: View {
     @ObservedObject private var login = AppShellLoginItem.shared
     @ObservedObject private var menuBar = StatusItemController.shared
     @ObservedObject private var appearance = AppearanceSettings.shared
+    @ObservedObject private var haptics = IslandInteractionSettings.shared
     @StateObject private var shown = OnboardingAppearance()
 
     var body: some View {
@@ -1105,8 +1106,19 @@ private struct OnboardingFinishPage: View {
                     .frame(width: 220)
                 }
                 separator
+                row(symbol: "hand.tap.fill", tint: .purple, title: "Trackpad Haptics",
+                    detail: "Feel the drawer open and close, slider steps and finished actions.", index: 4) {
+                    Picker("Trackpad Haptics", selection: $haptics.haptics) {
+                        ForEach(IslandHapticsLevel.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 220)
+                    .onChange(of: haptics.haptics) { _, _ in SparkVHaptics.play(.success) }
+                }
+                separator
                 row(symbol: "slider.horizontal.3", tint: Color(white: 0.6), title: "Customize Layout",
-                    detail: "Pick the tabs beside the camera, pin favorite tiles, switch off features you don't use.", index: 4) {
+                    detail: "Pick the tabs beside the camera, pin favorite tiles, switch off features you don't use.", index: 5) {
                     Button("Customize…") { LookLayoutWindowController.shared.show(page: .layout) }
                         .buttonStyle(OnboardingSecondaryButtonStyle(compact: true))
                 }
