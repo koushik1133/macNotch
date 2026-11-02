@@ -133,7 +133,7 @@ struct AmbientLightSettingsView: View {
     private var statusColor: Color {
         switch controller.status {
         case .running: SparkVTheme.success
-        case .needsPermission, .failed: SparkVTheme.warning
+        case .needsPermission, .failed, .retrying: SparkVTheme.warning
         default: SparkVTheme.textTertiary
         }
     }

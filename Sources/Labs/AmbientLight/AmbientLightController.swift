@@ -69,7 +69,16 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// a long time). Cleared only when that call returns, so a halted or
     /// superseded start never lets another one pile up behind it.
     private var engineStarting = false
+    /// The notch outline is off because the screen edges draw the notch light.
+    private var notchHiddenForEdges = false
     private var probeTask: Task<Void, Never>?
+    /// A failed or timed-out start waits here before the next try.
+    private var retryTask: Task<Void, Never>?
+    private var retryAttempt = 0
+    /// Health check, armed only while the feature is on and music plays.
+    private var watchdogTask: Task<Void, Never>?
+    /// The watchdog logged this episode (reset once the light is healthy).
+    private var watchdogLogged = false
     /// The last probe heard nothing (an app holding a silent stream, a
     /// notification sound): no new probe for `probeCooldown` seconds.
     private var lastFruitlessProbe: Double = -1_000
@@ -100,6 +109,8 @@ final class AmbientLightController: NSObject, ObservableObject {
         engine.onRouteChange = { [weak self] in self?.restartCapture() }
         engine.onAudibleChange = { [weak self] _ in self?.evaluate(userInitiated: false) }
         outputActivity.onChange = { [weak self] running in self?.outputActivityChanged(running) }
+        outputActivity.onServiceRestart = { [weak self] in self?.audioServiceRestarted() }
+        engine.onHALRecovered = { [weak self] in self?.halRecovered() }
         observeSystem()
         rebuildPalette()
         updateOutputMonitor()
@@ -229,6 +240,7 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// Some app started playing through the output. Only acted on while
     /// capture is stopped (SparkV's own tap also runs the device).
     private func outputActivityChanged(_ running: Bool) {
+        armWatchdog()
         guard running, settings.isActive, !suspended, !isPlaying,
               !engine.isRunning, startTask == nil, !engineStarting else { return }
         let now = CACurrentMediaTime()
@@ -276,15 +288,29 @@ final class AmbientLightController: NSObject, ObservableObject {
         if wantsCapture {
             stopTask?.cancel()
             stopTask = nil
-            if !engine.isRunning, startTask == nil, !engineStarting {
+            if !engine.isRunning, startTask == nil, !engineStarting, retryTask == nil || userInitiated {
+                retryTask?.cancel()
+                retryTask = nil
                 startCapture(userInitiated: userInitiated)
+            } else if !engine.isRunning, isPlaying, startTask != nil || engineStarting {
+                // Truthful while Core Audio works (never "Waiting for music"
+                // with music playing).
+                switch status {
+                case .requestingPermission, .needsPermission, .retrying, .starting: break
+                default: status = .starting
+                }
             } else if engine.isRunning, isMusicLive {
                 // Music came back during the stop grace (or is heard
                 // without Now Playing): capture is already running.
                 if case .running = status {} else { status = .running(source: engine.sourceName ?? backend.rawValue) }
             }
             startLink()
+            armWatchdog()
         } else {
+            retryTask?.cancel()
+            retryTask = nil
+            retryAttempt = 0
+            armWatchdog()
             if !settings.isActive { status = .off }
             else if case .needsPermission = status {} else { status = .waitingForMusic }
             guard engine.isRunning || startTask != nil, stopTask == nil else { return }
@@ -322,6 +348,7 @@ final class AmbientLightController: NSObject, ObservableObject {
             // Superseded or halted while the permission prompt was open.
             guard self.startToken == token, !Task.isCancelled else { return }
             guard !self.engineStarting else { return }
+            if self.isPlaying, self.status != .requestingPermission { self.status = .starting }
             do {
                 self.engineStarting = true
                 let began = CACurrentMediaTime()
@@ -343,14 +370,18 @@ final class AmbientLightController: NSObject, ObservableObject {
                 }
                 if chosen == .processTap { self.settings.hasStartedCaptureOnce = true }
                 self.backend = chosen
+                self.retryAttempt = 0
                 // A probe start isn't "running" until it hears music.
                 self.status = self.isMusicLive ? .running(source: self.engine.sourceName ?? chosen.rawValue) : .waitingForMusic
                 self.startLink()
             } catch {
                 if error is CancellationError || self.startToken != token || Task.isCancelled { return }
                 AppLog.log("AmbientLight: \(chosen.rawValue) failed: \(error.localizedDescription)")
+                let coreAudioBusy = Self.isCoreAudioBusy(error)
                 if chosen == .processTap, PermissionCenter.shared.isGranted(.screenRecording) {
-                    self.backend = .screenCapture
+                    // A busy Core Audio is temporary: light up through
+                    // screen capture now, but try the tap again next time.
+                    if !coreAudioBusy { self.backend = .screenCapture }
                     do {
                         try await self.engine.start(.screenCapture)
                         guard self.startToken == token else { return }
@@ -359,6 +390,7 @@ final class AmbientLightController: NSObject, ObservableObject {
                             return
                         }
                         self.status = self.isMusicLive ? .running(source: self.engine.sourceName ?? "Screen Capture Audio") : .waitingForMusic
+                        self.retryAttempt = 0
                         self.startLink()
                         return
                     } catch {
@@ -366,9 +398,128 @@ final class AmbientLightController: NSObject, ObservableObject {
                         AppLog.log("AmbientLight: screen capture fallback failed: \(error.localizedDescription)")
                     }
                 }
-                self.status = PermissionCenter.isCaptureDenial(error) ? .needsPermission : .failed(error.localizedDescription)
+                if PermissionCenter.isCaptureDenial(error) {
+                    self.status = .needsPermission
+                } else if self.wantsCapture {
+                    self.scheduleRetry(after: error)
+                } else {
+                    self.status = .failed(error.localizedDescription)
+                }
             }
         }
+    }
+
+    private static func isCoreAudioBusy(_ error: Error) -> Bool {
+        switch error {
+        case AmbientCaptureError.timedOut, AmbientCaptureError.halBusy: true
+        default: false
+        }
+    }
+
+    /// Backoff 2, 4, 8, 16, then every 30 s while music still plays.
+    private func scheduleRetry(after error: Error) {
+        retryAttempt += 1
+        let delay = min(30, 2 * pow(2, Double(retryAttempt - 1)))
+        status = .retrying(error.localizedDescription)
+        AppLog.log("AmbientLight: capture retry \(retryAttempt) in \(Int(delay)) s (\(error.localizedDescription))")
+        retryTask?.cancel()
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, !Task.isCancelled else { return }
+            self.retryTask = nil
+            self.evaluate(userInitiated: false)
+        }
+    }
+
+    /// An abandoned start finally returned: Core Audio answers again, so
+    /// don't sit out the rest of the backoff.
+    private func halRecovered() {
+        guard retryTask != nil else { return }
+        retryTask?.cancel()
+        retryTask = nil
+        evaluate(userInitiated: false)
+    }
+
+    /// coreaudiod restarted: every tap and aggregate is gone, and a running
+    /// capture is silently dead.
+    private func audioServiceRestarted() {
+        AppLog.log("AmbientLight: coreaudiod restarted; rebuilding capture")
+        guard settings.isActive, !suspended else { return }
+        let wasHearing = engine.isHearingAudio
+        if engine.isRunning || startTask != nil { haltCapture() }
+        retryTask?.cancel()
+        retryTask = nil
+        retryAttempt = 0
+        if wasHearing, !isPlaying { beginProbe(now: CACurrentMediaTime()) } else { evaluate(userInitiated: false) }
+    }
+
+    // MARK: Watchdog
+
+    private static let watchdogInterval: Double = 5
+
+    /// Only while the feature is on and something plays: Now Playing, or
+    /// output running shortly after the light was live (audio-only music).
+    private var watchdogShouldWatch: Bool {
+        guard settings.isActive, !suspended else { return false }
+        if isPlaying { return true }
+        return outputActivity.isOutputRunning && CACurrentMediaTime() - lastLiveAt < 60
+    }
+
+    /// Event-driven: armed from `evaluate` / output activity, one sleeping
+    /// task at a time, gone as soon as nothing plays.
+    private func armWatchdog() {
+        guard watchdogShouldWatch else {
+            watchdogTask?.cancel()
+            watchdogTask = nil
+            return
+        }
+        guard watchdogTask == nil else { return }
+        watchdogTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.watchdogInterval))
+            guard let self, !Task.isCancelled else { return }
+            self.watchdogTask = nil
+            self.checkHealth()
+            self.armWatchdog()
+        }
+    }
+
+    private func checkHealth() {
+        guard watchdogShouldWatch else { return }
+        let now = CACurrentMediaTime()
+        if engine.isRunning {
+            // A tap whose IO stopped (device gone, daemon reset) delivers
+            // nothing at all, not even silence.
+            if backend == .processTap, isPlaying,
+               now - engine.startedAt > Self.watchdogInterval,
+               let age = engine.secondsSinceAudio, age > Self.watchdogInterval {
+                watchdogLog("capture running but no audio for \(Int(age)) s; restarting")
+                haltCapture()
+                evaluate(userInitiated: false)
+            } else {
+                watchdogLogged = false
+            }
+            return
+        }
+        // Stopped: a start in flight, a retry or a permission gate each own
+        // the next step already.
+        guard startTask == nil, !engineStarting, retryTask == nil else { return }
+        switch status {
+        case .needsPermission, .requestingPermission: return
+        default: break
+        }
+        if isPlaying {
+            watchdogLog("Now Playing says playing for \(Int(Self.watchdogInterval)) s but capture isn't running; starting it")
+            evaluate(userInitiated: false)
+        } else if now - lastFruitlessProbe >= Self.probeCooldown {
+            watchdogLog("output running after recent music but capture isn't; probing")
+            beginProbe(now: now)
+        }
+    }
+
+    private func watchdogLog(_ message: String) {
+        guard !watchdogLogged else { return }
+        watchdogLogged = true
+        AppLog.log("AmbientLight: watchdog: \(message)")
     }
 
     /// nil when capture must not start now (no grant and no user action).
@@ -553,7 +704,22 @@ final class AmbientLightController: NSObject, ObservableObject {
             now: now
         ))
         let palette = currentPalette(for: frame)
-        for view in notchViews.allObjects { view.glow.render(frame, palette: palette) }
+        // With the screen edges on, the edge light already wraps the notch:
+        // one light, one look (the separate notch outline drew a second,
+        // different-looking rim around the island).
+        let edgesOwnNotch = settings.scope == .notchAndEdges
+        if edgesOwnNotch != notchHiddenForEdges {
+            notchHiddenForEdges = edgesOwnNotch
+            // Back to Notch Only: re-send everything (the cache says "dark").
+            for view in notchViews.allObjects { view.glow.invalidate() }
+        }
+        for view in notchViews.allObjects {
+            if edgesOwnNotch {
+                if view.glow.root.opacity != 0 { view.glow.root.opacity = 0 }
+            } else {
+                view.glow.render(frame, palette: palette)
+            }
+        }
         edges.setShown(settings.scope == .notchAndEdges && frame.presence > 0.001)
         edges.render(frame, palette: palette)
         if live, settings.beatHaptics { feelBeat(features) }
@@ -616,6 +782,11 @@ final class AmbientLightController: NSObject, ObservableObject {
 
     private func suspendForSystem() {
         suspended = true
+        retryTask?.cancel()
+        retryTask = nil
+        retryAttempt = 0
+        watchdogTask?.cancel()
+        watchdogTask = nil
         probeTask?.cancel()
         probeTask = nil
         probeUntil = 0

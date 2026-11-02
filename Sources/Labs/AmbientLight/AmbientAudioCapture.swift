@@ -113,9 +113,15 @@ enum AmbientCaptureError: Error, LocalizedError {
     case coreAudio(String, OSStatus)
     case unsupportedFormat
     case noDisplay
+    /// Core Audio didn't finish the start within the timeout.
+    case timedOut
+    /// An earlier start is still stuck inside Core Audio.
+    case halBusy
 
     var errorDescription: String? {
         switch self {
+        case .timedOut: "Core Audio didn't respond in time"
+        case .halBusy: "Core Audio is still busy"
         case .coreAudio(let step, let status): "\(step) failed (\(status))"
         case .unsupportedFormat: "unsupported audio format"
         case .noDisplay: "no display to capture audio from"
@@ -155,6 +161,31 @@ final class AmbientProcessTapSource: AmbientAudioSource, @unchecked Sendable {
     }
 
     func start() async throws -> Double {
+        try startBlocking()
+    }
+
+    /// Transient HAL errors seen in the log: the tap object is gone by the
+    /// time its format is read (560947818 = '!obj', after coreaudiod or a
+    /// device reset) or the aggregate can't be built yet. One quick retry
+    /// with a fresh tap fixes those; "Starting capture" (the permission
+    /// gate) is never retried.
+    nonisolated static func isTransient(_ error: Error) -> Bool {
+        guard case AmbientCaptureError.coreAudio(let step, _) = error else { return false }
+        return step != "Starting capture"
+    }
+
+    /// Synchronous: call only on `AmbientAudioEngine.halQueue`.
+    func startBlocking() throws -> Double {
+        do {
+            return try startOnce()
+        } catch where Self.isTransient(error) {
+            AppLog.log("AmbientLight: \(error.localizedDescription); retrying once with a new tap")
+            usleep(250_000)
+            return try startOnce()
+        }
+    }
+
+    private func startOnce() throws -> Double {
         stop()
         // Exclude SparkV itself (its own sounds would echo into the lights).
         var excluded: [AudioObjectID] = []
@@ -387,13 +418,21 @@ final class AmbientScreenCaptureSource: NSObject, AmbientAudioSource, SCStreamOu
 final class AmbientOutputActivityMonitor {
     /// Called on the main queue when the value changes.
     var onChange: ((Bool) -> Void)?
+    /// Called on the main queue when coreaudiod restarted (every tap and
+    /// aggregate SparkV had is gone).
+    var onServiceRestart: (() -> Void)?
     private(set) var isOutputRunning = false
+    private var restartListener: AudioObjectPropertyListenerBlock?
     private var device = AudioObjectID(kAudioObjectUnknown)
     private var deviceListener: AudioObjectPropertyListenerBlock?
     private var defaultListener: AudioObjectPropertyListenerBlock?
 
     private static let runningAddress = AudioObjectPropertyAddress(
         mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain)
+    private static let restartAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyServiceRestarted,
         mScope: kAudioObjectPropertyScopeGlobal,
         mElement: kAudioObjectPropertyElementMain)
     private static let defaultAddress = AudioObjectPropertyAddress(
@@ -412,6 +451,19 @@ final class AmbientOutputActivityMonitor {
         if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, block) == noErr {
             defaultListener = block
         }
+        let restart: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                // The device listener died with the old daemon: rebind.
+                self.unbindDevice()
+                self.rebind()
+                self.onServiceRestart?()
+            }
+        }
+        var restartAddress = Self.restartAddress
+        if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &restartAddress, DispatchQueue.main, restart) == noErr {
+            restartListener = restart
+        }
         rebind()
     }
 
@@ -420,6 +472,11 @@ final class AmbientOutputActivityMonitor {
             var address = Self.defaultAddress
             AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, defaultListener)
             self.defaultListener = nil
+        }
+        if let restartListener {
+            var address = Self.restartAddress
+            AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, restartListener)
+            self.restartListener = nil
         }
         unbindDevice()
         isOutputRunning = false

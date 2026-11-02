@@ -91,6 +91,10 @@ final class NotchWindowController: NSWindowController {
     /// The current left-button press started inside the drawer (e.g. dragging
     /// a file out of the tray), as opposed to anywhere else on screen.
     private var pressBeganInPanel = false
+    /// Uptime of the last click (any app) in the top band near the notch.
+    private var lastTopClickAt: Double?
+    /// Rate limit for the "hover open declined" log line.
+    private var lastDeclineLog: (reason: String, at: Double)?
     /// Screen-space rect of the resting notch, used as the hover hot zone.
     private var notchRect: NSRect = .zero
     private var tabObserver: AnyCancellable?
@@ -1654,14 +1658,20 @@ final class NotchWindowController: NSWindowController {
         // A click anywhere else (another app, the desktop) closes the open
         // drawer. Global monitors never see clicks on SparkV's own windows.
         if let outside = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] _ in
-            MainActor.assumeIsolated { self?.handleClickOutside() }
+            MainActor.assumeIsolated {
+                self?.noteGlobalClick()
+                self?.handleClickOutside()
+            }
         }) {
             eventMonitors.append(outside)
         }
 
         // Right-click on the closed island: version, Settings, About, Quit.
         if let rightClick = NSEvent.addGlobalMonitorForEvents(matching: .rightMouseDown, handler: { [weak self] _ in
-            MainActor.assumeIsolated { self?.showShellMenuIfOverIsland() }
+            MainActor.assumeIsolated {
+                self?.noteGlobalClick()
+                self?.showShellMenuIfOverIsland()
+            }
         }) {
             eventMonitors.append(rightClick)
         }
@@ -1838,6 +1848,12 @@ final class NotchWindowController: NSWindowController {
                 noteReachedIsland()
                 if isOnFullScreenMenuBarRow(mouse) || hoverSuppressed {
                     endThemeHover()
+                } else if IslandInteractionStore.current.openTrigger == .topEdge {
+                    // Push to Top Edge: only the edge over the notch opens.
+                    if hoverZone(at: mouse) == .housing, let geometry, mouse.y >= geometry.screenTop - 1,
+                       hoverDeclineReason(at: mouse, checkPopups: false) == nil {
+                        openFromHover()
+                    }
                 } else if !IslandInteractionStore.current.openTrigger.opensOnHover {
                     // Click, Press and Hold or Swipe Down: hovering only
                     // shows that the island is ready.
@@ -1903,6 +1919,12 @@ final class NotchWindowController: NSWindowController {
             hoverDwellTask = nil
         }
         guard hoverDwellTask == nil else { return }
+        // Cheap checks on every move; the window list only right before opening.
+        if let reason = hoverDeclineReason(at: mouse, checkPopups: false) {
+            logHoverDecline(reason)
+            if themeHover.isHovered, themePreviewTask == nil { themeHover.isHovered = false }
+            return
+        }
         var floor = 0
         // Full screen: a deliberate pause, so passing by on the way to the
         // menu bar doesn't open it.
@@ -1918,6 +1940,10 @@ final class NotchWindowController: NSWindowController {
         ))
         switch plan {
         case .openNow:
+            if let reason = hoverDeclineReason(at: mouse, checkPopups: true) {
+                logHoverDecline(reason)
+                return
+            }
             openFromHover()
         case .wait(let milliseconds):
             themeHover.isHovered = true
@@ -1937,6 +1963,11 @@ final class NotchWindowController: NSWindowController {
                     }
                     if self.pointerHasSettled() {
                         self.hoverDwellTask = nil
+                        if let reason = self.hoverDeclineReason(at: NSEvent.mouseLocation, checkPopups: true) {
+                            self.logHoverDecline(reason)
+                            self.themeHover.isHovered = false
+                            return
+                        }
                         self.openFromHover()
                         return
                     }
@@ -1945,6 +1976,71 @@ final class NotchWindowController: NSWindowController {
                 self?.hoverDwellTask = nil
             }
         }
+    }
+
+    /// Records a click anywhere (another app) in the top band near the notch.
+    private func noteGlobalClick() {
+        guard let geometry else { return }
+        let mouse = NSEvent.mouseLocation
+        guard mouse.y >= geometry.screenTop - IslandHoverIntent.clickBandHeight,
+              abs(mouse.x - notchRect.midX) < 600 else { return }
+        lastTopClickAt = ProcessInfo.processInfo.systemUptime
+    }
+
+    /// Why hover must not open the drawer now (nil: go ahead). `checkPopups`
+    /// adds one window-list read; only pass it right before opening.
+    private func hoverDeclineReason(at mouse: NSPoint, checkPopups: Bool) -> String? {
+        let pushed = hoverZone(at: mouse) == .housing && (geometry.map { mouse.y >= $0.screenTop - 1 } ?? false)
+        let now = ProcessInfo.processInfo.systemUptime
+        let buttons = NSEvent.pressedMouseButtons
+        return IslandHoverIntent.declineReason(
+            // Left-button drags were already vetted by ShelfDragFilter (a
+            // file drag may open the shelf); any other held button declines.
+            buttonsDown: buttons & ~1 != 0 || (buttons & 1 != 0 && pressBeganInPanel)
+                || (buttons & 1 != 0 && !ShelfDragFilter.allowsHoverOpen(pressBeganInPanel: pressBeganInPanel)),
+            pushedAtTopEdge: pushed,
+            secondsSinceTopClick: lastTopClickAt.map { now - $0 },
+            menuTracking: isMenuTracking,
+            popupNearTop: checkPopups && !pushed && isPopupNearTop())
+    }
+
+    /// Another app shows a menu, popover, sheet or alert above normal
+    /// window level near the notch. One CGWindowList read; never polled.
+    private func isPopupNearTop() -> Bool {
+        guard let screen = window?.screen ?? NSScreen.main,
+              let primary = NSScreen.screens.first,
+              let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return false }
+        let me = ProcessInfo.processInfo.processIdentifier
+        let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        // CG window bounds: top-left origin on the primary display.
+        let screenTopCG = primary.frame.maxY - screen.frame.maxY
+        let region = CGRect(x: notchRect.midX - 400, y: screenTopCG,
+                            width: 800, height: 260)
+        let popUpMenuLevel = Int(CGWindowLevelForKey(.popUpMenuWindow))
+        let statusLevel = Int(CGWindowLevelForKey(.statusWindow))
+        let mainMenuLevel = Int(CGWindowLevelForKey(.mainMenuWindow))
+        let dockLevel = Int(CGWindowLevelForKey(.dockWindow))
+        for info in list {
+            guard let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid != me,
+                  let layer = info[kCGWindowLayer as String] as? Int, layer > 0, layer < 1000,
+                  layer != statusLevel, layer != mainMenuLevel, layer != dockLevel,
+                  let dict = info[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: dict),
+                  bounds.intersects(region) else { continue }
+            // Any app's open menu, or the frontmost app's floating panel/popover.
+            if layer == popUpMenuLevel || pid == front { return true }
+        }
+        return false
+    }
+
+    /// One line per reason, at most every 5 s.
+    private func logHoverDecline(_ reason: String) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let last = lastDeclineLog, last.reason == reason, now - last.at < 5 { return }
+        if let last = lastDeclineLog, now - last.at < 1 { return }
+        lastDeclineLog = (reason, now)
+        AppLog.log("Island: hover open declined (\(reason))")
     }
 
     /// Over the notch (or the resting pill), a wing beside it, or the band under it.
@@ -2325,7 +2421,10 @@ final class NotchWindowController: NSWindowController {
     /// and only for Click or Press and Hold; everywhere else (and with
     /// Hover) it stays click-through, so the menu bar works as before.
     private func updateClosedClickCapture(onIsland: Bool) {
-        let want = onIsland && !state.isExpanded && IslandInteractionStore.current.openTrigger.takesClicks
+        // Only the black notch/pill itself takes the button; wings and the
+        // band under it stay click-through (bands with buttons handle their own).
+        let want = onIsland && hoverZone(at: NSEvent.mouseLocation) == .housing
+            && !state.isExpanded && IslandInteractionStore.current.openTrigger.takesClicks
             && visibility.isOnScreen && !visibility.ignoresHover && !interaction.isSteppingAside && !FaceUnlock.isUsingNotch
         guard want != clickCaptureActive else {
             // Another feature (the HUD, an activity band) may have made the

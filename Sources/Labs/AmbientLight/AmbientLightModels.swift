@@ -285,6 +285,10 @@ enum AmbientLightStatus: Equatable, Sendable {
     case requestingPermission
     /// System Audio Recording is off for SparkV.
     case needsPermission
+    /// Music plays; system-audio capture is starting.
+    case starting
+    /// A start failed or timed out; another try is scheduled.
+    case retrying(String)
     /// Capturing and lit.
     case running(source: String)
     /// Capture failed (with a short reason).
@@ -295,7 +299,9 @@ enum AmbientLightStatus: Equatable, Sendable {
         case .off: "Off"
         case .waitingForMusic: "Waiting for music"
         case .requestingPermission: "Asking for System Audio Recording…"
-        case .needsPermission: "Allow System Audio Recording for SparkV in System Settings › Privacy & Security."
+        case .starting: "Starting…"
+        case .retrying(let reason): "Couldn't start system audio capture (\(reason)) — retrying"
+        case .needsPermission: "Needs System Audio Recording permission. Allow SparkV in System Settings › Privacy & Security."
         case .running(let source): "Listening (\(source))"
         case .failed(let reason): "Couldn't listen: \(reason)"
         }

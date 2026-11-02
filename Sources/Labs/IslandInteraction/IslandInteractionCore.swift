@@ -13,6 +13,8 @@ enum IslandOpenTrigger: String, CaseIterable, Identifiable, Sendable {
     case hoverOrClick
     case pressAndHold
     case swipeDown
+    /// Only pushing the pointer against the top edge over the notch opens.
+    case topEdge
 
     var id: String { rawValue }
 
@@ -23,6 +25,7 @@ enum IslandOpenTrigger: String, CaseIterable, Identifiable, Sendable {
         case .hoverOrClick: "Hover or Click"
         case .pressAndHold: "Press and Hold"
         case .swipeDown: "Swipe Down"
+        case .topEdge: "Push to Top Edge"
         }
     }
 
@@ -33,6 +36,7 @@ enum IslandOpenTrigger: String, CaseIterable, Identifiable, Sendable {
         case .hoverOrClick: "Hover, or click to open at once."
         case .pressAndHold: "Hold the button on the notch for a moment."
         case .swipeDown: "Two fingers down on the trackpad over the notch."
+        case .topEdge: "Push the pointer against the top edge over the notch."
         }
     }
 
@@ -350,6 +354,25 @@ enum IslandHoverIntent {
     static let passThroughSpeed: Double = 1500
     /// Sideways faster than this over a wing: heading for a menu bar item.
     static let sidewaysSpeed: Double = 260
+    /// Sideways faster than this over the notch itself: sweeping along the
+    /// menu bar or a tab bar, not stopping on the island.
+    static let sweepSpeed: Double = 700
+    /// A click in the top band holds hover-open off this long.
+    static let recentClickSeconds: Double = 0.5
+    /// How far below the screen top a click counts as "near the notch".
+    static let clickBandHeight: Double = 60
+
+    /// Why a hover open is declined right now, or nil to allow it. Pushing
+    /// against the top edge over the notch skips everything but a held button.
+    static func declineReason(buttonsDown: Bool, pushedAtTopEdge: Bool, secondsSinceTopClick: Double?,
+                              menuTracking: Bool, popupNearTop: Bool) -> String? {
+        if buttonsDown { return "mouse button down" }
+        if pushedAtTopEdge { return nil }
+        if let t = secondsSinceTopClick, t >= 0, t < recentClickSeconds { return "recent click near the top" }
+        if menuTracking { return "a menu is open" }
+        if popupNearTop { return "a popup is open near the top" }
+        return nil
+    }
 
     struct Inputs: Equatable, Sendable {
         var zone: IslandHoverZone
@@ -384,6 +407,7 @@ enum IslandHoverIntent {
     static func settled(zone: IslandHoverZone, speed: Double, horizontalSpeed: Double) -> Bool {
         if speed > passThroughSpeed { return false }
         if zone == .wing, horizontalSpeed > sidewaysSpeed { return false }
+        if horizontalSpeed > sweepSpeed { return false }
         return true
     }
 }
