@@ -65,6 +65,10 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// Capture was started by output activity; until this time it may run
     /// without Now Playing or heard sound (time to hear the music).
     private var probeUntil: Double = 0
+    /// `engine.start` is inside Core Audio (aggregate creation can block for
+    /// a long time). Cleared only when that call returns, so a halted or
+    /// superseded start never lets another one pile up behind it.
+    private var engineStarting = false
     private var probeTask: Task<Void, Never>?
     /// The last probe heard nothing (an app holding a silent stream, a
     /// notification sound): no new probe for `probeCooldown` seconds.
@@ -226,7 +230,7 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// capture is stopped (SparkV's own tap also runs the device).
     private func outputActivityChanged(_ running: Bool) {
         guard running, settings.isActive, !suspended, !isPlaying,
-              !engine.isRunning, startTask == nil else { return }
+              !engine.isRunning, startTask == nil, !engineStarting else { return }
         let now = CACurrentMediaTime()
         guard now - lastFruitlessProbe >= Self.probeCooldown else { return }
         beginProbe(now: now)
@@ -272,7 +276,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         if wantsCapture {
             stopTask?.cancel()
             stopTask = nil
-            if !engine.isRunning, startTask == nil {
+            if !engine.isRunning, startTask == nil, !engineStarting {
                 startCapture(userInitiated: userInitiated)
             } else if engine.isRunning, isMusicLive {
                 // Music came back during the stop grace (or is heard
@@ -317,9 +321,22 @@ final class AmbientLightController: NSObject, ObservableObject {
             guard let chosen = await self.chooseBackend(userInitiated: userInitiated) else { return }
             // Superseded or halted while the permission prompt was open.
             guard self.startToken == token, !Task.isCancelled else { return }
+            guard !self.engineStarting else { return }
             do {
+                self.engineStarting = true
+                let began = CACurrentMediaTime()
+                defer {
+                    self.engineStarting = false
+                    let took = CACurrentMediaTime() - began
+                    if took > 3 { AppLog.log("AmbientLight: capture start took \(Int(took)) s (Core Audio was busy)") }
+                }
                 try await self.engine.start(chosen)
-                guard self.startToken == token else { return } // a newer start owns the engine
+                guard self.startToken == token else {
+                    // Halted while Core Audio was busy, and no newer start
+                    // exists (they wait for this one): don't leave it running.
+                    if !self.wantsCapture { self.engine.stop() } else { self.evaluate(userInitiated: false) }
+                    return
+                }
                 if Task.isCancelled || !self.wantsCapture {
                     self.engine.stop()
                     return
