@@ -52,6 +52,7 @@ enum SparkVSettingsPanes {
                 SettingsCardRow { MediaGesturesSettingsSection() }
                 SettingsCardRow { LyricsSettingsSection() }
                 SettingsCardRow { SpotifyLikesSettingsSection() }
+                SettingsCardRow { AmbientLightSettingsSection() }
             }
             Group {
                 SettingsCardRow { MicMuteSettingsSection() }

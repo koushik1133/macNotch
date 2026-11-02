@@ -47,7 +47,7 @@ enum SparkVSettingsPane: String, CaseIterable, Identifiable, Sendable {
         if let pane = SparkVSettingsPane(rawValue: slug) { self = pane; return }
         let aliases: [String: SparkVSettingsPane] = [
             "updates": .general, "about": .general, "login": .general, "menu-bar": .general,
-            "notch": .island, "music": .media, "now-playing": .media, "hud": .system, "battery": .system,
+            "notch": .island, "music": .media, "ambient": .media, "ambient-light": .media, "now-playing": .media, "hud": .system, "battery": .system,
             "live-activities": .activities, "calendar": .planner, "timer": .planner, "focus": .planner,
             "tray": .shelf, "files": .shelf, "look": .appearance, "theme": .appearance,
             "diagnostics": .advanced, "automation": .advanced, "reset": .advanced, "uninstall": .advanced,

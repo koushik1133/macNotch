@@ -380,3 +380,42 @@ struct AmbientLightHubTile: View {
                  : "Ambient Light: the notch glows with your music. Click to turn on.")
     }
 }
+
+// MARK: - Settings pane
+
+/// The main switches in Settings › Media; the full options stay in the
+/// Ambient Light window.
+struct AmbientLightSettingsSection: View {
+    @ObservedObject private var settings = AmbientLightSettings.shared
+    @ObservedObject private var controller = AmbientLightController.shared
+
+    var body: some View {
+        MPSettingsSection(title: "Ambient Light",
+                          summary: "The notch and screen edges glow with your music, over every app and Space.",
+                          systemImage: "light.beacon.max.fill",
+                          accessory: {
+                              MPHeaderSwitch(label: "Ambient Light",
+                                             isOn: Binding(get: { settings.isEnabled }, set: { controller.setEnabled($0) }))
+                          }) {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Where", selection: $settings.scope) {
+                    ForEach(AmbientLightScope.allCases) { scope in Text(scope.title).tag(scope) }
+                }
+                .pickerStyle(.segmented)
+                Toggle("Over Full-Screen Apps", isOn: $settings.overFullScreen)
+                    .disabled(settings.scope != .notchAndEdges)
+                Toggle("Music Haptics", isOn: $settings.beatHaptics)
+                Text(controller.status.text)
+                    .font(.system(size: 11))
+                    .foregroundStyle(SparkVTheme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Button("Colors and More…") { AmbientLightSettingsWindowController.shared.show() }
+                        .buttonStyle(SparkVSecondaryButtonStyle())
+                    Spacer()
+                }
+            }
+            .disabled(!settings.isEnabled)
+        }
+    }
+}
