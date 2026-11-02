@@ -382,7 +382,10 @@ private struct ClipboardCard: View {
                 anchor: .pointer,
                 toolTip: toolTip,
                 payloads: { clipboard.dragPayloads(for: item) },
-                onClick: { clipboard.copy(item) },
+                onClick: {
+                    SparkVHaptics.play(.success)
+                    clipboard.copy(item)
+                },
                 onDoubleClick: { clipboard.paste(item) },
                 menu: { makeMenu() },
                 onHoverChange: { hover.isOn = $0 },

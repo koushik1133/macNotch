@@ -190,7 +190,7 @@ final class NotchWindowController: NSWindowController {
     /// Follow the Pointer waits this long on a new display before moving.
     private static let followPointerDelay: Duration = .seconds(1)
     /// Hover dwell while the display is full screen (even for Plain).
-    private static let fullScreenHoverDwell: Duration = .milliseconds(400)
+    private static let fullScreenHoverDwell: Duration = .milliseconds(250)
     /// A resting island woken from the top-edge strip shows first, then opens.
     private static let restingRevealDwell: Duration = .milliseconds(250)
     /// Rows at the top edge that belong to macOS's full-screen menu bar.
@@ -2084,7 +2084,9 @@ final class NotchWindowController: NSWindowController {
     }
 
     /// `animated: false` for keyboard-triggered opens (they appear at once).
-    private func setExpanded(_ expanded: Bool, animated: Bool = true) {
+    /// Every open taps `.open` unless `tapsOnOpen` is false (Keep Open
+    /// plays its own `.snap`); closes tap only where the user asked.
+    private func setExpanded(_ expanded: Bool, animated: Bool = true, tapsOnOpen: Bool = true) {
         guard state.isExpanded != expanded else { return }
         var animated = animated
         // Opened by a hotkey, a link or another feature while hidden (full
@@ -2134,6 +2136,7 @@ final class NotchWindowController: NSWindowController {
 
         media.setActive(expanded)
         if expanded {
+            if tapsOnOpen { SparkVHaptics.play(.open) }
             NotificationCenter.default.post(name: .sparkVIslandDidExpand, object: nil)
             macros.refreshLibraryIfStale()
             watchFaceUnlock()
@@ -2354,12 +2357,10 @@ final class NotchWindowController: NSWindowController {
         }
     }
 
-    /// Opened by a click, a hold or a swipe: one gentle tap on a Force
-    /// Touch trackpad (never for hover).
+    /// Opened by a click, a hold or a swipe (`setExpanded` taps `.open`).
     private func openFromGesture() {
         guard !state.isExpanded, !FaceUnlock.isUsingNotch else { return }
         endThemeHover()
-        SparkVHaptics.perform(.alignment)
         openFromHover()
     }
 
@@ -2384,7 +2385,6 @@ final class NotchWindowController: NSWindowController {
         case .down where !wasExpanded:
             openFromGesture()
         case .up where wasExpanded:
-            SparkVHaptics.perform(.alignment)
             closeOnRequest()
         default:
             break
@@ -2405,6 +2405,7 @@ final class NotchWindowController: NSWindowController {
         guard state.isExpanded, IslandInteractionStore.current.clickOutsideCloses, !state.isPinned,
               !isInteractionInProgress else { return }
         guard !interactiveFrame.insetBy(dx: -2, dy: -2).contains(NSEvent.mouseLocation) else { return }
+        SparkVHaptics.play(.close)
         forceCollapse()
     }
 
@@ -2505,6 +2506,7 @@ final class NotchWindowController: NSWindowController {
         guard state.isExpanded else { return }
         closeLatch.closedOnRequest()
         state.isPinned = false
+        SparkVHaptics.play(.close)
         forceCollapse()
     }
 
@@ -2512,13 +2514,13 @@ final class NotchWindowController: NSWindowController {
     private func setPinned(_ pinned: Bool) {
         guard pinned != state.isPinned else { return }
         if pinned, !state.isExpanded {
-            setExpanded(true, animated: false)
+            setExpanded(true, animated: false, tapsOnOpen: false)
             guard state.isExpanded else { return }
         }
         state.isPinned = pinned && state.isExpanded
         collapseTask?.cancel()
         collapseTask = nil
-        SparkVHaptics.perform(.alignment)
+        SparkVHaptics.play(pinned ? .snap : .toggleOff)
         AppLog.log("Island: drawer \(pinned ? "kept open" : "free to close")")
         // Let go with the pointer elsewhere: the usual close timer starts.
         if !pinned { handlePointer() }

@@ -153,10 +153,11 @@ private struct FileDropBucket: View {
         .onDrop(of: FileDropController.acceptedTypes, isTargeted: $targeted.isOn) { providers in
             controller.hideZone(after: .milliseconds(120))
             controller.noteShelfDrop(instant)
+            SparkVHaptics.play(.drop)
             return controller.accept(providers, then: instant)
         }
         .onReceive(targeted.$isOn.removeDuplicates()) { on in
-            if on { SparkVHaptics.perform(.alignment) }
+            if on { SparkVHaptics.play(.select) }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(instant == .actions ? "Drop for actions" : (instant == .tray ? "Drop to keep on the Tray" : instant.title))

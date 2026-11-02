@@ -705,6 +705,9 @@ final class MeetingStartedIntelBridge: MeetingIntelBridge {
 
 #if !SMARTMOMENTS_FAKES
 extension MeetingAssistant: MeetingStartedNotesPort {
+    // The `byUser:` defaults don't satisfy the protocol on their own.
+    func start(title: String?, calendarEventID: String?) { start(title: title, calendarEventID: calendarEventID, byUser: true) }
+    func stop() { stop(byUser: true) }
     var meetingStartedRecordID: UUID? { current?.id }
     var meetingStartedActiveCallKey: String? { callDetector.activeCall?.key }
     func meetingStartedOpenNotes() { openNotesWindow() }

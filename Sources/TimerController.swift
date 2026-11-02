@@ -1071,6 +1071,7 @@ final class TimerController: ObservableObject {
         }
         let ring = TimerRinging(itemID: itemID, title: title, since: Date())
         ringing = ring
+        SparkVHaptics.play(.alert)
         // Hovering the band opens Today: make sure Stop and Snooze are there.
         if PlannerRouter.shared.section != .timers { PlannerRouter.shared.section = .today }
         AppLog.log("Timer: ringing")

@@ -540,7 +540,10 @@ struct ReminderRow: View {
         let done = controller.completingIDs.contains(item.id)
         let overdue = item.isOverdue(at: now)
         HStack(spacing: 6) {
-            Button { controller.toggle(item) } label: {
+            Button {
+                SparkVHaptics.play(done ? .toggleOff : .success)
+                controller.toggle(item)
+            } label: {
                 ZStack {
                     Circle()
                         .strokeBorder(item.listColor.color.opacity(done ? 0 : 0.95), lineWidth: 1.4)

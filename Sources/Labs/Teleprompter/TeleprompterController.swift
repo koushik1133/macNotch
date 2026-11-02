@@ -185,7 +185,15 @@ final class TeleprompterController: ObservableObject {
 
     // MARK: Playback
 
-    func togglePlay() { isPlaying || countdownRemaining != nil ? pause() : play() }
+    func togglePlay() {
+        if isPlaying || countdownRemaining != nil {
+            pause()
+            SparkVHaptics.play(.stop)
+        } else {
+            play()
+            SparkVHaptics.play(.start)
+        }
+    }
 
     func play() {
         guard isShown else { show(); return play() }
@@ -559,8 +567,10 @@ final class TeleprompterVoicePacer {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else { return false }
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [request] buffer, _ in
-            request.append(buffer)
+        // One channel of the 3-channel MacBook mic array (see MonoDownmix).
+        let downmix = MonoDownmix(sampleRate: format.sampleRate)
+        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [request] buffer, _ in
+            request.append(downmix.process(buffer))
         }
         do {
             engine.prepare()

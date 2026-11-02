@@ -170,9 +170,11 @@ struct TimerControls: View {
         HStack(spacing: 4) {
             if showsMenu { TimerPresetMenu(entry: entry) }
             TimerControlButton(symbol: entry.isRunning ? "pause.fill" : "play.fill", help: playHelp, isProminent: true) {
+                SparkVHaptics.play(entry.isRunning ? .stop : .start)
                 timer.toggle(entry.itemID)
             }
             TimerControlButton(symbol: "arrow.counterclockwise", help: "Reset") {
+                SparkVHaptics.play(.stop)
                 timer.reset(entry.itemID)
             }
             .disabled(entry.isIdle && entry.kind != .pomodoro)
@@ -232,10 +234,16 @@ struct TimerPresetItems: View {
 
     var body: some View {
         if entry.isPrimary {
-            Button("Pomodoro (\(Pomodoro.focusMinutes) / \(Pomodoro.shortBreakMinutes))") { timer.startPomodoro() }
+            Button("Pomodoro (\(Pomodoro.focusMinutes) / \(Pomodoro.shortBreakMinutes))") {
+                SparkVHaptics.play(.start)
+                timer.startPomodoro()
+            }
             Divider()
             ForEach(TimerController.presets, id: \.self) { minutes in
-                Button("\(minutes) min") { timer.startCountdown(seconds: TimeInterval(minutes * 60)) }
+                Button("\(minutes) min") {
+                    SparkVHaptics.play(.start)
+                    timer.startCountdown(seconds: TimeInterval(minutes * 60))
+                }
             }
             Menu("More") {
                 ForEach(TimerController.morePresets, id: \.self) { minutes in
@@ -353,7 +361,10 @@ struct TimerRingingView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(SparkVTheme.text)
                 HStack(spacing: 5) {
-                    TimerTextButton(title: "Stop", isProminent: true) { timer.stopRinging() }
+                    TimerTextButton(title: "Stop", isProminent: true) {
+                        SparkVHaptics.play(.stop)
+                        timer.stopRinging()
+                    }
                     TimerTextButton(title: "Snooze \(preferences.snoozeMinutes)m") { timer.snooze() }
                 }
             }

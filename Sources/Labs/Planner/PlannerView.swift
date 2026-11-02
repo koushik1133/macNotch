@@ -718,7 +718,10 @@ struct PlannerWeatherSection: View {
             .frame(width: 190, alignment: .leading)
             VStack(alignment: .leading, spacing: 6) {
                 WeatherCityEditor(controller: controller, showsDisclosure: false)
-                Toggle("Rain alerts under the notch", isOn: $controller.rainAlerts)
+                Toggle("Rain alerts under the notch", isOn: Binding(get: { controller.rainAlerts }, set: { on in
+                    SparkVHaptics.play(on ? .toggleOn : .toggleOff)
+                    controller.rainAlerts = on
+                }))
                     .toggleStyle(.switch)
                     .controlSize(.mini)
                     .font(.system(size: 10.5))

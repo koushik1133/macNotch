@@ -511,6 +511,7 @@ struct HubActions {
 
     /// Opening an agent's page: a short strong ease-out (Reduce Motion: fade).
     func openTab(_ tab: NotchState.Tab) {
+        if state.tab != tab { SparkVHaptics.play(.select) }
         withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { state.select(tab) }
     }
 

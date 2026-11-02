@@ -95,7 +95,10 @@ struct ShelfDrawerDrop: DropDelegate {
 
     func dropEntered(info: DropInfo) {
         // Setting this flips other tabs to the Tray (NotchState).
-        if isWelcome(info) { state.isDropTargeted = true }
+        if isWelcome(info) {
+            state.isDropTargeted = true
+            SparkVHaptics.play(.select)
+        }
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
@@ -109,6 +112,7 @@ struct ShelfDrawerDrop: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         state.isDropTargeted = false
         guard isWelcome(info) else { return false }
+        SparkVHaptics.play(.drop)
         let providers = info.itemProviders(for: Self.types)
         switch state.tab {
         case .converter:

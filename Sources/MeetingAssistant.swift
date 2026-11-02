@@ -185,7 +185,8 @@ final class MeetingAssistant: ObservableObject {
     // MARK: - Recording
 
     /// Starts recording a meeting. `title` defaults to the date and time.
-    func start(title: String?, calendarEventID: String?) {
+    /// `byUser` false (auto-start, the call prompt's own tap) plays no haptic.
+    func start(title: String?, calendarEventID: String?, byUser: Bool = true) {
         switch phase {
         case .recording, .summarizing: return
         case .idle, .failed: break
@@ -216,6 +217,7 @@ final class MeetingAssistant: ObservableObject {
         pendingQuestion = nil
         liveAnswer = nil
         phase = .recording
+        if byUser { SparkVHaptics.play(.start) }
         postRecordingActivity()
 
         recorder.onSegment = { [weak self] segment in
@@ -253,9 +255,10 @@ final class MeetingAssistant: ObservableObject {
     }
 
     /// Stops recording, writes the minutes and opens them.
-    func stop() {
+    func stop(byUser: Bool = true) {
         guard phase == .recording, let started = current else { return }
         phase = .summarizing
+        if byUser { SparkVHaptics.play(.stop) }
         autosaveTask?.cancel()
         autosaveTask = nil
         // The meeting is over: a pending or shown suggested answer would only
@@ -346,7 +349,8 @@ final class MeetingAssistant: ObservableObject {
     /// stops and writes notes on its own when the call ends.
     func startDetectedCall() {
         guard let call = promptedCall ?? callDetector.activeCall else { return }
-        startRecording(for: call)
+        // The prompt's pill already played its own haptic.
+        startRecording(for: call, byUser: false)
         if phase == .recording { openNotesWindow() }
     }
 
@@ -367,12 +371,12 @@ final class MeetingAssistant: ObservableObject {
         }
     }
 
-    func startRecording(for call: DetectedCall) {
+    func startRecording(for call: DetectedCall, byUser: Bool = true) {
         switch phase {
         case .recording, .summarizing: return
         case .idle, .failed: break
         }
-        start(title: call.title, calendarEventID: call.calendarEventID)
+        start(title: call.title, calendarEventID: call.calendarEventID, byUser: byUser)
         guard phase == .recording, let id = current?.id else { return }
         detectorRecording = (id, call.key)
         AppLog.log("Meetings: recording a detected \(call.serviceName) call")
@@ -391,7 +395,7 @@ final class MeetingAssistant: ObservableObject {
             // speech and Screen Recording were answered, it offers instead.
             if !autoStartDetectedCalls, callOfferOverride?(call) == true { return }
             if autoStartDetectedCalls, Self.canRecordWithoutPrompt {
-                startRecording(for: call)
+                startRecording(for: call, byUser: false)
             } else {
                 postCallPrompt(call, isNew: true)
             }
@@ -416,7 +420,7 @@ final class MeetingAssistant: ObservableObject {
             if promptedCall?.key == call.key { clearCallPrompt() }
             guard phase == .recording else { return }
             if let recording = detectorRecording, recording.callKey == call.key, current?.id == recording.recordID {
-                stop()
+                stop(byUser: false)
             } else {
                 activities.post(LiveActivity(
                     id: ActivityID.notes, kind: .meeting, priority: 75, duration: 5

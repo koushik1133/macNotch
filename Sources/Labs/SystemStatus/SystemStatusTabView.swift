@@ -387,6 +387,11 @@ struct QuickTogglesGrid: View {
                         detail: toggles.detail(kind),
                         isBusy: toggles.busy.contains(kind)
                     ) {
+                        switch toggles.isOn(kind) {
+                        case true?: SparkVHaptics.play(.toggleOff)
+                        case false?: SparkVHaptics.play(.toggleOn)
+                        case nil: SparkVHaptics.play(.select)
+                        }
                         toggles.perform(kind)
                     }
                 }

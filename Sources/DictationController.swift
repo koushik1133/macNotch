@@ -419,6 +419,7 @@ final class DictationController: ObservableObject {
                     pendingTapTask?.cancel()
                     pendingTapTask = nil
                     isHandsFree = true
+                    SparkVHaptics.play(.snap)
                     AppLog.log("Dictation: hands-free (double tap)")
                 } else if isHandsFree {
                     AppLog.log("Dictation: stop (hotkey)")
@@ -455,6 +456,7 @@ final class DictationController: ObservableObject {
             pendingTapTask?.cancel()
             pendingTapTask = nil
             isHandsFree = true
+            SparkVHaptics.play(.snap)
             AppLog.log("Dictation: hands-free (hotkey+Space)")
 
         case .yieldedToControl:
@@ -505,13 +507,14 @@ final class DictationController: ObservableObject {
         monitor.setEscapeArmed(true)
         if formattingEnabled { formatter.prewarm() }
         AppLog.log("Dictation: listening (\(trigger)\(handsFree ? ", hands-free" : ""))")
+        SparkVHaptics.play(.start)
 
         durationTask?.cancel()
         durationTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(Self.maximumDuration * 1_000_000_000))
             guard let self, !Task.isCancelled, self.sessionID == id, self.phase == .listening else { return }
             AppLog.log("Dictation: maximum duration reached")
-            self.finish()
+            self.finish(byUser: false)
         }
 
         startRecorder(session: id)
@@ -561,8 +564,9 @@ final class DictationController: ObservableObject {
         return app.localizedName
     }
 
-    private func finish() {
+    private func finish(byUser: Bool = true) {
         guard phase == .listening else { return }
+        if byUser { SparkVHaptics.play(.stop) }
         pendingTapTask?.cancel()
         pendingTapTask = nil
         durationTask?.cancel()
@@ -629,6 +633,7 @@ final class DictationController: ObservableObject {
     }
 
     private func complete(_ text: String) {
+        SparkVHaptics.play(.success)
         endSession()
         phase = .done(text)
         scheduleReset(after: 1.5)
@@ -636,6 +641,7 @@ final class DictationController: ObservableObject {
 
     private func fail(_ message: String) {
         AppLog.log("Dictation: failed: \(message)")
+        SparkVHaptics.play(.failure)
         sessionID += 1
         if let recorder {
             self.recorder = nil
@@ -855,17 +861,23 @@ final class AudioCapture: @unchecked Sendable {
         guard format.sampleRate > 0, format.channelCount > 0 else { throw DictationError.noMicrophone }
 
         let meter = LevelMeter(onLevel: onLevel)
+        let downmix = MonoDownmix(sampleRate: format.sampleRate)
         let handle: @Sendable (AVAudioPCMBuffer) -> Void = { buffer in
-            meter.process(buffer)
-            onBuffer(buffer)
+            // The built-in MacBook mic is a 3-channel array; AVAudioConverter
+            // turns that into pure silence, so hand on one channel instead.
+            let mono = downmix.process(buffer)
+            meter.process(mono)
+            onBuffer(mono)
         }
+        // ~43 ms at 48 kHz: half the wake-ups of 1024 frames, still smooth live text.
         if #available(macOS 27.0, *) {
-            try input.installAudioTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            try input.installAudioTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
                 handle(AVAudioPCMBuffer(copying: buffer))
             }
         } else {
-            input.installTap(onBus: 0, bufferSize: 1024, format: format, block: Self.makeTapBlock(handle))
+            input.installTap(onBus: 0, bufferSize: 2048, format: format, block: Self.makeTapBlock(handle))
         }
+        AppLog.log("Dictation: microphone \(Int(format.sampleRate)) Hz, \(format.channelCount) ch")
         engine.prepare()
         do {
             try engine.start()
@@ -879,6 +891,27 @@ final class AudioCapture: @unchecked Sendable {
     /// Built outside any actor: the block runs on the realtime audio thread.
     private static func makeTapBlock(_ handle: @escaping @Sendable (AVAudioPCMBuffer) -> Void) -> AVAudioNodeTapBlock {
         return { buffer, _ in handle(buffer) }
+    }
+}
+
+/// Copies the first channel of a multichannel Float32 buffer into a mono
+/// buffer. Mono and other layouts pass through unchanged. Audio thread only.
+final class MonoDownmix: @unchecked Sendable {
+    private let format: AVAudioFormat?
+
+    init(sampleRate: Double) {
+        format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false)
+    }
+
+    func process(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
+        guard buffer.format.channelCount > 1, !buffer.format.isInterleaved,
+              let source = buffer.floatChannelData, let format,
+              format.sampleRate == buffer.format.sampleRate,
+              let output = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: buffer.frameLength),
+              let destination = output.floatChannelData else { return buffer }
+        output.frameLength = buffer.frameLength
+        destination[0].update(from: source[0], count: Int(buffer.frameLength))
+        return output
     }
 }
 

@@ -25,6 +25,7 @@ struct HUDBrightnessSlider: View {
     @ObservedObject private var directory = HUDDisplayDirectory.shared
     @StateObject private var dragging = ViewFlag()
     @StateObject private var hover = ViewFlag()
+    @StateObject private var felt = HUDFeltLevel()
 
     var body: some View {
         let display = targetDisplay
@@ -44,10 +45,19 @@ struct HUDBrightnessSlider: View {
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
+                                if !dragging.isOn { felt.level = content.clampedLevel }
                                 dragging.isOn = true
-                                set(Double(value.location.x / max(1, proxy.size.width)), display: display)
+                                let new = min(1, max(0, Double(value.location.x / max(1, proxy.size.width))))
+                                if display != nil, let old = felt.level {
+                                    HUDLevelFeel.moved(from: old, to: new, divisions: HUDPlusSettings.shared.stepDivisions)
+                                }
+                                felt.level = new
+                                set(new, display: display)
                             }
-                            .onEnded { _ in dragging.isOn = false }
+                            .onEnded { _ in
+                                dragging.isOn = false
+                                felt.level = nil
+                            }
                     )
             }
             .frame(height: 20)
@@ -98,6 +108,13 @@ struct HUDBrightnessSlider: View {
         HUDDisplayBrightness.shared.write(value, to: display)
         feed.report(value, display: display)
     }
+}
+
+/// The level a brightness drag last left, for detents (not published: it
+/// never redraws the slider).
+@MainActor
+final class HUDFeltLevel: ObservableObject {
+    var level: Double?
 }
 
 /// Widgets › Brightness (1x1): the level of the island's display (or the

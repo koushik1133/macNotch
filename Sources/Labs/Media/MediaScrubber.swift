@@ -27,6 +27,8 @@ final class ScrubberInteraction: ObservableObject {
     @Published var isHovering = false
     /// 0...1 while the knob is being dragged, nil otherwise.
     @Published var dragFraction: Double?
+    /// Last 5 % step felt while dragging (not published: haptics only).
+    var hapticStep: Int?
 }
 
 /// Thin progress line under the track info that turns into a slider on
@@ -180,8 +182,14 @@ struct MediaScrubber: View {
                             withAnimation(SparkVMotion.reduceMotion ? nil : SparkVMotion.easeOut(SparkVMotion.Duration.hover)) {
                                 interaction.dragFraction = fraction
                             }
+                            interaction.hapticStep = Int(fraction * 20)
                         } else {
                             interaction.dragFraction = fraction
+                            let step = Int(fraction * 20)
+                            if step != interaction.hapticStep {
+                                interaction.hapticStep = step
+                                SparkVHaptics.play(fraction <= 0 || fraction >= 1 ? .boundary : .detent)
+                            }
                         }
                     }
                     .onEnded { value in
@@ -189,6 +197,7 @@ struct MediaScrubber: View {
                         let target = Self.fraction(atX: value.location.x, width: width, duration: timing.duration, ticks: ticks)
                         media.seek(to: target * timing.duration)
                         interaction.dragFraction = nil
+                        interaction.hapticStep = nil
                     }
             )
             .help(media.canSeek ? "Drag to seek" : "")

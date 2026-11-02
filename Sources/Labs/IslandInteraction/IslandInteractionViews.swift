@@ -384,13 +384,13 @@ struct IslandHapticsSettingsSection: View {
                 Text("Trackpad haptics")
                 Text(detail)
             }
-            Button("Feel It") { SparkVHaptics.perform(.levelChange) }
+            Button("Feel It") { SparkVHaptics.play(.success) }
                 .disabled(settings.haptics == .off)
-                .accessibilityHint("Plays one tap at this setting, with a finger on the trackpad")
+                .accessibilityHint("Plays a sample at this setting, with a finger on the trackpad")
         } header: {
             Text("Trackpad Haptics")
         } footer: {
-            IslandFooterText(text: "Felt only with a finger on a Force Touch trackpad. Hovering never taps; swipes, clicks to open, drops on the shelf, the volume knob, pressing a call prompt, Clicky and Focus do.")
+            IslandFooterText(text: "Felt only with a finger on a Force Touch trackpad. The drawer taps as it opens (hover included), when you close it and when you keep it open; switching tabs, volume and brightness steps, drops on the shelf, pressing a call prompt, Clicky and Focus tap too.")
         }
     }
 

@@ -199,10 +199,12 @@ enum AirDrop {
 private final class AirDropServiceDelegate: NSObject, NSSharingServiceDelegate {
     func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
         AppLog.log("AirDrop: shared \(items.count) item(s)")
+        SparkVHaptics.play(.success)
     }
 
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: any Error) {
         AppLog.log("AirDrop: failed: \(error.localizedDescription)")
+        SparkVHaptics.play(.failure)
     }
 }
 
@@ -274,6 +276,9 @@ struct AirDropTile: View {
         .onDrop(of: AirDrop.acceptedTypes, isTargeted: $isTargeted.isOn) { providers in
             handleDrop(providers)
         }
+        .onReceive(isTargeted.$isOn.removeDuplicates()) { on in
+            if on { SparkVHaptics.play(.select) }
+        }
         .help("Drop files, images or links to send them with AirDrop")
         .accessibilityElement(children: .combine)
         .accessibilityLabel("AirDrop")
@@ -282,6 +287,7 @@ struct AirDropTile: View {
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         guard !providers.isEmpty else { return false }
+        SparkVHaptics.play(.drop)
         isWorking.isOn = true
         let completion = onDropComplete
         let working = isWorking

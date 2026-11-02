@@ -555,7 +555,7 @@ final class FocusEdgeGlowController {
                                      options: options)
             longest = max(longest, d)
         }
-        if options.haptics && options.shake && !options.reduceMotion && ordersWindows { Self.hapticKick() }
+        if options.haptics && options.shake && !options.reduceMotion && ordersWindows { Self.hapticKick(mood) }
         let reduce = options.reduceMotion
         settleTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(longest + 0.1))
@@ -645,10 +645,10 @@ final class FocusEdgeGlowController {
         }
     }
 
-    /// Three quick taps: felt only while a finger rests on a Force Touch trackpad.
-    private static func hapticKick() {
-        // Gentle (the default): one light tap instead of three.
-        SparkVHaptics.performSequence([.levelChange, .generic, .generic], gaps: [0.12, 0.14])
+    /// Felt only while a finger rests on a Force Touch trackpad: a focus
+    /// round starting, or a break or the end asking for attention.
+    private static func hapticKick(_ mood: FocusGlowMood) {
+        SparkVHaptics.play(mood == .focus ? .start : .alert)
     }
 }
 

@@ -137,7 +137,10 @@ struct KeepAwakeHubTile: View {
 
     var body: some View {
         let on = controller.isActive
-        Button { controller.toggle() } label: {
+        Button {
+            SparkVHaptics.play(on ? .toggleOff : .toggleOn)
+            controller.toggle()
+        } label: {
             TimelineView(.everyMinute) { _ in
                 StatusHubTileFace(
                     title: on ? (controller.session?.until.map { "\(StatusFormat.remaining(until: $0, now: Date())) left" } ?? "Awake") : "Keep Awake",
@@ -167,7 +170,10 @@ struct MicMuteHubTile: View {
 
     var body: some View {
         let muted = controller.isMuted
-        Button { controller.toggle() } label: {
+        Button {
+            SparkVHaptics.play(muted ? .toggleOff : .toggleOn)
+            controller.toggle()
+        } label: {
             StatusHubTileFace(
                 title: muted ? "Muted" : "Mute Mic",
                 systemImage: muted ? "mic.slash.fill" : "mic.fill",

@@ -346,6 +346,7 @@ final class ColorPickerController: ObservableObject {
         endPick()
         guard let picked else {
             AppLog.log("Color Picker: cancelled")
+            SparkVHaptics.play(.close)
             return
         }
         guard let color = picked.cpColor, color.isWellFormed else {
@@ -358,6 +359,8 @@ final class ColorPickerController: ObservableObject {
             AppLog.log("Color Picker: sampler colors arrive in \(space ?? "an unnamed space")")
         }
         accept(color, slot: slot, space: space, app: app)
+        // A main pick is felt through its copy.
+        if slot != .main { SparkVHaptics.play(.success) }
     }
 
     /// Applies a picked color (also the seam the tests use).
@@ -445,6 +448,7 @@ final class ColorPickerController: ObservableObject {
         pasteboard.clearContents()
         pasteboard.writeObjects([item])
         flashCopied(feedbackKey)
+        SparkVHaptics.play(.success)
     }
 
     private func flashCopied(_ key: String) {

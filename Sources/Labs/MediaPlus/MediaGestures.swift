@@ -89,14 +89,17 @@ final class MediaPointerControls: ObservableObject {
         case .off:
             return
         case .tracks:
+            SparkVHaptics.play(.select)
             media.send(forward ? .nextTrack : .previousTrack)
             show(forward ? "forward.fill" : "backward.fill")
         case .seek10:
             guard media.canSeek else { show("nosign"); return }
+            SparkVHaptics.play(.select)
             media.skip(by: forward ? 10 : -10)
             show(forward ? "goforward.10" : "gobackward.10")
         case .seek15:
             guard media.canSkip15 else { show("nosign"); return }
+            SparkVHaptics.play(.select)
             media.skip15(forward: forward)
             show(forward ? "goforward.15" : "gobackward.15")
         }

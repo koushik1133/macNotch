@@ -344,6 +344,7 @@ private struct IconTab: View {
         let isActive = state.tab == tab || activeFor.contains(state.tab)
         Button {
             // HeaderRow animates the pill; the drawer animates its own height.
+            if !isActive { SparkVHaptics.play(.select) }
             state.select(tab)
         } label: {
             Image(systemName: systemImage)

@@ -135,20 +135,33 @@ struct MediaColumnV2: View {
                 Spacer(minLength: 0)
             }
             if seconds {
-                MediaControlButton(systemImage: "gobackward.15", size: 13, help: "Back 15 seconds") { media.send(.skipBackward15) }
+                MediaControlButton(systemImage: "gobackward.15", size: 13, help: "Back 15 seconds") {
+                    SparkVHaptics.play(.select)
+                    media.send(.skipBackward15)
+                }
             } else {
-                MediaControlButton(systemImage: "backward.fill", help: "Previous") { media.send(.previousTrack) }
+                MediaControlButton(systemImage: "backward.fill", help: "Previous") {
+                    SparkVHaptics.play(.select)
+                    media.send(.previousTrack)
+                }
             }
             Spacer(minLength: 0)
             MediaControlButton(systemImage: media.isPlaying ? "pause.fill" : "play.fill", size: 15,
                                help: media.isPlaying ? "Pause" : "Play") {
+                SparkVHaptics.play(.select)
                 media.send(.togglePlayPause)
             }
             Spacer(minLength: 0)
             if seconds {
-                MediaControlButton(systemImage: "goforward.15", size: 13, help: "Forward 15 seconds") { media.send(.skipForward15) }
+                MediaControlButton(systemImage: "goforward.15", size: 13, help: "Forward 15 seconds") {
+                    SparkVHaptics.play(.select)
+                    media.send(.skipForward15)
+                }
             } else {
-                MediaControlButton(systemImage: "forward.fill", help: "Next") { media.send(.nextTrack) }
+                MediaControlButton(systemImage: "forward.fill", help: "Next") {
+                    SparkVHaptics.play(.select)
+                    media.send(.nextTrack)
+                }
             }
             Spacer(minLength: 0)
             moreMenu

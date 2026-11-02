@@ -98,6 +98,24 @@ struct HUDPointerInput: Sendable {
     }
 }
 
+/// Trackpad taps for a level the user drags or scrolls: `.detent` each time
+/// it crosses a step, `.boundary` on reaching 0 % or 100 %.
+enum HUDLevelFeel {
+    @MainActor
+    static func moved(from oldLevel: Double, to newLevel: Double, divisions: Int) {
+        let old = min(1, max(0, oldLevel)), new = min(1, max(0, newLevel))
+        guard abs(new - old) > 0.0001 else { return }
+        if new <= 0 || new >= 1 {
+            SparkVHaptics.play(.boundary)
+            return
+        }
+        let steps = Double(HUDStepMath.clampDivisions(divisions))
+        if (old * steps + 0.0001).rounded(.down) != (new * steps + 0.0001).rounded(.down) {
+            SparkVHaptics.play(.detent)
+        }
+    }
+}
+
 /// Makes the HUD on the closed island take the pointer: click the icon to
 /// mute, click or drag the level to set it, scroll over it to nudge it.
 ///
@@ -154,6 +172,8 @@ final class HUDInteractionController {
     private(set) var zones: HUDInteractionZones?
     private var monitors: [Any] = []
     private var drag: (startX: CGFloat, startLevel: Double, absolute: Bool)?
+    /// The level the last pointer-set change left, for detents.
+    private var feltLevel: Double?
     /// Installs the local event monitor while active (tests turn it off and
     /// feed `handle(_:)` directly).
     var installsMonitor = true
@@ -235,9 +255,11 @@ final class HUDInteractionController {
                    Double(mouse.x) >= track.lowerBound - Double(HUDInteractionZones.slop),
                    Double(mouse.x) <= track.upperBound + Double(HUDInteractionZones.slop) {
                     drag = (mouse.x, current, true)
-                    setLevel(HUDStepMath.level(atX: Double(mouse.x), minX: track.lowerBound, maxX: track.upperBound))
+                    feltLevel = current
+                    setLevelByPointer(HUDStepMath.level(atX: Double(mouse.x), minX: track.lowerBound, maxX: track.upperBound))
                 } else {
                     drag = (mouse.x, current, false)
+                    feltLevel = current
                 }
                 return true
             case .none:
@@ -246,9 +268,9 @@ final class HUDInteractionController {
         case .dragged:
             guard let drag else { return false }
             if drag.absolute, let track = zones.track {
-                setLevel(HUDStepMath.level(atX: Double(mouse.x), minX: track.lowerBound, maxX: track.upperBound))
+                setLevelByPointer(HUDStepMath.level(atX: Double(mouse.x), minX: track.lowerBound, maxX: track.upperBound))
             } else {
-                setLevel(HUDStepMath.level(startLevel: drag.startLevel, dragX: Double(mouse.x - drag.startX)))
+                setLevelByPointer(HUDStepMath.level(startLevel: drag.startLevel, dragX: Double(mouse.x - drag.startX)))
             }
             return true
         case .up:
@@ -271,7 +293,8 @@ final class HUDInteractionController {
                 divisions: stepDivisions()
             )
             if change != 0, let current = target()?.level {
-                setLevel(min(1, max(0, current + change)))
+                if drag == nil { feltLevel = current }
+                setLevelByPointer(min(1, max(0, current + change)))
             }
             return true
         case .other:
@@ -280,6 +303,14 @@ final class HUDInteractionController {
     }
 
     // MARK: - Private
+
+    /// A drag or scroll on the HUD (never a key press): sets the level and
+    /// taps on each step and at either end.
+    private func setLevelByPointer(_ level: Double) {
+        if let felt = feltLevel { HUDLevelFeel.moved(from: felt, to: level, divisions: stepDivisions()) }
+        feltLevel = level
+        setLevel(level)
+    }
 
     private func begin() {
         if window?.ignoresMouseEvents == true { window?.ignoresMouseEvents = false }

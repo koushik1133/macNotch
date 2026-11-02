@@ -231,8 +231,8 @@ final class VolumeKnobModel: ObservableObject {
     /// Last level written, so a listener echo of our own write doesn't fight the drag.
     private var pendingWrite: Double?
     private var pendingWriteAt = Date.distantPast
-    var haptics: (_ strong: Bool) -> Void = { strong in
-        SparkVHaptics.perform(strong ? .levelChange : .alignment)
+    var haptics: (SparkVHaptic) -> Void = { event in
+        SparkVHaptics.play(event)
     }
 
     init(backend: WidgetVolumeBackend) {
@@ -270,10 +270,11 @@ final class VolumeKnobModel: ObservableObject {
     }
 
     /// Sets the level, firing a haptic detent for every 1/16 crossed (a
-    /// stronger one at 0% and 100%).
+    /// boundary tap on reaching 0% or 100%).
     func set(_ newValue: Double) {
         let clamped = min(1, max(0, newValue))
         guard isAvailable, abs(clamped - volume) > 0.0001 else { return }
+        let atEnd = clamped <= 0 || clamped >= 1
         let before = VolumeKnobMath.detent(for: volume)
         let after = VolumeKnobMath.detent(for: clamped)
         volume = clamped
@@ -281,7 +282,7 @@ final class VolumeKnobModel: ObservableObject {
         pendingWriteAt = Date()
         backend.setVolume(Float(clamped))
         if clamped > 0, isMuted { isMuted = false }
-        if before != after { haptics(clamped <= 0 || clamped >= 1) }
+        if atEnd { haptics(.boundary) } else if before != after { haptics(.detent) }
     }
 
     func turn(by degrees: Double) {
@@ -292,7 +293,7 @@ final class VolumeKnobModel: ObservableObject {
         guard canMute else { return }
         backend.setMuted(!isMuted)
         isMuted.toggle()
-        haptics(true)
+        haptics(isMuted ? .toggleOff : .toggleOn)
     }
 
     /// Drag-end bookkeeping: the device is the truth again.

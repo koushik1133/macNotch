@@ -345,7 +345,7 @@ enum IslandHoverIntent {
     /// Automatic's pause that stops a brush-past from opening the drawer.
     static let intentMilliseconds = 110
     /// The wings sit in the menu-bar row: a longer, deliberate pause.
-    static let wingMilliseconds = 320
+    static let wingMilliseconds = 240
     /// Faster than this when the wait ends: just passing through.
     static let passThroughSpeed: Double = 1500
     /// Sideways faster than this over a wing: heading for a menu bar item.
@@ -358,7 +358,7 @@ enum IslandHoverIntent {
         var delay: IslandOpenDelay
         /// The notch theme's own hover dwell (0 for Plain).
         var themeDwellMilliseconds: Int
-        /// A floor from the context (full screen 400 ms, a Minimal island
+        /// A floor from the context (full screen 250 ms, a Minimal island
         /// woken from the top-edge strip 250 ms).
         var floorMilliseconds: Int
     }

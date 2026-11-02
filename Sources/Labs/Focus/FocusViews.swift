@@ -580,7 +580,10 @@ struct FocusTabView: View {
                     .foregroundStyle(SparkVTheme.textTertiary)
             }
             HStack(spacing: 6) {
-                FocusRoundButton(systemImage: focus.isPaused ? "play.fill" : "pause.fill", help: focus.isPaused ? "Resume" : "Pause") { focus.togglePause() }
+                FocusRoundButton(systemImage: focus.isPaused ? "play.fill" : "pause.fill", help: focus.isPaused ? "Resume" : "Pause") {
+                    SparkVHaptics.play(focus.isPaused ? .start : .stop)
+                    focus.togglePause()
+                }
                 FocusRoundButton(systemImage: "goforward.5", help: "Add 5 minutes") { focus.addFiveMinutes() }
                 FocusRoundButton(systemImage: "forward.end.fill", help: focus.phase == .focus ? "Finish this round" : "Skip break") { focus.skipPhase() }
                 Button { focus.end() } label: {

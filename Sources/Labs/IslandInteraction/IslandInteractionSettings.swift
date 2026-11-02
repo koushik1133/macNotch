@@ -23,7 +23,7 @@ struct IslandInteractionSnapshot: Equatable, Sendable {
     var avoidMenuBarItems = true
     var stepAsideForMenuBarManagers = true
     var warnAboutOtherNotchApps = true
-    var haptics: IslandHapticsLevel = .gentle
+    var haptics: IslandHapticsLevel = .standard
 
     var motion: IslandMotionTuning { IslandMotionTuning(style: motionStyle, speed: motionSpeed) }
 
@@ -259,11 +259,44 @@ final class IslandWingRoom: ObservableObject {
 /// The one gate for trackpad haptics in SparkV (Settings › Accessibility ›
 /// Trackpad Haptics). Haptics are felt only with a finger on a Force Touch
 /// trackpad; nothing happens on a mouse, so the gate costs nothing.
-/// Never used for plain hover: only for gestures, drops and presses.
+/// Only for moments the user caused: the drawer opening (hover included)
+/// or closing, gestures, drops, presses and slider detents.
 enum SparkVHaptics {
     static var level: IslandHapticsLevel { IslandInteractionStore.current.haptics }
 
     static var isEnabled: Bool { level != .off }
+
+    /// Taps closer together than this merge into one: a slider dragged fast
+    /// or a burst of events never becomes a buzz.
+    private static let minimumGap: TimeInterval = 0.035
+    @MainActor private static var lastTap: TimeInterval = 0
+
+    /// What happened, felt as one designed pattern. Prefer this over
+    /// `perform(_:)` so every feature speaks the same language.
+    @MainActor
+    static func play(_ event: SparkVHaptic) {
+        let steps = event.steps
+        guard level != .off, let first = steps.first else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastTap >= minimumGap || event.isEmphatic else { return }
+        lastTap = now
+        let performer = NSHapticFeedbackManager.defaultPerformer
+        guard level == .standard else {
+            // Gentle: one tap, the lightest unless the event is emphatic.
+            performer.perform(event.isEmphatic ? first.pattern : .alignment, performanceTime: .now)
+            return
+        }
+        performer.perform(first.pattern, performanceTime: .now)
+        guard steps.count > 1 else { return }
+        Task { @MainActor in
+            for step in steps.dropFirst() {
+                try? await Task.sleep(for: .milliseconds(step.afterMilliseconds))
+                guard level == .standard else { return }
+                performer.perform(step.pattern, performanceTime: .now)
+                lastTap = ProcessInfo.processInfo.systemUptime
+            }
+        }
+    }
 
     /// One tap. Gentle turns every pattern into the lightest one.
     @MainActor
@@ -296,6 +329,70 @@ enum SparkVHaptics {
                     performer.perform(pattern, performanceTime: .now)
                 }
             }
+        }
+    }
+}
+
+/// SparkV's haptic vocabulary. The trackpad has three taps (generic,
+/// alignment, levelChange); rhythm turns them into distinct feelings.
+enum SparkVHaptic: Sendable {
+    /// The drawer opened (a firm click).
+    case open
+    /// The drawer closed (a soft tick).
+    case close
+    /// Moved between tabs, pages or segments.
+    case select
+    /// A switch turned on / off.
+    case toggleOn, toggleOff
+    /// A slider passed a step (volume, brightness, scrubber).
+    case detent
+    /// A slider reached its end (0 % or 100 %).
+    case boundary
+    /// Something finished well: a tap and a lighter echo.
+    case success
+    /// Something failed: three quick taps.
+    case failure
+    /// Recording or listening started: one firm tap.
+    case start
+    /// Recording or listening stopped: two soft taps.
+    case stop
+    /// A file or item landed somewhere.
+    case drop
+    /// Pinned, snapped or locked in place.
+    case snap
+    /// Needs attention now (timer done, call while pointing at it).
+    case alert
+
+    struct Step: Sendable {
+        var pattern: NSHapticFeedbackManager.FeedbackPattern
+        /// Wait before this step (ignored for the first).
+        var afterMilliseconds: Int = 0
+    }
+
+    var steps: [Step] {
+        switch self {
+        case .open: [Step(pattern: .levelChange)]
+        case .close: [Step(pattern: .alignment)]
+        case .select: [Step(pattern: .alignment)]
+        case .toggleOn: [Step(pattern: .levelChange)]
+        case .toggleOff: [Step(pattern: .alignment)]
+        case .detent: [Step(pattern: .alignment)]
+        case .boundary: [Step(pattern: .levelChange)]
+        case .success: [Step(pattern: .levelChange), Step(pattern: .alignment, afterMilliseconds: 90)]
+        case .failure: [Step(pattern: .generic), Step(pattern: .generic, afterMilliseconds: 70), Step(pattern: .generic, afterMilliseconds: 70)]
+        case .start: [Step(pattern: .levelChange)]
+        case .stop: [Step(pattern: .alignment), Step(pattern: .alignment, afterMilliseconds: 80)]
+        case .drop: [Step(pattern: .generic), Step(pattern: .alignment, afterMilliseconds: 60)]
+        case .snap: [Step(pattern: .levelChange)]
+        case .alert: [Step(pattern: .levelChange), Step(pattern: .levelChange, afterMilliseconds: 120)]
+        }
+    }
+
+    /// Never merged away by the rate limit, and keeps its firm tap in Gentle.
+    var isEmphatic: Bool {
+        switch self {
+        case .success, .failure, .start, .alert: true
+        default: false
         }
     }
 }

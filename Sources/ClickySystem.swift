@@ -34,8 +34,11 @@ extension ClickyController {
 
     /// A light trackpad tick (only felt with a finger on a Force Touch trackpad).
     static func systemHaptic(_ haptic: ClickyHaptic) {
-        let pattern: NSHapticFeedbackManager.FeedbackPattern = haptic == .listen ? .alignment : .levelChange
-        SparkVHaptics.perform(pattern)
+        switch haptic {
+        case .listen: SparkVHaptics.play(.start)
+        case .answer: SparkVHaptics.play(.success)
+        case .failure: SparkVHaptics.play(.failure)
+        }
     }
 }
 

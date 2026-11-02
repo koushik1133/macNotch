@@ -157,9 +157,11 @@ final class ShelfSharePickerDelegate: NSObject, @preconcurrency NSSharingService
 
     func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
         AppLog.log("Share: shared \(items.count) item(s) with \(sharingService.title)")
+        SparkVHaptics.play(.success)
     }
 
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: any Error) {
         AppLog.log("Share: \(sharingService.title) failed: \(error.localizedDescription)")
+        SparkVHaptics.play(.failure)
     }
 }

@@ -116,6 +116,8 @@ enum ClickyHaptic: Equatable, Sendable {
     case listen
     /// An answer arrived.
     case answer
+    /// Something went wrong (shown in the band).
+    case failure
 }
 
 /// One question as the backends see it.
@@ -805,6 +807,7 @@ final class ClickyController: ObservableObject {
 
     private func fail(_ message: String) {
         AppLog.log("Clicky: \(message)")
+        haptic(.failure)
         dropCaptureSubscriptions()
         phase = .failed(message)
         scheduleReset(after: timing.failureReset, onlyIfAnswering: false)

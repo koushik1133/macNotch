@@ -195,7 +195,7 @@ final class FileDropController: ObservableObject {
         isZoneVisible = true
         isPinnedAtPointer = true
         panel.present(at: frame)
-        SparkVHaptics.perform(.generic)
+        SparkVHaptics.play(.open)
         AppLog.log("File Drop: shelf summoned at the pointer")
     }
 

@@ -321,7 +321,7 @@ final class MeetingStartCoordinator: ObservableObject {
                 // MeetingAssistant just said "<App> ended · Still recording":
                 // this recording ends with its call, so that band is wrong.
                 activities.dismiss(id: MeetingAssistant.ActivityID.notes)
-                assistant.stop()
+                assistant.stop(byUser: false)
             }
         }
     }
