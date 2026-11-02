@@ -87,14 +87,15 @@ enum TimerDurationParser {
     private static func clockSeconds(_ text: String) -> TimeInterval? {
         let parts = text.split(separator: ":", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
         guard (2...3).contains(parts.count), parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else { return nil }
-        let numbers = parts.compactMap { Int($0) }
+        // Double math: a pasted 19-digit hour overflows Int and traps.
+        let numbers = parts.compactMap { Int($0) }.map(Double.init)
         guard numbers.count == parts.count else { return nil }
         if numbers.count == 2 {
             guard numbers[1] < 60 else { return nil }
-            return TimeInterval(numbers[0] * 60 + numbers[1])
+            return numbers[0] * 60 + numbers[1]
         }
         guard numbers[1] < 60, numbers[2] < 60 else { return nil }
-        return TimeInterval(numbers[0] * 3600 + numbers[1] * 60 + numbers[2])
+        return numbers[0] * 3600 + numbers[1] * 60 + numbers[2]
     }
 
     private enum Unit { case hours, minutes, seconds }

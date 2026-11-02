@@ -246,7 +246,9 @@ final class NotchState: ObservableObject {
     private var tabBeforeDrag: Tab?
 
     func select(_ newTab: Tab) {
-        tab = newTab
+        // Re-selecting the shown tab (every hover open does) publishes
+        // nothing, so the whole island isn't invalidated for it.
+        if tab != newTab { tab = newTab }
         tabBeforeDrag = nil
     }
 

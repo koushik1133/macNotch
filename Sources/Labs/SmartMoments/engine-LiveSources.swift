@@ -77,6 +77,7 @@ final class SmartMomentsLiveSources: ObservableObject {
     private var fastLoop: Task<Void, Never>?
     private var screenshotQuery: NSMetadataQuery?
     private var screenshotObserver: NSObjectProtocol?
+    private var screenshotQueryFailed = false
     private var screenshotsSince = Date()
     private var seenScreenshots: Set<String> = []
 
@@ -229,7 +230,11 @@ final class SmartMomentsLiveSources: ObservableObject {
     }
 
     private var isHot: Bool {
-        if isOnCall() || isScreenSharing || isPresenting || hasExternalDisplay { return true }
+        // An external display alone isn't a reason: on a desk setup it kept
+        // the window-list read on main every 3 s all day. Calls, a share or
+        // presentation in effect, or a slideshow app running still are; the
+        // 15 s idle pace still catches a presentation on the second screen.
+        if isOnCall() || isScreenSharing || isPresenting { return true }
         let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
         return !running.isDisjoint(with: MomentPresentationHeuristics.slideshowApps.keys)
     }
@@ -314,7 +319,8 @@ final class SmartMomentsLiveSources: ObservableObject {
 
     private func updateScreenshotQuery() {
         let wanted = isRunning && (engine?.wants(.screenshotTaken) ?? false)
-        if wanted, screenshotQuery == nil {
+        if !wanted { screenshotQueryFailed = false }
+        if wanted, screenshotQuery == nil, !screenshotQueryFailed {
             startScreenshotQuery()
         } else if !wanted, screenshotQuery != nil {
             stopScreenshotQuery()
@@ -339,6 +345,11 @@ final class SmartMomentsLiveSources: ObservableObject {
         if query.start() {
             screenshotQuery = query
         } else {
+            // Don't leak the observer, and don't retry (and log) every slow
+            // sample: try again only after the moment is turned off and on.
+            if let observer = screenshotObserver { NotificationCenter.default.removeObserver(observer) }
+            screenshotObserver = nil
+            screenshotQueryFailed = true
             AppLog.log("SmartMoments: screenshot query did not start")
         }
     }

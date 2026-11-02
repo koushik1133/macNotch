@@ -234,12 +234,16 @@ final class ResetController {
                 exit(0)
             }
             NSWorkspace.shared.recycle([bundle]) { _, error in
-                MainActor.assumeIsolated {
-                    if let error {
-                        NSLog("SparkV uninstall: couldn’t move SparkV.app to the Trash: \(error.localizedDescription)")
-                        Self.askToTrashAppByHand(bundle, reason: error.localizedDescription)
+                // The handler's queue isn't documented: hop to main.
+                let message = error?.localizedDescription
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        if let message {
+                            NSLog("SparkV uninstall: couldn’t move SparkV.app to the Trash: \(message)")
+                            Self.askToTrashAppByHand(bundle, reason: message)
+                        }
+                        exit(0)
                     }
-                    exit(0)
                 }
             }
             // If Finder never answers, still quit.

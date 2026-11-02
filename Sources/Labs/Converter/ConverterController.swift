@@ -78,6 +78,19 @@ final class ConverterController: ObservableObject {
 
     init(activities: ActivityCenter) {
         self.activities = activities
+        // Staged drops (image data with no file of their own) only live as
+        // inputs of this run; Application Support is never cleaned by macOS.
+        // Only files from before this launch, so a drop right now is safe.
+        let staging = ConverterEngine.inputStaging
+        let launched = Date()
+        Task.detached(priority: .background) {
+            let fm = FileManager.default
+            guard let files = try? fm.contentsOfDirectory(at: staging, includingPropertiesForKeys: [.creationDateKey]) else { return }
+            for file in files {
+                let created = (try? file.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
+                if created < launched { try? fm.removeItem(at: file) }
+            }
+        }
     }
 
     var isBusy: Bool { !jobs.isEmpty }
@@ -94,7 +107,10 @@ final class ConverterController: ObservableObject {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
                 accepted = true
                 _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.fileURL.identifier) { data, _ in
-                    guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                    guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else {
+                        Task { @MainActor in self.showError("Couldn’t read the dropped file") }
+                        return
+                    }
                     Task { @MainActor in self.add([url]) }
                 }
             } else if let type = provider.registeredTypeIdentifiers.first(where: { UTType($0)?.conforms(to: .image) ?? false }) {
@@ -103,7 +119,10 @@ final class ConverterController: ObservableObject {
                 let ext = UTType(type)?.preferredFilenameExtension ?? "png"
                 // The file representation only exists during the callback.
                 _ = provider.loadFileRepresentation(forTypeIdentifier: type) { url, _ in
-                    guard let url, let staged = Self.stage(url, name: name, ext: ext) else { return }
+                    guard let url, let staged = Self.stage(url, name: name, ext: ext) else {
+                        Task { @MainActor in self.showError("Couldn’t read the dropped image") }
+                        return
+                    }
                     Task { @MainActor in self.add([staged]) }
                 }
             }

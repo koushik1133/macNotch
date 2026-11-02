@@ -16,11 +16,18 @@ struct MeetingRecordingBand: View {
             HStack(spacing: 10) {
                 MeetingPulsingDot(isOn: Int(elapsed) % 2 == 0)
 
-                Text(elapsed < 10 ? "Let participants know you're recording" : "Recording meeting")
+                // After the reminder: a microphone problem, or "mic only"
+                // when other participants can't be captured, stays visible.
+                let problem = recorder.micProblem
+                let micOnly = recorder.systemAudioProblem != nil
+                Text(elapsed < 10 ? "Let participants know you're recording"
+                     : problem ?? (micOnly ? "Recording your mic only" : "Recording meeting"))
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(elapsed < 10 ? SparkVTheme.warning : SparkVTheme.text)
+                    .foregroundStyle(elapsed < 10 || problem != nil ? SparkVTheme.warning : SparkVTheme.text)
                     .lineLimit(1)
+                    .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .help(problem ?? recorder.systemAudioProblem ?? "")
 
                 MeetingLevelMeter(symbol: "mic.fill", level: recorder.micLevel)
                 MeetingLevelMeter(symbol: "speaker.wave.2.fill", level: recorder.systemLevel)
@@ -103,6 +110,39 @@ struct MeetingAnswerBand: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// Shown once per launch when a recording can't capture other participants
+/// (Screen Recording not allowed, or allowed but SparkV not restarted yet).
+struct MeetingSystemAudioNoticeBand: View {
+    let needsRelaunch: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "speaker.slash.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(SparkVTheme.warning)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Only your microphone is captured")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SparkVTheme.text)
+                // Restarting now would end this recording, so only say it.
+                Text(needsRelaunch
+                     ? "Quit and reopen SparkV after this call so it can hear the others"
+                     : "To hear others, allow SparkV in Privacy & Security › Screen & System Audio Recording")
+                    .font(.system(size: 11))
+                    .foregroundStyle(SparkVTheme.textSecondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if !needsRelaunch {
+                Button("Open Settings") { MeetingPermissions.openScreenRecordingSettings() }
+                    .buttonStyle(SparkVPrimaryButtonStyle())
+                    .controlSize(.small)
+            }
         }
     }
 }

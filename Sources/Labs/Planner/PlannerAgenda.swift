@@ -131,7 +131,9 @@ final class AgendaModel: ObservableObject {
                 if CalendarGrid.overlaps(start: event.start, end: event.end, day: day, calendar: calendar) {
                     result[day, default: []].append(event)
                 }
-                day = calendar.date(byAdding: .day, value: 1, to: day) ?? range.end
+                // startOfDay again: where DST starts at midnight that day
+                // begins at 01:00, and every later key would be off by an hour.
+                day = calendar.date(byAdding: .day, value: 1, to: day).map(calendar.startOfDay(for:)) ?? range.end
                 guardCount += 1
             }
         }

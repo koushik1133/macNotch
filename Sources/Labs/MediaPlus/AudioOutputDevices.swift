@@ -251,6 +251,7 @@ final class AudioOutputController: ObservableObject {
     private var listener: AudioObjectPropertyListenerBlock?
     private var isRunning = false
     private var refreshQueued = false
+    private var refreshAgain = false
     /// Bluetooth headphones being connected: switch to them once Core Audio
     /// lists them.
     private var pendingConnect: (name: String, until: Date)?
@@ -296,8 +297,12 @@ final class AudioOutputController: ObservableObject {
 
     /// Re-reads the list (coalesced; Core Audio sends bursts on hot-plug).
     func refresh() {
-        guard !refreshQueued, !isPreviewing else { return }
+        guard !isPreviewing else { return }
+        // A change during a read in flight: read once more after it, or the
+        // last event of a burst (the new default output) can be lost.
+        guard !refreshQueued else { refreshAgain = true; return }
         refreshQueued = true
+        refreshAgain = false
         // IOBluetooth is a main-run-loop API; listing paired devices is cheap.
         let paired = PermissionCenter.shared.isGranted(.bluetooth) ? Self.pairedBluetoothOutputs() : []
         queue.async { [weak self] in
@@ -312,6 +317,7 @@ final class AudioOutputController: ObservableObject {
                     self.refreshQueued = false
                     if self.devices != list { self.devices = list }
                     self.finishPendingConnect()
+                    if self.refreshAgain { self.refresh() }
                 }
             }
         }

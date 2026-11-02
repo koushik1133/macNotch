@@ -466,7 +466,7 @@ private struct SettingsMenu: View {
     @EnvironmentObject private var screenRecorder: ScreenRecorderController
     @EnvironmentObject private var colorPicker: ColorPickerController
     @ObservedObject private var flowCanvasSettings = FCSettingsModel.shared
-    @StateObject private var loginItem = LaunchAtLogin()
+    @ObservedObject private var loginItem = LaunchAtLogin.shared
     @StateObject private var hover = ViewFlag()
 
     var body: some View {
@@ -512,6 +512,10 @@ private struct SettingsMenu: View {
                 Toggle("Battery & AirPods", isOn: $power.isEnabled)
                 if power.bluetoothAccess == .notDetermined {
                     Button("Enable AirPods Battery…") { power.requestBluetoothAccess() }
+                } else if power.bluetoothAccess == .denied {
+                    // Otherwise the AirPods band just never appears.
+                    Text("AirPods battery needs Bluetooth access")
+                    Button("Open Settings…") { power.requestBluetoothAccess() }
                 }
                 SystemStatusMenuItems()
                 Toggle("Timer", isOn: $timer.isEnabled)
@@ -719,11 +723,32 @@ private struct ReplyDrafterMenuToggles: View {
 
 @MainActor
 private final class LaunchAtLogin: ObservableObject {
-    @Published private(set) var status = SMAppService.mainApp.status
+    /// One for the app: the gear menu is rebuilt on every open, and reading
+    /// the status is a synchronous round trip to the system (3–35 ms), too
+    /// slow for the open animation.
+    static let shared = LaunchAtLogin()
+
+    @Published private(set) var status: SMAppService.Status = .notRegistered
     /// Shown in the gear menu when the last change was refused.
     @Published private(set) var lastError: String?
+    private var reloadTask: Task<Void, Never>?
 
+    private init() { reload() }
+
+    /// Re-reads the status off the main thread.
     func reload() {
+        guard reloadTask == nil else { return }
+        reloadTask = Task { [weak self] in
+            let fresh = await Task.detached(priority: .utility) { SMAppService.mainApp.status }.value
+            guard !Task.isCancelled, let self else { return }
+            self.reloadTask = nil
+            if self.status != fresh { self.status = fresh }
+        }
+    }
+
+    private func reloadNow() {
+        reloadTask?.cancel()
+        reloadTask = nil
         status = SMAppService.mainApp.status
     }
 
@@ -739,7 +764,7 @@ private final class LaunchAtLogin: ObservableObject {
             NSLog("SparkV: launch-at-login change failed: \(error.localizedDescription)")
             lastError = error.localizedDescription
         }
-        reload()
+        reloadNow()
         // macOS can accept the registration but hold it until the user
         // approves it in Login Items.
         if enabled, status == .requiresApproval {

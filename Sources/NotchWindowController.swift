@@ -712,10 +712,22 @@ final class NotchWindowController: NSWindowController {
 
     /// Stops a running recording and waits until the movie is saved.
     func finishWorkBeforeQuit(timeout: Duration) async {
-        screenRecorder.stop()   // recording: stop and save; starting: stop as soon as it begins; selecting: cancel
-        // Do Not Disturb, previews and presentation mode go back before quitting.
-        await smartMoments?.prepareForQuit()
+        // One deadline for everything below, Smart Moments' restore included.
         let deadline = ContinuousClock.now + timeout
+        screenRecorder.stop()   // recording: stop and save; starting: stop as soon as it begins; selecting: cancel
+        // Do Not Disturb, previews and presentation mode go back before
+        // quitting; a restore that hangs doesn't hold the quit past the deadline.
+        if let smartMoments {
+            let done = QuitStepFlag()
+            Task { @MainActor in
+                await smartMoments.prepareForQuit()
+                done.isDone = true
+            }
+            while !done.isDone, ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            if !done.isDone { AppLog.log("Quit: Smart Moments restore still running at the deadline") }
+        }
         // Puts the wallpaper, volume, apps and Do Not Disturb back; if it runs
         // past the deadline the next launch restores the rest.
         if ModeEngine.shared.activeModeID != nil {
@@ -1442,6 +1454,18 @@ final class NotchWindowController: NSWindowController {
         collapseTask?.cancel()
         collapseTask = nil
         setExpanded(true)
+        guard state.isExpanded else { return false }
+        waitForPointer()
+        return true
+    }
+
+    /// Opened away from the pointer (the menu bar icon, a link, a feature's
+    /// hotkey or button, a band in another window): the drawer stays open
+    /// until the pointer has been over it once, 10 s at most, instead of
+    /// closing on the first move on the way there.
+    private func waitForPointer() {
+        collapseTask?.cancel()
+        collapseTask = nil
         shellPinnedOpen = true
         shellPinEntered = false
         shellPinTask?.cancel()
@@ -1449,9 +1473,9 @@ final class NotchWindowController: NSWindowController {
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, let self, self.shellPinnedOpen, !self.shellPinEntered else { return }
             self.shellPinnedOpen = false
+            guard self.state.isExpanded, !self.state.isPinned, !self.keyboardPinned else { return }
             if !self.isPointerInHotZone(), !self.isInteractionInProgress { self.setExpanded(false) }
         }
-        return true
     }
 
     /// Right-click on the closed island: the shell menu at the pointer. Only
@@ -1996,6 +2020,12 @@ final class NotchWindowController: NSWindowController {
     /// Turns clicks on the collapsed panel on or off for the band; only
     /// ever undoes what it did itself (the HUD may take the pointer too).
     private func setActivityBandTakesClicks(_ on: Bool) {
+        // The HUD (or a close) made the panel click-through again while the
+        // band still had the clicks: take them back.
+        if on, bandTakesClicks, !state.isExpanded, window?.ignoresMouseEvents == true {
+            window?.ignoresMouseEvents = false
+            return
+        }
         guard on != bandTakesClicks else { return }
         bandTakesClicks = on
         guard !state.isExpanded else { return }
@@ -2130,6 +2160,9 @@ final class NotchWindowController: NSWindowController {
             hoverDwellTask = nil
         } else {
             updateClickThrough()
+            // Not opened by the pointer (hover, click and swipe open under
+            // it): wait for it to arrive.
+            if !isPointerInHotZone() { waitForPointer() }
         }
         updateLevel()
         noteExpandedForInteraction(expanded)
@@ -2450,6 +2483,10 @@ final class NotchWindowController: NSWindowController {
             keyboardPinned = true
             keyboardPinEntered = isPointerInHotZone()
         }
+        // The keyboard's own wait (no time limit) replaces the 10 s one.
+        shellPinnedOpen = false
+        shellPinTask?.cancel()
+        shellPinTask = nil
         collapseTask?.cancel()
         collapseTask = nil
         SparkVAssistive.shared.refresh()
@@ -2636,6 +2673,12 @@ final class NotchWindowController: NSWindowController {
             .environmentObject(downloads)
             .environmentObject(colorPicker)
     }
+}
+
+/// Set when a quit step finished (`finishWorkBeforeQuit` waits on it).
+@MainActor
+private final class QuitStepFlag {
+    var isDone = false
 }
 
 /// A click-through copy of the closed island on another display (All

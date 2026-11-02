@@ -11,6 +11,7 @@ enum CodingAgentStyle {
         case .claude: Color(red: 0.85, green: 0.47, blue: 0.34)
         case .codex: Color(red: 0.55, green: 0.62, blue: 1.0)
         case .cursor: Color(white: 0.85)
+        case .antigravity: Color(red: 0.42, green: 0.68, blue: 0.98)
         }
     }
 
@@ -193,14 +194,14 @@ struct CodingAgentsPage: View {
             if !controller.isEnabled && controller.approvals.isEmpty && !controller.hookEnabled {
                 ExtrasNotice(symbol: "sparkles.rectangle.stack",
                              title: "Coding Agents is off",
-                             detail: "See which Claude Code, Codex and Cursor sessions run, wait for you or finished. Reads their local session folders only; nothing leaves your Mac.",
+                             detail: "See which Claude Code, Codex, Cursor and Antigravity sessions run, wait for you or finished. Reads their local session folders only; nothing leaves your Mac.",
                              action: ("Turn On", { controller.isEnabled = true }))
             } else if controller.approvals.isEmpty && controller.sessions.isEmpty {
                 ExtrasNotice(symbol: "moon.zzz",
                              title: "No agent sessions right now",
                              detail: controller.hookEnabled
-                                ? "Start Claude Code, Codex or Cursor. Approvals from tools you set up appear here with Allow and Deny."
-                                : "Start Claude Code, Codex or Cursor. To answer approvals here, turn on the hook in Settings › Extras.")
+                                ? "Start Claude Code, Codex, Cursor or Antigravity. Approvals from tools you set up appear here with Allow and Deny."
+                                : "Start Claude Code, Codex, Cursor or Antigravity. To answer approvals here, turn on the hook in Settings › Extras.")
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 4) {
@@ -297,7 +298,7 @@ struct CodingAgentRow: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
-                    Text(session.name.map { "\(session.project) · \($0)" } ?? session.project)
+                    Text(session.name.flatMap { $0 == session.project ? nil : "\(session.project) · \($0)" } ?? session.project)
                         .font(.system(size: 11.5, weight: .semibold))
                         .foregroundStyle(SparkVTheme.text)
                         .lineLimit(1)
@@ -376,7 +377,7 @@ struct CodingAgentsHubTile: View {
             isActive: running + waiting > 0,
             badge: waiting > 0 ? "\(waiting)" : nil,
             badgeTint: CodingAgentStyle.tint(.waiting),
-            help: "Coding Agents: Claude Code, Codex and Cursor sessions"
+            help: "Coding Agents: Claude Code, Codex, Cursor and Antigravity sessions"
         ) {
             DevStatusNavigator.shared.section = .agents
             (onOpen ?? DevStatusNavigator.shared.openDrawer)()
@@ -420,17 +421,19 @@ struct CodingAgentsSettingsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ExtrasSettingsCard(title: "Coding Agents",
-                               subtitle: "Claude Code, Codex and Cursor sessions in the island: working, waiting for you, done. Reads their session folders read-only; nothing leaves your Mac.",
+                               subtitle: "Claude Code, Codex, Cursor and Antigravity sessions in the island: working, waiting for you, done. Reads their session folders read-only; nothing leaves your Mac.",
                                systemImage: "sparkles.rectangle.stack") {
                 VStack(alignment: .leading, spacing: 2) {
                     ExtrasToggleRow(title: "Watch Coding Agents",
-                                    detail: "~/.claude, ~/.codex and ~/.cursor session files, read-only. Prompts and code are never stored or logged.",
+                                    detail: "~/.claude, ~/.codex, ~/.cursor and ~/.gemini/antigravity session files, read-only. Prompts and code are never stored or logged.",
                                     isOn: $controller.isEnabled)
                     Group {
                         ExtrasToggleRow(title: "Claude Code", isOn: $controller.watchClaude, indent: 14)
                         ExtrasToggleRow(title: "Codex", isOn: $controller.watchCodex, indent: 14)
                         ExtrasToggleRow(title: "Cursor", detail: "Cursor writes no timestamps; SparkV goes by when its transcript last changed.",
                                         isOn: $controller.watchCursor, indent: 14)
+                        ExtrasToggleRow(title: "Antigravity", detail: "Conversation title, folder and running / idle from Antigravity's own summary list.",
+                                        isOn: $controller.watchAntigravity, indent: 14)
                         ExtrasToggleRow(title: "Count Today's Tokens",
                                         detail: "Adds up usage from local transcripts (Claude Code, Codex). There's no public API for plan limits; Codex reports its own limit use, shown when present.",
                                         isOn: $controller.countTokens, indent: 14)

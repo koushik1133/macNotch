@@ -22,7 +22,8 @@ runs only while `MediaEngine.isPlaying` is true (1.5 s grace on pause).
 | `AmbientLightChoreographer.swift` | Features + mode → `AmbientVisualFrame` (pure, time-based). Flash limiter, Reduce Motion, fade in/out. |
 | `AmbientGlowLayers.swift` | Core Animation trees: `AmbientOutlineGlow` (halo with `shadowPath`, conic Wave band, core line) and `AmbientEdgeStrips`. |
 | `AmbientNotchGlow.swift` | `AmbientNotchGlowBackdrop` (SwiftUI, behind the island) hosting a click-through `AmbientNotchGlowView`. |
-| `AmbientScreenEdgeGlow.swift` | One click-through panel per screen (level `mainMenu - 1`, `sharingType = .none`, not in full-screen spaces), hidden over full-screen windows and while the screen is shared. |
+| `AmbientScreenEdgeGlow.swift` | One click-through panel per screen covering the whole frame (menu bar included), at the island's level and ordered just below it, `sharingType = .none`, hidden over full-screen windows (if the user asks) and while the screen is shared. |
+| `AmbientEdgeMetal.swift` | The edge light: runtime-compiled Metal shader (SDF of the rounded screen minus the notch, core line + exponential halo, palette flowing around the perimeter) in a `CAMetalLayer` at 0.75 px/pt; falls back to `AmbientEdgeStrips`. |
 | `AmbientLightController.swift` | `AmbientLightController.shared`: media/settings wiring, permission flow, one `CADisplayLink` (`NSScreen.displayLink`) driving every surface; Low Power / thermal / Reduce Motion. |
 | `AmbientLightViews.swift` | `AmbientLightSettingsView`, `AmbientLightSettingsWindowController.shared`, `AmbientLightMenuItems`, `AmbientLightHubTile`. |
 | `Tests/` | `run-tests.sh`: offline harness (synth drum loops, sweeps, silence; offscreen renderer timing). Not part of the app build. |

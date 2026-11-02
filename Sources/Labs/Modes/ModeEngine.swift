@@ -86,7 +86,7 @@ final class ModeEngine: ObservableObject {
         didStart = true
         await serialized {
             guard let saved = self.store.loadSnapshot() else { return }
-            self.record("Restoring what \(saved.modeName) changed before SparkV last quit")
+            self.record("Restoring what \(saved.modeName) changed before SparkV last quit", appLog: "Restoring a mode's changes from before SparkV last quit")
             self.failures = []
             self.snapshot = saved
             await self.restore(saved, reason: "recovery")
@@ -162,7 +162,7 @@ final class ModeEngine: ObservableObject {
         activeModeID = mode.id
         activeSince = start
         endsAt = snap.endsAt
-        record("\(mode.name) on")
+        record("\(mode.name) on", appLog: "mode on")
 
         for action in mode.actions {
             do {
@@ -191,7 +191,7 @@ final class ModeEngine: ObservableObject {
         failures = []
         ticker?.cancel()
         ticker = nil
-        record("\(snap.modeName) off (\(reason))")
+        record("\(snap.modeName) off (\(reason))", appLog: "mode off (\(reason))")
         await restore(snap, reason: reason)
         if !failures.isEmpty {
             lastError = "\(snap.modeName) ended, but some settings couldn't be put back: " + failureSummary
@@ -244,7 +244,7 @@ final class ModeEngine: ObservableObject {
                 }
             }
             if !errors.isEmpty { throw ModeSystemError.failed(Array(Set(errors)).sorted().joined(separator: " ")) }
-            record("Wallpaper: \(choice.title)")
+            record("Wallpaper: \(choice.title)", appLog: "Wallpaper set")
 
         case .music(let choice):
             guard !choice.url.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -255,7 +255,7 @@ final class ModeEngine: ObservableObject {
             snap.startedMusic = true
             store.saveSnapshot(snap)
             try await system.startMusic(choice)
-            record("Music: \(choice.title)")
+            record("Music: \(choice.title)", appLog: "Music started")
 
         case .volume(let value):
             if snap.volume == nil {
@@ -354,7 +354,7 @@ final class ModeEngine: ObservableObject {
             let trimmed = name.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty else { throw ModeSystemError.unavailable("No shortcut chosen.") }
             try await system.runShortcut(trimmed)
-            record("Ran shortcut \(trimmed)")
+            record("Ran shortcut \(trimmed)", appLog: "Ran a shortcut")
 
         case .darkMode(let on):
             let current = system.isDarkMode()
@@ -706,16 +706,19 @@ final class ModeEngine: ObservableObject {
     private func fail(_ step: String, _ error: Error) {
         let message = error.localizedDescription
         failures.append(ModeActionFailure(step: step, message: message))
-        record("\(step) failed: \(message)")
+        record("\(step) failed: \(message)", appLog: "\(step) failed")
     }
 
     private var failureSummary: String {
         failures.map(\.text).joined(separator: " ")
     }
 
-    private func record(_ line: String) {
+    /// `appLog` replaces the line in SparkV.log when it carries the user's
+    /// own words (mode names, music titles, shortcut names, error text that
+    /// quotes them); the in-app log keeps the full line.
+    private func record(_ line: String, appLog: String? = nil) {
         log.append(line)
         if log.count > Self.logLimit { log.removeFirst(log.count - Self.logLimit) }
-        AppLog.log("Modes: \(line.prefix(160))")
+        AppLog.log("Modes: \((appLog ?? line).prefix(160))")
     }
 }

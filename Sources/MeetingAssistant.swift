@@ -104,6 +104,7 @@ final class MeetingAssistant: ObservableObject {
         static let recording = "meeting.recording"
         static let answer = "meeting.answer"
         static let notes = "meeting.notes"
+        static let systemAudio = "meeting.systemAudio"
         static let callPrompt = "meeting.callPrompt"
     }
 
@@ -233,6 +234,7 @@ final class MeetingAssistant: ObservableObject {
                     return
                 }
                 AppLog.log("Meetings: recording started")
+                if recorder.systemAudioProblem != nil { postSystemAudioNotice(recordID: record.id) }
                 // Load the answer model now so the first suggested answer
                 // doesn't pay the on-device model's cold start.
                 if suggestAnswers {
@@ -251,6 +253,29 @@ final class MeetingAssistant: ObservableObject {
                 activities.dismiss(id: ActivityID.recording)
                 fail(recorder.lastError ?? error.localizedDescription)
             }
+        }
+    }
+
+    /// Shown at most once per launch: other participants can't be captured
+    /// (Screen Recording), so only the user's side is transcribed. The
+    /// recording band keeps saying "Recording your mic only" after that.
+    private static var didShowSystemAudioNotice = false
+
+    private func postSystemAudioNotice(recordID: UUID) {
+        guard !Self.didShowSystemAudioNotice else { return }
+        Self.didShowSystemAudioNotice = true
+        Task { [weak self] in
+            // After the 3 s "let participants know" reminder.
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            guard let self, current?.id == recordID, phase == .recording,
+                  recorder.systemAudioProblem != nil else { return }
+            let relaunch = PermissionCenter.shared.screenRecordingNeedsRelaunch
+            activities.post(LiveActivity(
+                id: ActivityID.systemAudio, kind: .meeting, priority: 74, duration: 8, height: 48,
+                presentation: .expanded, symbol: "speaker.slash.fill", tint: SparkVTheme.warning
+            ) {
+                MeetingSystemAudioNoticeBand(needsRelaunch: relaunch)
+            })
         }
     }
 

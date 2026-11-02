@@ -30,9 +30,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // `kill`, logout and launchd send SIGTERM, which would otherwise skip
         // applicationWillTerminate and orphan the Now Playing adapter.
+        // The source runs on a background queue, so a SIGTERM still ends
+        // SparkV when the main thread is stuck: with SIGTERM ignored, a
+        // handler on the main queue would make `kill` do nothing at all.
         signal(SIGTERM, SIG_IGN)
-        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
-        source.setEventHandler { NSApp.terminate(nil) }
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global(qos: .userInitiated))
+        source.setEventHandler {
+            QuitWatchdog.arm(after: 6, reason: "SIGTERM")
+            DispatchQueue.main.async { NSApp.terminate(nil) }
+        }
         source.resume()
         terminationSource = source
 
@@ -56,6 +62,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Settings window, menu bar icon, updates, crash reports and
         // sparkv:// links (links that arrived during launch run now).
         AppShellController.shared.start()
+
+        // `open SparkV.app --args --mic-selftest`: records 5 s through the
+        // dictation pipeline and logs what it heard (counts only, no text).
+        // A launch argument, so no link or web page can start the mic.
+        if CommandLine.arguments.contains("--mic-selftest") { DictationSelfTest.run() }
     }
 
     /// Opening SparkV again (Finder, Spotlight, Launchpad, the Dock icon
@@ -100,12 +111,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// A screen recording still running is finished (the movie written and
     /// moved to the Desktop) before SparkV quits, for up to 5 s.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let controller = notchController, controller.hasWorkToFinishBeforeQuit else { return .terminateNow }
-        // Off the main thread: a stuck main actor can never block Quit.
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 8) {
-            AppLog.log("Quit: work before quit took over 8 s; exiting")
-            exit(0)
+        guard let controller = notchController, controller.hasWorkToFinishBeforeQuit else {
+            // applicationWillTerminate's teardown runs next on the main
+            // thread; a feature stuck there must not keep SparkV alive.
+            QuitWatchdog.arm(after: 6, reason: "teardown")
+            return .terminateNow
         }
+        // Off the main thread: a stuck main actor can never block Quit
+        // (5 s of work, then the teardown).
+        QuitWatchdog.arm(after: 11, reason: "work before quit")
         Task { @MainActor in
             await controller.finishWorkBeforeQuit(timeout: .seconds(5))
             NSApp.reply(toApplicationShouldTerminate: true)
@@ -117,5 +131,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppShellController.shared.stop()
         notchController?.tearDown()
         SpaceStore.shared.flush()
+    }
+}
+
+/// Ends SparkV from a background thread if quitting takes too long (the
+/// main thread stuck in a feature's callback or teardown). Armed once per
+/// quit; `_exit` because a stuck main thread may hold locks that `exit`'s
+/// cleanup would wait for.
+enum QuitWatchdog {
+    nonisolated(unsafe) private static var armed = false
+    nonisolated private static let lock = NSLock()
+
+    nonisolated static func arm(after seconds: TimeInterval, reason: String) {
+        lock.lock()
+        let first = !armed
+        armed = true
+        lock.unlock()
+        guard first else { return }
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + seconds) {
+            AppLog.log("Quit: \(reason) took over \(Int(seconds)) s; exiting")
+            // Lets the log line reach the file.
+            usleep(300_000)
+            _exit(0)
+        }
     }
 }

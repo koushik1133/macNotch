@@ -71,10 +71,12 @@ final class LiveTranslationController: ObservableObject {
     }
 
     /// Translate the user's own microphone speech too (off: only others).
+    /// While other participants can't be captured (no Screen Recording) the
+    /// microphone is captioned anyway, or there would be nothing to show.
     @Published var translatesMySpeech: Bool {
         didSet {
             defaults.set(translatesMySpeech, forKey: Keys.mySpeech)
-            pipeline.speakers = translatesMySpeech ? [.me, .others] : [.others]
+            pipeline.speakers = effectiveSpeakers
         }
     }
 
@@ -123,6 +125,34 @@ final class LiveTranslationController: ObservableObject {
     /// The caption the band shows: the newest one.
     var bandCaption: LiveTranslatedLine? { captions.last }
 
+    /// Why captions are missing or incomplete right now (shown in the band
+    /// and the caption window), or nil. Microphone problems first: without
+    /// the mic nothing can be captioned at all.
+    var notice: String? {
+        guard sessionActive || isRecording else { return nil }
+        if let problem = micProblem { return problem }
+        switch status {
+        case .unavailable(let reason): return "Not translating: \(reason)"
+        case .needsDownload: return statusText
+        default: break
+        }
+        if othersUnavailable { return "Captioning your mic only. Allow Screen Recording for SparkV to caption others" }
+        return nil
+    }
+
+    /// Mirrors of the recorder's state while a session runs.
+    @Published private(set) var micProblem: String?
+    @Published private(set) var othersUnavailable = false
+
+    /// Whose speech the pipeline captions: the user's choice, plus the
+    /// microphone whenever system audio isn't being captured.
+    private var effectiveSpeakers: Set<MeetingSpeaker> {
+        translatesMySpeech || !capturingOthers ? [.me, .others] : [.others]
+    }
+    private var capturingOthers = false
+    /// Other participants were captured at some point in this session.
+    private var sessionCapturedOthers = false
+
     static let bandActivityID = "meeting.translation"
     /// Above the recording band (65) it replaces while captions flow, below
     /// notifications (70) and suggested answers (80).
@@ -157,6 +187,11 @@ final class LiveTranslationController: ObservableObject {
     private var latestSegments: [TranscriptSegment] = []
     private var bandPosted = false
     private var bandIdleTask: Task<Void, Never>?
+    private var bandStartTask: Task<Void, Never>?
+    /// Language pairs whose download was already offered this launch.
+    private var offeredDownloads: Set<String> = []
+    /// Translation failures already logged this launch.
+    private var loggedFailures: Set<String> = []
     private var endTask: Task<Void, Never>?
     private var messageTask: Task<Void, Never>?
     private var groqKey: String?
@@ -214,6 +249,24 @@ final class LiveTranslationController: ObservableObject {
         assistant.$current
             .sink { [weak self] record in
                 self?.recordChanged(record)
+            }
+            .store(in: &subscriptions)
+        let recorder = assistant.recorder
+        recorder.$isCapturingSystemAudio
+            .removeDuplicates()
+            .sink { [weak self] capturing in
+                Task { @MainActor [weak self] in self?.systemAudioChanged(capturing) }
+            }
+            .store(in: &subscriptions)
+        recorder.$systemAudioProblem
+            .combineLatest(recorder.$micProblem, recorder.$isRecording)
+            .sink { [weak self] others, mic, recording in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    let unavailable = recording && others != nil
+                    if othersUnavailable != unavailable { othersUnavailable = unavailable }
+                    if micProblem != mic { micProblem = mic }
+                }
             }
             .store(in: &subscriptions)
         loadTargets()
@@ -274,6 +327,18 @@ final class LiveTranslationController: ObservableObject {
         }
     }
 
+    /// System audio (other participants) started or stopped being captured.
+    func systemAudioChanged(_ capturing: Bool) {
+        // Capture ending with the recording doesn't change whose speech the
+        // last phrases are; the next session reads the recorder afresh.
+        if !capturing, !isRecording { return }
+        if capturing, sessionActive { sessionCapturedOthers = true }
+        guard capturingOthers != capturing else { return }
+        capturingOthers = capturing
+        pipeline.speakers = effectiveSpeakers
+        if sessionActive { pipeline.observe(latestSegments) }
+    }
+
     /// Feeds a transcript snapshot. Public for tests.
     func recordChanged(_ record: MeetingRecord?) {
         guard let record, sessionActive, record.id == meetingID else { return }
@@ -307,14 +372,52 @@ final class LiveTranslationController: ObservableObject {
         insertedBlocks[record.id] = nil
         latestSegments = record.segments
         pipeline.reset()
-        pipeline.speakers = translatesMySpeech ? [.me, .others] : [.others]
+        capturingOthers = assistant?.recorder.isCapturingSystemAudio ?? false
+        sessionCapturedOthers = capturingOthers
+        pipeline.speakers = effectiveSpeakers
         pipeline.target = LiveTranslationLanguages.language(targetLanguage)
         pipeline.setTranscriberLanguage(othersSpokenLanguage, for: .others)
         pipeline.start(from: record.segments, keepLast: 2)
         status = pendingDownload.map { .needsDownload(source: $0.source, target: $0.target) } ?? .listening
         prewarm()
         if showsCaptionWindow { captionWindow.show() }
+        if pendingDownload != nil { offerDownloadOnce() }
+        scheduleListeningBand()
         AppLog.log("Live Translation: started (target \(targetLanguage))")
+    }
+
+    /// Posts the band once the recording reminder has had its 10 s, even
+    /// before anything is said: it shows "listening…" or what's wrong (mic
+    /// silent, others not captured, languages missing) instead of nothing.
+    private func scheduleListeningBand() {
+        bandStartTask?.cancel()
+        guard let started = meetingStartedAt else { return }
+        let id = meetingID
+        let wait = max(0, 10.5 - Date().timeIntervalSince(started))
+        bandStartTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            guard let self, !Task.isCancelled, sessionActive, isRecording, meetingID == id,
+                  !Self.originalCaptionsShownElsewhere else { return }
+            postBand(keepUntilSpeech: true)
+        }
+    }
+
+    /// Meeting Intelligence's own caption band (the "Captions" plan) is up:
+    /// it already shows speech as spoken, so this band only takes over for
+    /// lines that were actually translated.
+    private static var originalCaptionsShownElsewhere: Bool {
+        LiveMeetingAssist.current?.captionsVisible == true
+    }
+
+    /// Opens the download window once per pair per launch, so macOS shows
+    /// its own consent sheet for the language files.
+    private func offerDownloadOnce() {
+        guard let pair = pendingDownload else { return }
+        let key = pair.source + ">" + pair.target
+        guard !offeredDownloads.contains(key) else { return }
+        offeredDownloads.insert(key)
+        AppLog.log("Live Translation: \(key) needs a download, asking")
+        downloadWindow.show(source: pair.source, target: pair.target)
     }
 
     private func endSession() {
@@ -336,7 +439,13 @@ final class LiveTranslationController: ObservableObject {
             groqKeyLoaded = false
             LiveTranslationModelEngine.releasePrewarmed()
             status = isEnabled ? .waiting : .off
-            AppLog.log("Live Translation: ended (\(lineCount) caption(s))")
+            // Counts only, never caption text.
+            let lines = pipeline.lines
+            let translated = lines.filter { !$0.isOriginal && !$0.failed }.count
+            let original = lines.filter(\.isOriginal).count
+            let failed = lines.filter(\.failed).count
+            let who = pipeline.speakers.contains(.me) ? (pipeline.speakers.contains(.others) ? "mic+others" : "mic") : "others"
+            AppLog.log("Live Translation: ended (\(lines.count) caption(s): \(translated) translated, \(original) already in \(targetLanguage), \(failed) not translated; \(who)\(sessionCapturedOthers ? "" : ", no system audio"))")
         }
     }
 
@@ -408,6 +517,7 @@ final class LiveTranslationController: ObservableObject {
         case .needsDownload:
             pendingDownload = (source, target)
             lastError = LiveTranslationError.notInstalled(source: source, target: target)
+            if sessionActive { offerDownloadOnce() }
         case .unsupported:
             lastError = LiveTranslationError.unsupportedPair(source: source, target: target)
         }
@@ -458,8 +568,9 @@ final class LiveTranslationController: ObservableObject {
     }
 
     private func translationFailed(_ error: Error, _ request: LiveTranslationPipeline.Request) {
-        // Never log the caption text.
-        AppLog.log("Live Translation: \(LiveTranslationLanguages.id(request.source))→\(LiveTranslationLanguages.id(request.target)) failed: \(error.localizedDescription)")
+        // Never log the caption text; one line per pair and error, not per caption.
+        let line = "\(LiveTranslationLanguages.id(request.source))→\(LiveTranslationLanguages.id(request.target)) failed: \(error.localizedDescription)"
+        if loggedFailures.insert(line).inserted { AppLog.log("Live Translation: \(line)") }
         guard sessionActive else { return }
         if let pending = pendingDownload {
             status = .needsDownload(source: pending.source, target: pending.target)
@@ -516,11 +627,9 @@ final class LiveTranslationController: ObservableObject {
 
     private func captionUpdated(_ line: LiveTranslatedLine) {
         lineCount = pipeline.lines.count
-        // Speech already in the user's language isn't captioned.
-        guard !line.isOriginal else {
-            if let index = captions.firstIndex(where: { $0.id == line.id }) { captions.remove(at: index) }
-            return
-        }
+        // Speech already in the user's language is captioned as spoken
+        // (marked "Original"): hiding it left a same-language meeting, or
+        // English speech with an English target, with no captions at all.
         if let index = captions.firstIndex(where: { $0.id == line.id }) {
             captions[index] = line
         } else {
@@ -529,10 +638,13 @@ final class LiveTranslationController: ObservableObject {
             if captions.count > 6 { captions.removeFirst(captions.count - 6) }
         }
         guard sessionActive, isRecording else { return }
+        if line.isOriginal, Self.originalCaptionsShownElsewhere { return }
         postBand()
     }
 
-    private func postBand() {
+    /// `keepUntilSpeech`: posted before any caption (listening / a problem),
+    /// so it stays until speech arrives instead of timing out.
+    private func postBand(keepUntilSpeech: Bool = false) {
         guard showsInNotch, let started = meetingStartedAt else { return }
         // Keep the "Let participants know you're recording" reminder visible.
         guard Date().timeIntervalSince(started) >= 10 else { return }
@@ -548,6 +660,7 @@ final class LiveTranslationController: ObservableObject {
             })
         }
         bandIdleTask?.cancel()
+        guard !keepUntilSpeech || !captions.isEmpty else { return }
         bandIdleTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(Self.bandIdleSeconds))
             guard !Task.isCancelled else { return }
@@ -557,6 +670,7 @@ final class LiveTranslationController: ObservableObject {
 
     private func dismissBand() {
         bandIdleTask?.cancel()
+        bandStartTask?.cancel()
         guard bandPosted else { return }
         bandPosted = false
         activities.dismiss(id: Self.bandActivityID)

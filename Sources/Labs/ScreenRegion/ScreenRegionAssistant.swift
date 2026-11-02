@@ -44,6 +44,12 @@ enum ScreenRegionAction: Hashable, Identifiable, Sendable {
         }
     }
 
+    /// For AppLog: `id` without the user's typed question.
+    var logName: String {
+        if case .ask(let question) = self { return "ask (\(question.count) chars)" }
+        return id
+    }
+
     var title: String {
         switch self {
         case .explain: "Explain"
@@ -325,7 +331,7 @@ final class ScreenRegionAssistant {
         case .explain, .whatIsThis, .summarize, .suggestNextAction, .ask:
             answer = try await generate(action, source: source, analysis: analysis, context: context, capture: capture, emit: emit)
         }
-        AppLog.log("Screen Region: \(action.id.prefix(24)) by \(answer.producedBy) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+        AppLog.log("Screen Region: \(action.logName) by \(answer.producedBy) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         return answer
     }
 

@@ -44,6 +44,12 @@ enum TrayAIAction: Hashable, Identifiable, Sendable {
         }
     }
 
+    /// For AppLog: `id` without the user's typed question.
+    var logName: String {
+        if case .custom(let question) = self { return "custom (\(question.count) chars)" }
+        return id
+    }
+
     var title: String {
         switch self {
         case .whatIsThis: "What is this?"

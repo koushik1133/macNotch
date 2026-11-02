@@ -59,6 +59,7 @@ final class CodingAgentsController: ObservableObject {
     @Published var watchClaude: Bool { didSet { save(watchClaude, "claude"); apply() } }
     @Published var watchCodex: Bool { didSet { save(watchCodex, "codex"); apply() } }
     @Published var watchCursor: Bool { didSet { save(watchCursor, "cursor"); apply() } }
+    @Published var watchAntigravity: Bool { didSet { save(watchAntigravity, "antigravity"); apply() } }
     /// Opt-in: today's token count from local transcripts.
     @Published var countTokens: Bool { didSet { save(countTokens, "countTokens"); apply() } }
     @Published var hookEnabled: Bool { didSet { save(hookEnabled, "hook"); applyHook() } }
@@ -110,6 +111,7 @@ final class CodingAgentsController: ObservableObject {
         watchClaude = bool("claude", true)
         watchCodex = bool("codex", true)
         watchCursor = bool("cursor", true)
+        watchAntigravity = bool("antigravity", true)
         countTokens = bool("countTokens", false)
         hookEnabled = bool("hook", false)
         decisionTimeout = min(max(int("decisionTimeout", 30), 10), 55)
@@ -166,7 +168,7 @@ final class CodingAgentsController: ObservableObject {
     }
 
     private var scannerOptions: AgentSessionScanner.Options {
-        .init(claude: watchClaude, codex: watchCodex, cursor: watchCursor, countTokens: countTokens)
+        .init(claude: watchClaude, codex: watchCodex, cursor: watchCursor, antigravity: watchAntigravity, countTokens: countTokens)
     }
 
     private var scannerStarted = false
@@ -291,6 +293,7 @@ final class CodingAgentsController: ObservableObject {
         case .claude: watchClaude
         case .codex: watchCodex
         case .cursor: watchCursor
+        case .antigravity: watchAntigravity
         }
         let watching = isEnabled && watchesKind
         // Approvals still work with session watching off: the user pointed
@@ -426,6 +429,25 @@ final class CodingAgentsController: ObservableObject {
         announceTransitions(next)
         if next != sessions { sessions = next }
         postSummaryActivity()
+        scheduleHookExpiry(now: now)
+    }
+
+    private var hookExpiryTask: Task<Void, Never>?
+
+    /// Hook news expires after 20 minutes, but only a rebuild drops it: a
+    /// session known only from hooks (its tool crashed before "ended") would
+    /// otherwise stay Working until some unrelated event.
+    private func scheduleHookExpiry(now: Date) {
+        hookExpiryTask?.cancel()
+        hookExpiryTask = nil
+        guard let oldest = hookStates.values.map({ $0.at }).min() else { return }
+        let delay = max(5, oldest.addingTimeInterval(20 * 60).timeIntervalSince(now) + 1)
+        hookExpiryTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self else { return }
+            self.hookExpiryTask = nil
+            self.rebuild()
+        }
     }
 
     /// Sounds and a short band when a session starts waiting or finishes.
@@ -448,15 +470,24 @@ final class CodingAgentsController: ObservableObject {
     var runningCount: Int { sessions.filter { $0.state == .working }.count }
     var waitingCount: Int { sessions.filter { $0.state == .waiting }.count + max(0, approvals.count - sessions.filter { $0.state == .waiting }.count) }
 
+    /// The counts the summary band was last posted with: every scan
+    /// (each ~2 s while an agent writes) used to re-post it, which re-rendered
+    /// the island and moved the band to the back of the activity order.
+    private var postedSummary: (running: Int, waiting: Int, tint: Color)?
+
     private func postSummaryActivity() {
         guard let activities else { return }
         let running = runningCount
         let waiting = waitingCount
         guard isRunning, showsWings, running + waiting > 0 else {
+            postedSummary = nil
             activities.dismiss(id: Self.summaryID)
             return
         }
         let tint = waiting > 0 ? SparkVTheme.choose(apple: Color.orange, sparkv: SparkVTheme.red) : SparkVTheme.choose(apple: Color(red: 0.85, green: 0.47, blue: 0.34), sparkv: SparkVTheme.text)
+        if let posted = postedSummary, posted.running == running, posted.waiting == waiting, posted.tint == tint,
+           activities.activity(id: Self.summaryID) != nil { return }
+        postedSummary = (running, waiting, tint)
         activities.post(LiveActivity(
             id: Self.summaryID, kind: .notification, priority: 18, duration: nil, opensTab: opensTab, presentation: .compact,
             symbol: waiting > 0 ? "hand.raised.fill" : "sparkles", tint: tint,
@@ -529,6 +560,12 @@ final class CodingAgentsController: ObservableObject {
                 app.activate()
                 return
             }
+        }
+        // Editors (Cursor, Antigravity) that aren't running: reopen the folder in them.
+        if session.kind == .cursor || session.kind == .antigravity, let cwd = session.cwd,
+           let appURL = session.kind.appBundleIDs.lazy.compactMap({ NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }).first {
+            NSWorkspace.shared.open([URL(fileURLWithPath: cwd)], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+            return
         }
         if let cwd = session.cwd { NSWorkspace.shared.open(URL(fileURLWithPath: cwd)) }
     }

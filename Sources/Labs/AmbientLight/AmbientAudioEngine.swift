@@ -15,6 +15,13 @@ final class AmbientAudioEngine {
     private(set) var isReceivingDigitalSilence = false
     /// Called on the main queue when digital silence starts or stops.
     var onDigitalSilenceChange: ((Bool) -> Void)?
+    /// True while the analyzer hears sound (music from any app, whether or
+    /// not it reports Now Playing). Turns on after ~0.3 s of continuous
+    /// sound, off after the analyzer's silence hold (~1.2 s).
+    private(set) var isHearingAudio = false
+    /// Called on the main queue when `isHearingAudio` changes (transitions
+    /// only, never per hop).
+    var onAudibleChange: ((Bool) -> Void)?
     /// Called on the main queue when the output device changed and capture
     /// should be restarted.
     var onRouteChange: (() -> Void)?
@@ -43,7 +50,11 @@ final class AmbientAudioEngine {
         case .processTap:
             let tap = AmbientProcessTapSource(ring: ring)
             tap.onRouteChange = { [weak self] in
-                Task { @MainActor in self?.onRouteChange?() }
+                Task { @MainActor in
+                    // Not for a tap that is already winding down.
+                    guard let self, self.generation == myGeneration else { return }
+                    self.onRouteChange?()
+                }
             }
             newSource = tap
         case .screenCapture:
@@ -57,7 +68,7 @@ final class AmbientAudioEngine {
             throw myGeneration == generation ? error : CancellationError()
         }
         guard myGeneration == generation else {
-            newSource.stop()
+            Self.tearDown(newSource)
             throw CancellationError()
         }
         source = newSource
@@ -70,6 +81,13 @@ final class AmbientAudioEngine {
                 self.onDigitalSilenceChange?(silent)
             }
         }
+        pump.onAudibleChange = { [weak self] audible in
+            Task { @MainActor in
+                guard let self, self.generation == myGeneration, self.isHearingAudio != audible else { return }
+                self.isHearingAudio = audible
+                self.onAudibleChange?(audible)
+            }
+        }
         pump.start()
         self.pump = pump
         isRunning = true
@@ -80,19 +98,39 @@ final class AmbientAudioEngine {
         generation += 1
         pump?.stop()
         pump = nil
-        source?.stop()
-        if source != nil { AppLog.log("AmbientLight: capture stopped") }
+        if let source {
+            Self.tearDown(source)
+            AppLog.log("AmbientLight: capture stopped")
+        }
         source = nil
         sourceName = nil
         isRunning = false
         isReceivingDigitalSilence = false
+        isHearingAudio = false
         mailbox.store(.idle)
+    }
+}
+
+extension AmbientAudioEngine {
+    /// Serial, so teardowns run in order.
+    nonisolated private static let teardownQueue = DispatchQueue(label: "SparkV.AmbientLight.teardown", qos: .userInitiated)
+
+    /// Stops a source off the main thread: destroying the aggregate device
+    /// and the tap are synchronous HAL calls that can stall for a long time
+    /// while coreaudiod is busy (a device switch, AirPods connecting). Each
+    /// start uses its own ring and source, so a source still winding down
+    /// can't touch the next one.
+    nonisolated static func tearDown(_ source: AmbientAudioSource) {
+        teardownQueue.async { source.stop() }
     }
 }
 
 /// The analysis loop on its own queue.
 final class AmbientAnalysisPump: @unchecked Sendable {
     var onDigitalSilenceChange: (@Sendable (Bool) -> Void)?
+    var onAudibleChange: (@Sendable (Bool) -> Void)?
+    /// Continuous sound needed before the input counts as audible.
+    static let audibleAfter: Double = 0.3
 
     private let ring: AmbientSampleRing
     private let mailbox: AmbientFeatureMailbox
@@ -103,6 +141,7 @@ final class AmbientAnalysisPump: @unchecked Sendable {
     private let hopSize: Int
     private let sampleRate: Double
     private var lastDigitalSilence = false
+    private var audible = false
 
     init(ring: AmbientSampleRing, mailbox: AmbientFeatureMailbox, sampleRate: Double) {
         self.ring = ring
@@ -150,6 +189,11 @@ final class AmbientAnalysisPump: @unchecked Sendable {
         if latest.isDigitalSilence != lastDigitalSilence {
             lastDigitalSilence = latest.isDigitalSilence
             onDigitalSilenceChange?(latest.isDigitalSilence)
+        }
+        let hearing = audible ? !latest.isSilent : analyzer.soundTime >= Self.audibleAfter
+        if hearing != audible {
+            audible = hearing
+            onAudibleChange?(hearing)
         }
     }
 }

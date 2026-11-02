@@ -84,9 +84,11 @@ struct AmbientLightChoreographer {
         // Below one 8-bit opacity step the light is invisible: snap.
         if abs(presence - target) < 0.004 { presence = target }
 
-        // Light smoothing on top of the analyzer's envelopes so 30 fps and
-        // 120 fps look the same.
-        smoothedBass = approach(smoothedBass, Double(f.bass), dt: dt, tau: f.bass > Float(smoothedBass) ? 0.012 : 0.09)
+        // Light smoothing on top of the analyzer's envelopes (attack ~22 ms,
+        // release ~260 ms) so 30 fps and 120 fps look the same. The attack
+        // stays near-instant here so kicks land on the beat; the release is
+        // short because the analyzer already supplies the smooth tail.
+        smoothedBass = approach(smoothedBass, Double(f.bass), dt: dt, tau: f.bass > Float(smoothedBass) ? 0.008 : 0.06)
         smoothedLevel = approach(smoothedLevel, Double(f.level), dt: dt, tau: 0.25)
         let newBeat = f.beatCount != lastBeatCount
         lastBeatCount = f.beatCount

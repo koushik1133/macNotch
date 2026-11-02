@@ -49,11 +49,13 @@ While a meeting is recording, SparkV translates what other participants say into
    - `NLLanguageRecognizer`, limited to the 26 languages Translation supports.
    - Short or ambiguous text (for example "sí" or "okay") reuses that speaker's last confident language. With no history, it falls back to the transcriber's language (`Locale.current`, which is what MeetingTranscriber listens in).
    - Speech already in the target language is never sent to a translator. "Same language" means the same language code and script, so en-US speech counts as English for an en-GB reader, while zh-Hans and zh-Hant are different.
-4. **Whose speech:** only other participants by default, as in Meet and Teams. **Translate My Own Speech** adds the microphone.
+4. **Whose speech:** only other participants by default, as in Meet and Teams. **Translate My Own Speech** adds the microphone. While other participants can't be captured (Screen Recording not allowed, or system audio failed), the microphone is captioned anyway; otherwise there would be nothing to show.
+   - Speech already in the target language is captioned as spoken (chip shows only the language, no arrow). It used to be hidden, which left an English meeting with an English target with no captions at all.
 5. **The band:**
    - It replaces the recording band while captions flow, at priority 66, just above recording (65).
    - It keeps the red recording dot and the elapsed time, so the user can still see that the meeting is being recorded.
-   - It appears only 10 s or more after recording starts, so the "Let participants know you're recording" reminder stays visible.
+   - It appears only 10 s or more after recording starts, so the "Let participants know you're recording" reminder stays visible. At that point it is posted even before anyone speaks: it says "listening…", or what is wrong (microphone silent, nothing recognized, only your mic is captured, languages need a download).
+   - When Meeting Intelligence's own caption band is up (the "Captions" plan), this band only takes over for lines that were actually translated.
    - It returns the notch after 9 s without new speech.
    - It shows a language chip (`ES → EN · Others`) and two lines of caption, truncated at the head so the newest words stay visible.
 6. **Caption window:** a non-activating floating panel, 640×150, that remembers its position. It shows each translation with the original underneath (optional), a language menu, Add to Meeting Notes, Copy, and Download Languages… when needed.

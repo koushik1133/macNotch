@@ -193,11 +193,16 @@ struct MediaScrubber: View {
                         }
                     }
                     .onEnded { value in
+                        // Always release the knob, even when the track
+                        // stopped being seekable mid-drag (a live stream,
+                        // the player quit): otherwise it stays stuck.
+                        defer {
+                            interaction.dragFraction = nil
+                            interaction.hapticStep = nil
+                        }
                         guard media.canSeek else { return }
                         let target = Self.fraction(atX: value.location.x, width: width, duration: timing.duration, ticks: ticks)
                         media.seek(to: target * timing.duration)
-                        interaction.dragFraction = nil
-                        interaction.hapticStep = nil
                     }
             )
             .help(media.canSeek ? "Drag to seek" : "")

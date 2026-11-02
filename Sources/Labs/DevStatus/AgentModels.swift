@@ -1,6 +1,6 @@
 import Foundation
 
-// Pure logic for Coding Agents (Claude Code, Codex, Cursor): the session
+// Pure logic for Coding Agents (Claude Code, Codex, Cursor, Antigravity): the session
 // model, read-only parsers for each tool's local session files, the local
 // hook endpoint's HTTP framing and validation, hook event parsing and the
 // Allow / Deny reply formats. Foundation only, so the test harness compiles
@@ -9,13 +9,14 @@ import Foundation
 // MARK: - Model
 
 enum CodingAgentKind: String, Codable, CaseIterable, Sendable {
-    case claude, codex, cursor
+    case claude, codex, cursor, antigravity
 
     var title: String {
         switch self {
         case .claude: "Claude Code"
         case .codex: "Codex"
         case .cursor: "Cursor"
+        case .antigravity: "Antigravity"
         }
     }
 
@@ -24,6 +25,7 @@ enum CodingAgentKind: String, Codable, CaseIterable, Sendable {
         case .claude: "Claude"
         case .codex: "Codex"
         case .cursor: "Cursor"
+        case .antigravity: "Antigravity"
         }
     }
 
@@ -32,6 +34,7 @@ enum CodingAgentKind: String, Codable, CaseIterable, Sendable {
         case .claude: "asterisk"
         case .codex: "chevron.left.forwardslash.chevron.right"
         case .cursor: "cursorarrow.rays"
+        case .antigravity: "sparkles"
         }
     }
 
@@ -41,6 +44,7 @@ enum CodingAgentKind: String, Codable, CaseIterable, Sendable {
         case .claude: ["com.anthropic.claudefordesktop"]
         case .codex: ["com.openai.codex", "com.openai.chat"]
         case .cursor: ["com.todesktop.230313mzl4w4u92"]
+        case .antigravity: ["com.google.antigravity"]
         }
     }
 }
@@ -123,6 +127,15 @@ enum CodingAgentTiming {
     static let liveWindow: TimeInterval = 6 * 3600
     /// A Cursor transcript written this recently means the agent is working.
     static let cursorWorkingWindow: TimeInterval = 90
+    /// Cursor marks finished turns ("turn_ended"); with that marker, an open
+    /// turn counts as working this long without writes (a long command).
+    static let cursorOpenTurnWindow: TimeInterval = 5 * 60
+    /// An Antigravity conversation reported as running, but silent this long,
+    /// no longer counts as working (a stale status after a crash).
+    static let antigravityStaleRunning: TimeInterval = 30 * 60
+    /// Without a status (no summaries database), a conversation file written
+    /// this recently means the agent is working.
+    static let antigravityWorkingWindow: TimeInterval = 90
 }
 
 // MARK: - Claude Code session registry (~/.claude/sessions/<pid>.json)
@@ -380,28 +393,172 @@ struct CodexRolloutSummary: Equatable, Sendable {
 
 /// Cursor keeps agent transcripts in
 /// ~/.cursor/projects/<path-with-dashes>/agent-transcripts/<id>/<id>.jsonl
-/// without timestamps, so the file's modification time is the signal.
+/// (the id is the Composer id). Lines carry no timestamps, so the file's
+/// modification time is the signal. Current builds (3.x) close every turn
+/// with `{"type":"turn_ended","status":"success|error|aborted"}`.
 struct CursorTranscriptSummary: Equatable, Sendable {
     var sessionID: String
     var projectKey: String
     var modified: Date
+    /// "user" / "assistant" for the last message line, or "turn_ended".
     var lastRole: String?
+    /// The transcript uses turn markers, so a missing one means an open turn.
+    var hasTurnMarkers = false
 
     func state(now: Date, cursorRunning: Bool) -> CodingAgentState {
         let age = now.timeIntervalSince(modified)
-        if cursorRunning, age < CodingAgentTiming.cursorWorkingWindow, lastRole != "assistant-final" {
-            return lastRole == "assistant" && age > 20 ? .finished : .working
+        let ended = lastRole == "turn_ended" || lastRole == "assistant-final"
+        if cursorRunning, !ended {
+            if hasTurnMarkers {
+                if age < CodingAgentTiming.cursorOpenTurnWindow { return .working }
+            } else if age < CodingAgentTiming.cursorWorkingWindow {
+                return lastRole == "assistant" && age > 20 ? .finished : .working
+            }
         }
         if age < CodingAgentTiming.finishedWindow { return .finished }
         return .idle
     }
 
-    static func lastRole(lines: [Data]) -> String? {
+    /// The last line's role (or "turn_ended"), and whether any turn marker
+    /// shows up in the tail. Only `role` and `type` are looked at.
+    static func lastEvent(lines: [Data]) -> (role: String?, hasTurnMarkers: Bool) {
+        var role: String?
+        var markers = false
+        let marker = Data("turn_ended".utf8)
         for line in lines.reversed() {
+            // Past the last message, only marker lines are parsed.
+            if role != nil, line.range(of: marker) == nil { continue }
             guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { continue }
-            if let role = object["role"] as? String { return role }
+            if object["type"] as? String == "turn_ended" {
+                markers = true
+                if role == nil { role = "turn_ended" }
+                break
+            }
+            if role == nil, let found = object["role"] as? String { role = found }
+        }
+        return (role, markers)
+    }
+
+    static func lastRole(lines: [Data]) -> String? { lastEvent(lines: lines).role }
+}
+
+/// Google Antigravity keeps one row per agent conversation in
+/// ~/.gemini/<app-data-dir>/conversation_summaries.db (table
+/// `conversation_summaries`: title, workspace_uris, status
+/// CASCADE_RUN_STATUS_RUNNING / _IDLE, last_modified_time) and the
+/// conversation itself in conversations/<id>.db (SQLite, WAL) or <id>.pb.
+/// Only the id, title, workspace, status and dates are read; never the
+/// preview or the conversation.
+struct AntigravityConversation: Equatable, Sendable {
+    var id: String
+    var title: String?
+    var workspace: String?
+    /// Raw status, nil when it came from file dates only.
+    var status: String?
+    var updatedAt: Date
+    /// Newest write to the conversation's own files.
+    var lastWrite: Date?
+
+    var lastActivity: Date { max(updatedAt, lastWrite ?? .distantPast) }
+
+    var isRunning: Bool { status?.hasSuffix("RUNNING") ?? false }
+
+    func state(now: Date, appRunning: Bool) -> CodingAgentState {
+        let age = now.timeIntervalSince(lastActivity)
+        if appRunning {
+            if isRunning, age < CodingAgentTiming.antigravityStaleRunning { return .working }
+            if status == nil, age < CodingAgentTiming.antigravityWorkingWindow { return .working }
+        }
+        if !isRunning, age < CodingAgentTiming.finishedWindow { return .finished }
+        return .idle
+    }
+
+    /// "2026-11-02 15:57:54.626117+00:00" (Go's SQLite driver), also with
+    /// "T", "Z" or no zone (UTC).
+    static func date(_ text: String) -> Date? {
+        let b = Array(text.utf8)
+        guard b.count >= 19 else { return nil }
+        func number(_ range: Range<Int>) -> Int? {
+            var value = 0
+            for i in range {
+                guard i < b.count, b[i] >= 48, b[i] <= 57 else { return nil }
+                value = value * 10 + Int(b[i] - 48)
+            }
+            return value
+        }
+        guard let year = number(0..<4), let month = number(5..<7), let day = number(8..<10),
+              let hour = number(11..<13), let minute = number(14..<16), let second = number(17..<19) else { return nil }
+        var index = 19
+        var fraction = 0.0
+        if index < b.count, b[index] == UInt8(ascii: ".") {
+            index += 1
+            var scale = 0.1
+            while index < b.count, b[index] >= 48, b[index] <= 57 {
+                fraction += Double(b[index] - 48) * scale
+                scale /= 10
+                index += 1
+            }
+        }
+        var offset = 0
+        if index < b.count, b[index] == UInt8(ascii: "+") || b[index] == UInt8(ascii: "-"),
+           let hours = number(index + 1..<index + 3) {
+            let minutes = number(index + 4..<index + 6) ?? number(index + 3..<index + 5) ?? 0
+            offset = (hours * 3600 + minutes * 60) * (b[index] == UInt8(ascii: "-") ? -1 : 1)
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? .current
+        guard let base = calendar.date(from: DateComponents(year: year, month: month, day: day,
+                                                            hour: hour, minute: minute, second: second)) else { return nil }
+        return base.addingTimeInterval(fraction - Double(offset))
+    }
+
+    /// The first folder in `workspace_uris` (a JSON array of file:// URLs).
+    static func workspace(fromJSON text: String?) -> String? {
+        guard let data = text?.data(using: .utf8),
+              let uris = try? JSONSerialization.jsonObject(with: data) as? [String] else { return nil }
+        for uri in uris {
+            if let url = URL(string: uri), url.isFileURL, !url.path.isEmpty { return url.path }
         }
         return nil
+    }
+
+    /// `title:"…"` from annotations/<id>.pbtxt (protobuf text format; octal
+    /// escapes for non-ASCII bytes).
+    static func title(fromAnnotation data: Data) -> String? {
+        let bytes = Array(data.prefix(4096))
+        let key = Array("title:\"".utf8)
+        guard bytes.count > key.count,
+              let start = (0...(bytes.count - key.count)).first(where: { i in
+                  Array(bytes[i..<i + key.count]) == key && (i == 0 || bytes[i - 1] == 32 || bytes[i - 1] == 10 || bytes[i - 1] == 123)
+              }) else { return nil }
+        var out: [UInt8] = []
+        var i = start + key.count
+        func isOctal(_ index: Int) -> Bool { index < bytes.count && bytes[index] >= 48 && bytes[index] <= 55 }
+        while i < bytes.count, out.count < 240 {
+            let byte = bytes[i]
+            if byte == UInt8(ascii: "\"") { break }
+            if byte == UInt8(ascii: "\\"), i + 1 < bytes.count {
+                let next = bytes[i + 1]
+                if isOctal(i + 1) {
+                    var value = 0
+                    var j = i + 1
+                    while j < i + 4, isOctal(j) { value = value * 8 + Int(bytes[j] - 48); j += 1 }
+                    out.append(UInt8(truncatingIfNeeded: value))
+                    i = j
+                    continue
+                }
+                switch next {
+                case UInt8(ascii: "n"), UInt8(ascii: "t"), UInt8(ascii: "r"): out.append(32)
+                default: out.append(next)
+                }
+                i += 2
+                continue
+            }
+            out.append(byte)
+            i += 1
+        }
+        let trimmed = String(decoding: out, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : String(trimmed.prefix(120))
     }
 }
 
@@ -409,7 +566,7 @@ struct CursorTranscriptSummary: Equatable, Sendable {
 
 enum AgentPaths {
     /// Claude Code and Cursor name project folders after the path with every
-    /// "/" (and ".") turned into "-". Dashes inside names make that lossy, so
+    /// "/" (and ".", and " ") turned into "-". Dashes inside names make that lossy, so
     /// the decoder walks the real disk: at each step it joins the next
     /// segment with "/" if that folder exists, else with "-" (or ".").
     static func decodeProjectFolder(_ encoded: String, exists: (String) -> Bool) -> String? {
@@ -431,7 +588,9 @@ enum AgentPaths {
             if path.isEmpty || exists(path), let found = search(index + 1, path + "/" + segment) { return found }
             guard !path.isEmpty else { return nil }
             if let found = search(index + 1, path + "-" + segment) { return found }
-            return search(index + 1, path + "." + segment)
+            if let found = search(index + 1, path + "." + segment) { return found }
+            // Spaces become "-" too ("Test 01" -> "Test-01").
+            return search(index + 1, path + " " + segment)
         }
         let start = segments.first == "" ? 1 : 0
         return search(start, "")

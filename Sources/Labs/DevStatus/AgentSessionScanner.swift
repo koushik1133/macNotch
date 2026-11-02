@@ -1,8 +1,9 @@
 import CoreServices
 import Darwin
 import Foundation
+import SQLite3
 
-/// Reads Claude Code, Codex and Cursor session folders read-only and turns
+/// Reads Claude Code, Codex, Cursor and Antigravity session folders read-only and turns
 /// them into `CodingAgentSession`s. Driven by one FSEvents stream over the
 /// folders (1 s latency) and by process-exit sources for running Claude
 /// Code processes; nothing polls. A one-shot timer runs only while some
@@ -10,12 +11,14 @@ import Foundation
 ///
 /// Message text, prompts and tool input are never read into memory beyond
 /// the JSON parser, never stored and never logged; only state, folder,
-/// branch and (opt-in) token counts leave this class.
+/// branch, a title the tool itself stored as a title (Antigravity) and
+/// (opt-in) token counts leave this class.
 final class AgentSessionScanner: @unchecked Sendable {
     struct Options: Equatable, Sendable {
         var claude = true
         var codex = true
         var cursor = true
+        var antigravity = true
         var countTokens = false
     }
 
@@ -31,6 +34,8 @@ final class AgentSessionScanner: @unchecked Sendable {
     private var agingTimer: DispatchWorkItem?
     private var ledger: [String: TokenLedgerEntry] = [:]
     private var ledgerDay = Calendar.current.startOfDay(for: Date())
+    /// Last complete answer per Antigravity summaries database (queue-confined).
+    private var antigravityLastGood: [String: [AntigravityConversation]] = [:]
     private var isRunning = false
 
     private let home: URL
@@ -44,6 +49,11 @@ final class AgentSessionScanner: @unchecked Sendable {
     private var claudeProjects: URL { home.appendingPathComponent(".claude/projects") }
     private var codexSessions: URL { home.appendingPathComponent(".codex/sessions") }
     private var cursorProjects: URL { home.appendingPathComponent(".cursor/projects") }
+    /// Antigravity's app data folders (`--app_data_dir`): the agent hub
+    /// ("antigravity") and the older IDE layout ("antigravity-ide").
+    private var antigravityDataFolders: [URL] {
+        [".gemini/antigravity", ".gemini/antigravity-ide"].map { home.appendingPathComponent($0) }
+    }
 
     // MARK: Control
 
@@ -60,6 +70,7 @@ final class AgentSessionScanner: @unchecked Sendable {
         queue.async { [self] in
             guard isRunning, self.options != options else { return }
             let foldersChanged = self.options.claude != options.claude || self.options.codex != options.codex || self.options.cursor != options.cursor
+                || self.options.antigravity != options.antigravity
             self.options = options
             if !options.countTokens { ledger.removeAll() }
             if foldersChanged { restartStream() }
@@ -76,6 +87,7 @@ final class AgentSessionScanner: @unchecked Sendable {
             pendingScan?.cancel()
             agingTimer?.cancel()
             ledger.removeAll()
+            antigravityLastGood.removeAll()
         }
     }
 
@@ -99,6 +111,7 @@ final class AgentSessionScanner: @unchecked Sendable {
         if options.claude { folders += [claudeSessions, claudeProjects] }
         if options.codex { folders.append(codexSessions) }
         if options.cursor { folders.append(cursorProjects) }
+        if options.antigravity { folders += antigravityDataFolders }
         return folders.filter { fileManager.fileExists(atPath: $0.path) }.map(\.path)
     }
 
@@ -172,6 +185,7 @@ final class AgentSessionScanner: @unchecked Sendable {
         if options.claude { sessions += scanClaude(now: now) }
         if options.codex { sessions += scanCodex(now: now, codexFolders: processes.codexFolders) }
         if options.cursor { sessions += scanCursor(now: now, cursorRunning: processes.cursorRunning) }
+        if options.antigravity { sessions += scanAntigravity(now: now, appRunning: processes.antigravityRunning) }
         scheduleAging(sessions, now: now)
         let ordered = CodingAgentSession.ordered(sessions)
         if let onUpdate {
@@ -179,18 +193,26 @@ final class AgentSessionScanner: @unchecked Sendable {
         }
     }
 
-    private func agentProcesses() -> (codexFolders: Set<String>, cursorRunning: Bool) {
+    private func agentProcesses() -> (codexFolders: Set<String>, cursorRunning: Bool, antigravityRunning: Bool) {
         var codex = Set<String>()
         var cursor = false
+        var antigravity = false
         for pid in LocalProcesses.userPIDs() {
             let name = LocalProcesses.name(of: pid)
             if name == "codex" || name.hasPrefix("codex-") {
                 if let folder = LocalProcesses.workingDirectory(of: pid) { codex.insert(folder) }
             } else if name == "Cursor" || name == "cursor-agent" {
                 cursor = true
+            } else if name == "Antigravity" {
+                antigravity = true
+            } else if name == "node", !cursor,
+                      LocalProcesses.path(of: pid)?.contains("/cursor-agent/") == true {
+                // The Cursor CLI (`cursor-agent` / `agent`) is a shell script
+                // that execs its bundled `node`.
+                cursor = true
             }
         }
-        return (codex, cursor)
+        return (codex, cursor, antigravity)
     }
 
     private func modified(_ url: URL) -> Date? {
@@ -313,16 +335,19 @@ final class AgentSessionScanner: @unchecked Sendable {
         var sessions: [CodingAgentSession] = []
         for project in children(cursorProjects) {
             let transcripts = project.appendingPathComponent("agent-transcripts")
-            for folder in children(transcripts) {
-                let id = folder.lastPathComponent
-                let file = folder.appendingPathComponent(id + ".jsonl")
-                guard let date = modified(file) ?? modified(folder),
+            for entry in children(transcripts) {
+                // <id>/<id>.jsonl (current) or a flat <id>.jsonl.
+                let isFlat = entry.pathExtension == "jsonl"
+                let id = isFlat ? entry.deletingPathExtension().lastPathComponent : entry.lastPathComponent
+                let file = isFlat ? entry : entry.appendingPathComponent(id + ".jsonl")
+                guard let date = modified(file) ?? modified(entry),
                       now.timeIntervalSince(date) < (cursorRunning ? CodingAgentTiming.liveWindow : CodingAgentTiming.finishedWindow) else { continue }
-                var role: String?
+                var event: (role: String?, hasTurnMarkers: Bool) = (nil, false)
                 if let tail = JSONLTail.read(file, limit: 16 * 1024) {
-                    role = CursorTranscriptSummary.lastRole(lines: JSONLTail.lines(tail.data, startedMidFile: tail.midFile))
+                    event = CursorTranscriptSummary.lastEvent(lines: JSONLTail.lines(tail.data, startedMidFile: tail.midFile))
                 }
-                let summary = CursorTranscriptSummary(sessionID: id, projectKey: project.lastPathComponent, modified: date, lastRole: role)
+                let summary = CursorTranscriptSummary(sessionID: id, projectKey: project.lastPathComponent, modified: date,
+                                                      lastRole: event.role, hasTurnMarkers: event.hasTurnMarkers)
                 let state = summary.state(now: now, cursorRunning: cursorRunning)
                 guard state != .idle || now.timeIntervalSince(date) < 3600 else { continue }
                 let decoded = AgentPaths.decodeProjectFolder(project.lastPathComponent) { [fileManager] path in
@@ -336,6 +361,143 @@ final class AgentSessionScanner: @unchecked Sendable {
             }
         }
         return sessions
+    }
+
+    // Antigravity: recent rows of conversation_summaries.db (title, folder,
+    // running / idle), else recently written conversation files.
+    private func scanAntigravity(now: Date, appRunning: Bool) -> [CodingAgentSession] {
+        let window = appRunning ? CodingAgentTiming.liveWindow : CodingAgentTiming.finishedWindow
+        let since = now.addingTimeInterval(-window)
+        var sessions: [CodingAgentSession] = []
+        var seen = Set<String>()
+        for folder in antigravityDataFolders where fileManager.fileExists(atPath: folder.path) {
+            let conversations = folder.appendingPathComponent("conversations")
+            let annotations = folder.appendingPathComponent("annotations")
+            var found = antigravitySummaries(folder.appendingPathComponent("conversation_summaries.db"), since: since)
+                ?? antigravityRecentFiles(conversations, since: since)
+            for index in found.indices {
+                let id = found[index].id
+                if found[index].lastWrite == nil {
+                    found[index].lastWrite = ["db-wal", "db", "pb"]
+                        .compactMap { modified(conversations.appendingPathComponent(id + "." + $0)) }.max()
+                }
+                if found[index].title == nil {
+                    let file = annotations.appendingPathComponent(id + ".pbtxt")
+                    if let handle = try? FileHandle(forReadingFrom: file) {
+                        if let data = try? handle.read(upToCount: 4096) {
+                            found[index].title = AntigravityConversation.title(fromAnnotation: data)
+                        }
+                        try? handle.close()
+                    }
+                }
+            }
+            for conversation in found where seen.insert(conversation.id).inserted {
+                let state = conversation.state(now: now, appRunning: appRunning)
+                let age = now.timeIntervalSince(conversation.lastActivity)
+                guard state != .idle || (appRunning && age < 3600) else { continue }
+                sessions.append(CodingAgentSession(
+                    kind: .antigravity, sessionID: conversation.id, name: conversation.title,
+                    cwd: conversation.workspace, branch: nil, state: state, detail: nil,
+                    updatedAt: conversation.lastActivity, pid: nil
+                ))
+            }
+        }
+        return sessions
+    }
+
+    /// Top-level conversations changed since `since`, read-only. Only id,
+    /// title, workspace, status and date columns; never preview or content.
+    /// nil when there is no summaries database (older builds).
+    private func antigravitySummaries(_ database: URL, since: Date) -> [AntigravityConversation]? {
+        guard fileManager.fileExists(atPath: database.path) else {
+            antigravityLastGood[database.path] = nil
+            return nil
+        }
+        // Antigravity mid-write (busy / locked, WAL recovery): the last good
+        // answer, so the list doesn't flicker or fall back to file dates.
+        let lastGood = antigravityLastGood[database.path]
+        func isBusy(_ code: Int32) -> Bool {
+            let primary = code & 0xff
+            return primary == SQLITE_BUSY || primary == SQLITE_LOCKED
+        }
+        // Read-only URI open (`mode=ro`): never creates, writes or
+        // checkpoints the database. Not `immutable=1`: that would skip the
+        // WAL, where the newest statuses live.
+        var opened: OpaquePointer?
+        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_URI | SQLITE_OPEN_NOMUTEX
+        let openCode = sqlite3_open_v2(Self.sqliteReadOnlyURI(database.path), &opened, flags, nil)
+        guard openCode == SQLITE_OK, let db = opened else {
+            sqlite3_close(opened)
+            return isBusy(openCode) ? lastGood : nil
+        }
+        defer { sqlite3_close(db) }
+        sqlite3_busy_timeout(db, 100)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        // Our own fixed-format date; uses the last_modified_time index.
+        let sql = """
+            SELECT conversation_id, title, workspace_uris, status, last_modified_time
+            FROM conversation_summaries
+            WHERE last_modified_time > '\(formatter.string(from: since))' AND killed = 0 AND nesting_depth = 0
+            ORDER BY last_modified_time DESC LIMIT 16
+            """
+        var prepared: OpaquePointer?
+        let prepareCode = sqlite3_prepare_v2(db, sql, -1, &prepared, nil)
+        guard prepareCode == SQLITE_OK, let statement = prepared else {
+            sqlite3_finalize(prepared)
+            // Busy: last good answer. Anything else (schema changed): as if
+            // there were no database, so conversation files are used.
+            return isBusy(prepareCode) ? lastGood : nil
+        }
+        defer { sqlite3_finalize(statement) }
+        func text(_ column: Int32) -> String? {
+            guard let pointer = sqlite3_column_text(statement, column) else { return nil }
+            return String(cString: pointer)
+        }
+        var result: [AntigravityConversation] = []
+        var code = sqlite3_step(statement)
+        while code == SQLITE_ROW {
+            if let id = text(0), !id.isEmpty, !id.contains("/"),
+               let date = text(4).flatMap(AntigravityConversation.date) {
+                let title = text(1).map { String($0.prefix(120)) }
+                result.append(AntigravityConversation(
+                    id: id, title: title?.isEmpty == false ? title : nil,
+                    workspace: AntigravityConversation.workspace(fromJSON: text(2)),
+                    status: text(3) ?? "", updatedAt: date, lastWrite: nil
+                ))
+            }
+            code = sqlite3_step(statement)
+        }
+        // Stopped early (busy, I/O error): a partial list would hide sessions.
+        guard code == SQLITE_DONE else { return lastGood ?? result }
+        antigravityLastGood[database.path] = result
+        return result
+    }
+
+    /// `file:` URI for a read-only open; the path is percent-encoded so a
+    /// `?`, `#` or `%` in it can't be read as URI syntax.
+    static func sqliteReadOnlyURI(_ path: String) -> String {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove(charactersIn: "?#%")
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: allowed) ?? path
+        return "file:\(encoded)?mode=ro"
+    }
+
+    /// Without a summaries database: conversation files (<id>.db, -wal, .pb)
+    /// written since `since`, by modification date only.
+    private func antigravityRecentFiles(_ folder: URL, since: Date) -> [AntigravityConversation] {
+        var newest: [String: Date] = [:]
+        for file in children(folder) {
+            guard let date = modified(file), date > since else { continue }
+            let id = String(file.lastPathComponent.prefix { $0 != "." })
+            guard id.count >= 32 else { continue }
+            newest[id] = max(newest[id] ?? date, date)
+        }
+        return newest.sorted { $0.value > $1.value }.prefix(16).map {
+            AntigravityConversation(id: $0.key, title: nil, workspace: nil, status: nil, updatedAt: $0.value, lastWrite: $0.value)
+        }
     }
 
     // MARK: Tokens (opt-in)
@@ -384,6 +546,7 @@ final class AgentSessionScanner: @unchecked Sendable {
             switch session.state {
             case .finished: session.updatedAt.addingTimeInterval(CodingAgentTiming.finishedWindow)
             case .working where session.kind == .cursor: session.updatedAt.addingTimeInterval(CodingAgentTiming.cursorWorkingWindow)
+            case .working where session.kind == .antigravity: session.updatedAt.addingTimeInterval(CodingAgentTiming.antigravityWorkingWindow)
             case .working: session.updatedAt.addingTimeInterval(15 * 60)
             default: nil
             }

@@ -53,6 +53,7 @@ enum AirDrop {
     private static func perform(_ objects: [Any]) {
         guard !objects.isEmpty else {
             AppLog.log("AirDrop: nothing to share")
+            NSSound.beep()
             return
         }
         guard let service = NSSharingService(named: .sendViaAirDrop) else {
@@ -205,6 +206,9 @@ private final class AirDropServiceDelegate: NSObject, NSSharingServiceDelegate {
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: any Error) {
         AppLog.log("AirDrop: failed: \(error.localizedDescription)")
         SparkVHaptics.play(.failure)
+        // Haptics alone are silent with a mouse or a trackpad without Force
+        // Touch. A cancel in the sheet is not a failure worth a sound.
+        if (error as NSError).code != NSUserCancelledError { NSSound.beep() }
     }
 }
 

@@ -423,6 +423,8 @@ final class BluetoothAudioConnector: NSObject {
     private let name: String
     private var completion: (@MainActor (Bool) -> Void)?
     private var routeTask: Task<Void, Never>?
+    /// The tile stays busy until IOBluetooth answers; never forever.
+    private var timeoutTask: Task<Void, Never>?
 
     init(address: String, name: String) {
         self.address = address
@@ -459,6 +461,13 @@ final class BluetoothAudioConnector: NSObject {
         if status != kIOReturnSuccess {
             AppLog.log("Quick Toggles: \(name) connection failed to start (\(status))")
             finish(false)
+            return
+        }
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(20))
+            guard !Task.isCancelled, let self, self.completion != nil, self.routeTask == nil else { return }
+            AppLog.log("Quick Toggles: \(self.name) didn't answer in 20 s")
+            self.finish(false)
         }
     }
 
@@ -468,8 +477,21 @@ final class BluetoothAudioConnector: NSObject {
         device.closeConnection()
     }
 
-    /// IOBluetooth's callback for `openConnection(_:)`.
-    @objc func connectionComplete(_ device: IOBluetoothDevice, status: IOReturn) {
+    /// IOBluetooth's callback for `openConnection(_:)`. It can arrive on
+    /// IOBluetooth's own queue (like its connect notifications): hop to
+    /// main before touching anything.
+    @objc nonisolated func connectionComplete(_ device: IOBluetoothDevice, status: IOReturn) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { connected(status: status) }
+        } else {
+            DispatchQueue.main.async { MainActor.assumeIsolated { self.connected(status: status) } }
+        }
+    }
+
+    private func connected(status: IOReturn) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        guard completion != nil else { return }
         guard status == kIOReturnSuccess else {
             AppLog.log("Quick Toggles: \(name) didn't connect (\(status))")
             finish(false)

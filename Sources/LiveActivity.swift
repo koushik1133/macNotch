@@ -388,6 +388,8 @@ final class ActivityCenter: ObservableObject {
     private var heldAlertID: String?
     /// The band's activity last time round.
     private var bandID: String?
+    /// `revision` at the last time the slots were published.
+    private var publishedRevision = -1
     private let clock: () -> Date
     private let timing: ActivityCenterTiming
     private let announcer: ActivityAnnouncer
@@ -400,7 +402,8 @@ final class ActivityCenter: ObservableObject {
 
     // MARK: Posting
 
-    func post(_ activity: LiveActivity) {
+    func post(_ activity: LiveActivity, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.post(activity, file: file, line: line) }) else { return }
         let now = clock()
         postCounter &+= 1
         let transient = activity.duration.map { $0 <= NotchMetrics.alertMaxDuration } ?? false
@@ -448,13 +451,15 @@ final class ActivityCenter: ObservableObject {
         announcer.consider(activity, isNew: isNew, peekKeyChanged: peekKeyChanged)
     }
 
-    func dismiss(id: String) {
+    func dismiss(id: String, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.dismiss(id: id, file: file, line: line) }) else { return }
         guard entries.removeValue(forKey: id) != nil else { return }
         revision &+= 1
         recompute()
     }
 
-    func dismissAll(kind: LiveActivity.Kind) {
+    func dismissAll(kind: LiveActivity.Kind, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.dismissAll(kind: kind, file: file, line: line) }) else { return }
         let before = entries.count
         entries = entries.filter { $0.value.activity.kind != kind }
         guard entries.count != before else { return }
@@ -464,7 +469,8 @@ final class ActivityCenter: ObservableObject {
 
     /// Shows a persistent activity expanded for a while (default: the
     /// user's peek time), then back to compact.
-    func peek(id: String, for duration: TimeInterval? = nil) {
+    func peek(id: String, for duration: TimeInterval? = nil, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.peek(id: id, for: duration, file: file, line: line) }) else { return }
         guard var entry = entries[id] else { return }
         entry.peekUntil = clock().addingTimeInterval(duration ?? timing.peekSeconds())
         entries[id] = entry
@@ -473,7 +479,8 @@ final class ActivityCenter: ObservableObject {
 
     /// Re-evaluates expiries, peeks and the queue now (they also run on
     /// their own timers).
-    func refresh() {
+    func refresh(file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.refresh(file: file, line: line) }) else { return }
         recompute()
     }
 
@@ -481,7 +488,8 @@ final class ActivityCenter: ObservableObject {
 
     /// Rests `id` (a running persistent activity) in the wings until it
     /// ends; nil goes back to priority order.
-    func pin(id: String?) {
+    func pin(id: String?, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.pin(id: id, file: file, line: line) }) else { return }
         let target = id.flatMap { entries[$0] }.flatMap { $0.isTransient ? nil : $0.id }
         guard target != pinnedCompactID else { return }
         pinnedCompactID = target
@@ -491,7 +499,8 @@ final class ActivityCenter: ObservableObject {
     /// Shows the next running activity in the wings (priority order, then
     /// back to automatic). Returns the activity now in the wings.
     @discardableResult
-    func cycleCompact() -> LiveActivity? {
+    func cycleCompact(file: StaticString = #fileID, line: UInt = #line) -> LiveActivity? {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in _ = self?.cycleCompact(file: file, line: line) }) else { return nil }
         let order = running.map(\.id)
         guard order.count > 1 else { return compact }
         let shown = compact.flatMap { c in order.contains(c.id) ? c.id : nil } ?? order[0]
@@ -509,7 +518,8 @@ final class ActivityCenter: ObservableObject {
 
     /// While the drawer is open nothing shows, so queued alerts don't
     /// spend their time unseen.
-    func setDrawerOpen(_ open: Bool) {
+    func setDrawerOpen(_ open: Bool, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.setDrawerOpen(open, file: file, line: line) }) else { return }
         guard isDrawerOpen != open else { return }
         isDrawerOpen = open
         if open { hoverStartedAt = nil }
@@ -518,7 +528,8 @@ final class ActivityCenter: ObservableObject {
 
     /// Dictation or Clicky is using the band: alerts that wanted it show
     /// compact in the wings instead.
-    func setBandHeld(_ held: Bool) {
+    func setBandHeld(_ held: Bool, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.setBandHeld(held, file: file, line: line) }) else { return }
         guard isBandHeld != held else { return }
         isBandHeld = held
         recompute()
@@ -526,7 +537,8 @@ final class ActivityCenter: ObservableObject {
 
     /// The pointer is on the band under the notch: the alert there (and a
     /// peek) waits until it leaves, at most `hoverCap`.
-    func setHovered(_ hovered: Bool) {
+    func setHovered(_ hovered: Bool, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.setHovered(hovered, file: file, line: line) }) else { return }
         if hovered {
             guard hoverStartedAt == nil else { return }
             hoverStartedAt = clock()
@@ -545,11 +557,40 @@ final class ActivityCenter: ObservableObject {
     /// True while a hovered band holds its clock.
     var isHoldingForHover: Bool { isHolding(now: clock()) }
 
-    func reportWings(_ wings: IslandWings) {
+    func reportWings(_ wings: IslandWings, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.reportWings(wings, file: file, line: line) }) else { return }
         guard abs(wings.leading - measuredWings.leading) > 0.5
             || abs(wings.trailing - measuredWings.trailing) > 0.5
         else { return }
         measuredWings = wings
+    }
+
+    // MARK: Main thread
+
+    /// Callers that already logged running off the main thread (one line each).
+    nonisolated(unsafe) private static var offMainCallers: Set<String> = []
+    nonisolated private static let offMainLock = NSLock()
+
+    /// The class is @MainActor, but Swift 5 mode lets ObjC delegate
+    /// callbacks (IOBluetooth, CoreAudio, XPC replies…) call it on any
+    /// thread. Mutating the @Published state there deadlocks SwiftUI
+    /// (AttributeGraph waits on main while main waits on the publisher's
+    /// lock). Off main, the call re-runs on the main queue (false: the
+    /// caller returns at once) and the caller is logged once.
+    nonisolated private static func isOnMain(
+        file: StaticString, line: UInt, _ retry: @escaping @MainActor () -> Void
+    ) -> Bool {
+        if Thread.isMainThread { return true }
+        let caller = "\(file):\(line)"
+        offMainLock.lock()
+        let isFirst = offMainCallers.insert(caller).inserted
+        offMainLock.unlock()
+        if isFirst {
+            AppLog.log("ActivityCenter: called off the main thread from \(caller); hopped to main")
+        }
+        nonisolated(unsafe) let retry = retry
+        DispatchQueue.main.async { MainActor.assumeIsolated { retry() } }
+        return false
     }
 
     // MARK: Resolution
@@ -712,10 +753,15 @@ final class ActivityCenter: ObservableObject {
             bandID = newBandID
             bandRevision &+= 1
         }
-        current = band?.activity
-        compact = wings?.activity
-        secondary = second?.activity
-        tertiary = third?.activity
+        // Each @Published assignment invalidates every view that reads the
+        // center, so unchanged slots aren't assigned again. Content only
+        // changes through `post`/`dismiss`, which bump `revision`.
+        let fresh = revision != publishedRevision
+        publishedRevision = revision
+        if fresh || current?.id != band?.id { current = band?.activity }
+        if fresh || compact?.id != wings?.id { compact = wings?.activity }
+        if fresh || secondary?.id != second?.id { secondary = second?.activity }
+        if fresh || tertiary?.id != third?.id { tertiary = third?.activity }
         let summaries = lives.map {
             LiveActivitySummary(id: $0.id, kind: $0.activity.kind, title: $0.activity.resolvedTitle,
                                 symbol: $0.activity.resolvedSymbol, priority: $0.priority, opensTab: $0.activity.opensTab)

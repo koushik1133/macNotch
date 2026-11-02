@@ -415,14 +415,15 @@ struct FocusStats: Equatable, Sendable {
             }
         }
         stats.days = (0..<7).compactMap { offset in
-            guard let d = calendar.date(byAdding: .day, value: offset, to: weekStart) else { return nil }
+            // startOfDay: keys match startOfDay(for:) across a midnight DST start.
+            guard let d = calendar.date(byAdding: .day, value: offset, to: weekStart).map(calendar.startOfDay(for:)) else { return nil }
             return (d, perDay[d] ?? 0)
         }
         // Streak: today counts if focused; otherwise start from yesterday.
         var cursor = (perDay[today] ?? 0) > 0 ? today : (calendar.date(byAdding: .day, value: -1, to: today) ?? today)
         while (perDay[cursor] ?? 0) >= 60 {
             stats.streakDays += 1
-            guard let prev = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            guard let prev = calendar.date(byAdding: .day, value: -1, to: cursor).map(calendar.startOfDay(for:)) else { break }
             cursor = prev
         }
         return stats

@@ -462,8 +462,16 @@ final class RemindersController: ObservableObject {
                 self.isAdding = false
                 if self.draft == text { self.draft = "" }
                 AppLog.log("Reminders: added one\(parsed.due == nil ? "" : " with a due date")")
-                if let due = parsed.due, !ReminderDue.isShown(due: due, showsUndated: self.showsUndated, now: Date(), calendar: .current) {
-                    self.show("Added to \(self.addListTitle), due \(ReminderDue.label(due: due, hasTime: parsed.hasTime, now: Date(), calendar: .current))")
+                // Say where it went when this list won't show it, or the
+                // cleared field looks like the reminder was lost.
+                if let listID, !self.isShown(listID) {
+                    self.show("Added to \(self.addListTitle) (hidden here)")
+                } else if let due = parsed.due {
+                    if !ReminderDue.isShown(due: due, showsUndated: self.showsUndated, now: Date(), calendar: .current) {
+                        self.show("Added to \(self.addListTitle), due \(ReminderDue.label(due: due, hasTime: parsed.hasTime, now: Date(), calendar: .current))")
+                    }
+                } else if !self.showsUndated {
+                    self.show("Added to \(self.addListTitle), no date")
                 }
                 self.refresh()
             } catch {

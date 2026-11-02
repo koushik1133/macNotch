@@ -337,11 +337,20 @@ final class TrayStore: ObservableObject {
 
         // Image files are copied in, so a screenshot still shows after macOS
         // tidies away the original or the user deletes it from the Desktop.
-        if let type = UTType(filenameExtension: fileURL.pathExtension), type.conforms(to: .image),
-           !isInStorage(fileURL), let data = try? Data(contentsOf: fileURL) {
-            addImage(data: data, suggestedName: fileURL.deletingPathExtension().lastPathComponent,
-                     fileExtension: fileURL.pathExtension)
-            return
+        if let type = UTType(filenameExtension: fileURL.pathExtension), type.conforms(to: .image), !isInStorage(fileURL) {
+            // A big photo (RAW, TIFF) read and written on main froze the
+            // notch: copy those in the background, like large temp files.
+            let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            if size > Self.syncCopyLimit {
+                guard !hasOwnedCopy(of: fileURL) else { return }
+                copyIntoStorageInBackground(fileURL, kind: .image)
+                return
+            }
+            if let data = try? Data(contentsOf: fileURL) {
+                addImage(data: data, suggestedName: fileURL.deletingPathExtension().lastPathComponent,
+                         fileExtension: fileURL.pathExtension)
+                return
+            }
         }
         guard !items.contains(where: { $0.url == fileURL }) else { return }
         // A file in a temporary or cache folder (a browser's drag file, an
@@ -411,7 +420,7 @@ final class TrayStore: ObservableObject {
     }
 
     /// Copies a large temporary file in on a background task, then adds it.
-    private func copyIntoStorageInBackground(_ source: URL) {
+    private func copyIntoStorageInBackground(_ source: URL, kind: TrayItem.Kind = .file) {
         let ext = source.pathExtension
         let destination = uniqueStorageURL(name: Self.storageName(from: source.deletingPathExtension().lastPathComponent,
                                                                   fileExtension: ext), fileExtension: ext)
@@ -426,13 +435,16 @@ final class TrayStore: ObservableObject {
                 ok = false
                 AppLog.log("Tray: could not copy \(source.lastPathComponent) in: \(error.localizedDescription)")
             }
-            await self?.finishBackgroundCopy(destination, ok: ok)
+            await self?.finishBackgroundCopy(destination, ok: ok, kind: kind)
         }
     }
 
-    private func finishBackgroundCopy(_ destination: URL, ok: Bool) {
+    private func finishBackgroundCopy(_ destination: URL, ok: Bool, kind: TrayItem.Kind) {
         pendingCopies.remove(destination)
-        if ok { insert(TrayItem(id: UUID(), kind: .file, url: destination, text: nil, addedAt: Date())) }
+        guard ok else { return }
+        let item = TrayItem(id: UUID(), kind: kind, url: destination, text: nil, addedAt: Date())
+        insert(item)
+        if kind == .image { loadThumbnailIfNeeded(item) }
     }
 
     /// Waits for background copies (tests).
@@ -660,19 +672,31 @@ final class TrayStore: ObservableObject {
 
     // MARK: Using
 
-    func copyToClipboard(_ item: TrayItem, pasteboard: NSPasteboard = .general) {
-        pasteboard.clearContents()
+    /// False (and the clipboard left as it was) when the item's file is
+    /// gone or unreadable.
+    @discardableResult
+    func copyToClipboard(_ item: TrayItem, pasteboard: NSPasteboard = .general) -> Bool {
         switch item.kind {
         case .text:
+            pasteboard.clearContents()
             pasteboard.setString(item.text ?? "", forType: .string)
+            return true
         case .image:
-            if let url = item.url, let image = NSImage(contentsOf: url) {
-                pasteboard.writeObjects([image, url as NSURL])
+            guard let url = item.url, let image = NSImage(contentsOf: url) else {
+                AppLog.log("Tray: copy failed, image missing or unreadable")
+                return false
             }
+            pasteboard.clearContents()
+            pasteboard.writeObjects([image, url as NSURL])
+            return true
         case .file:
-            if let url = item.url {
-                pasteboard.writeObjects([url as NSURL])
+            guard let url = item.url, FileManager.default.fileExists(atPath: url.path) else {
+                AppLog.log("Tray: copy failed, file missing")
+                return false
             }
+            pasteboard.clearContents()
+            pasteboard.writeObjects([url as NSURL])
+            return true
         }
     }
 
@@ -2415,7 +2439,11 @@ private struct TrayCardView: View {
     }
 
     private func copy() {
-        tray.copyToClipboard(item)
+        guard tray.copyToClipboard(item) else {
+            // The file was moved or deleted: say so instead of "Copied".
+            NSSound.beep()
+            return
+        }
         copied.isOn = true
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1))

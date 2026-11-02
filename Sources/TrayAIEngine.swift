@@ -143,7 +143,7 @@ final class TrayAIEngine {
         case .whatIsThis, .explain, .listItems, .custom:
             result = try await answer(action, sources, groq: groq, report: report)
         }
-        AppLog.log("Tray AI: \(action.id.prefix(40)) on \(items.count) item(s) by \(result.producedBy) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+        AppLog.log("Tray AI: \(action.logName) on \(items.count) item(s) by \(result.producedBy) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         return result
     }
 

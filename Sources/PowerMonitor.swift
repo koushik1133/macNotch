@@ -106,6 +106,9 @@ final class PowerMonitor: ObservableObject {
     private var bluetoothWatch: AnyCancellable?
     private var lookupTask: Task<Void, Never>?
     private var shownAudioAddress: String?
+    /// The last connect shown, to fold IOBluetooth's burst of callbacks
+    /// for one connection (AirPods report three, one per profile).
+    private var lastConnect: (address: String, at: Date, hadBatteries: Bool)?
 
     init(activities: ActivityCenter) {
         self.activities = activities
@@ -268,6 +271,7 @@ final class PowerMonitor: ObservableObject {
         plugBand = nil
         criticalShownLevel = nil
         shownAudioAddress = nil
+        lastConnect = nil
         connectedAudio = nil
         activities.dismiss(id: Self.batteryActivityID)
         activities.dismiss(id: Self.criticalActivityID)
@@ -485,7 +489,13 @@ final class PowerMonitor: ObservableObject {
         _ device: BluetoothAudioDevice,
         refresh: @escaping @MainActor () -> AudioBatteries
     ) {
-        guard isEnabled else { return }
+        guard isEnabled, isStarted, bluetooth != nil else { return }
+        if let last = lastConnect, last.address == device.address, shownAudioAddress == device.address,
+           Date().timeIntervalSince(last.at) < 3, last.hadBatteries || device.batteries.isEmpty {
+            // Same connection, nothing new to show.
+            return
+        }
+        lastConnect = (device.address, Date(), !device.batteries.isEmpty)
         AppLog.log("Power: Bluetooth audio connected: \(device.name) \(device.batteries.summary)")
         let connectedAt = Date()
         postAirPods(device, duration: Self.airPodsDuration)
@@ -521,6 +531,7 @@ final class PowerMonitor: ObservableObject {
         lookupTask?.cancel()
         lookupTask = nil
         shownAudioAddress = nil
+        lastConnect = nil
         activities.dismiss(id: Self.airPodsActivityID)
     }
 
@@ -622,7 +633,8 @@ private final class BluetoothConnectionObserver: NSObject {
             DispatchQueue.main.async { self.deviceConnected(notification, device: device) }
             return
         }
-        guard Self.isAudio(device) else { return }
+        // Stopped while the hop was queued.
+        guard connectNotification != nil, Self.isAudio(device) else { return }
         let address = BluetoothAudioDevice.normalize(address: device.addressString ?? "")
         if disconnectNotifications[address] == nil {
             disconnectNotifications[address] = device.register(

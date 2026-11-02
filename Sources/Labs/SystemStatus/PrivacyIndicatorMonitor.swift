@@ -404,9 +404,13 @@ final class PrivacyHardwareProbe: @unchecked Sendable {
         }
     }
 
-    /// Removes every listener; returns once none can fire any more.
+    /// Removes every listener (on `queue`, after any read in progress).
+    /// Asynchronous: the main thread never waits behind a HAL call, which
+    /// can stall while coreaudiod is busy (also on the quit path). A
+    /// listener firing meanwhile is harmless: `onChange` only schedules a
+    /// re-read, which the monitor ignores once stopped.
     func stop() {
-        queue.sync {
+        queue.async { [self] in
             removeAudioListeners()
             removeCameraListeners()
             watchesMicrophone = false

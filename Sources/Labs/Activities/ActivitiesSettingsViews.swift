@@ -395,6 +395,7 @@ private struct NotificationSettingsAppIcon: View {
 struct CallsSettingsSection: View {
     @ObservedObject private var prefs = CallPreferences.shared
     @ObservedObject private var microphone = MicMuteController.shared
+    @ObservedObject private var permissions = PermissionCenter.shared
     private let calls: CallsController?
 
     init() { calls = CallsController.current }
@@ -417,6 +418,16 @@ struct CallsSettingsSection: View {
                                       detail: "Zoom, Teams, WhatsApp, Webex and others: only the new windows they open, when they show their buttons to Accessibility.")
             }
             .disabled(!prefs.showsIncomingCalls)
+            if prefs.showsIncomingCalls, permissions.statuses[.accessibility] != .granted {
+                // Ringing alerts and call windows are read through Accessibility.
+                LabeledContent {
+                    Button("Allow…") {
+                        Task { await PermissionCenter.shared.request(.accessibility, from: "Incoming calls") }
+                    }
+                } label: {
+                    ActivitySettingsNotice(text: "Incoming calls need Accessibility to see the ringing alert.", symbol: "hand.raised.fill", tone: .warning)
+                }
+            }
             Toggle(isOn: $prefs.unmutesWhenCallEnds) {
                 ActivitySettingsLabel(title: "Unmute when the call ends",
                                       detail: "Only a mute you pressed during that call, so dictation never finds the mic silent.")

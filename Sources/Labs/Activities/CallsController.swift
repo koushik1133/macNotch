@@ -458,6 +458,8 @@ final class CallWindowWatcher: ObservableObject {
     private var trustWatch: AnyCancellable?
     private var ringingPID: pid_t?
     private var ringingWindow: AXElementBox?
+    /// When the current ring began (the 2 s re-reads stop after the ring timeout).
+    private var ringingSince: Date?
     private var recheck: Task<Void, Never>?
     private var pendingReads: [pid_t: Task<Void, Never>] = [:]
     private let queue = DispatchQueue(label: "SparkV.CallWindowWatcher", qos: .userInitiated)
@@ -593,6 +595,14 @@ final class CallWindowWatcher: ObservableObject {
         if alert?.id != ringing?.id {
             if let alert { AppLog.log("Calls: \(alert.appName ?? "a call app") is ringing") }
             ringing = alert
+            ringingSince = alert == nil ? nil : Date()
+        }
+        if alert != nil, let since = ringingSince, Date().timeIntervalSince(since) > CallsController.ringTimeout {
+            // A window that keeps its Accept / Decline (a missed-call card
+            // left open) is not ringing any more: stop re-reading it.
+            AppLog.log("Calls: \(alert?.appName ?? "a call app") window still up after the ring timeout; not watching it")
+            setRinging(nil, pid: nil, window: nil)
+            return
         }
         // Destroyed events only on the ringing window, only while it rings.
         if let old = ringingWindow, let oldPID = ringingPID, let watch = watches[oldPID],

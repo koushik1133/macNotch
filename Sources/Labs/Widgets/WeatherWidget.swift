@@ -202,6 +202,9 @@ final class WeatherController: ObservableObject {
             } catch {
                 result = .failure(error)
             }
+            // Cancelled (a new city, the same city picked again, stop()):
+            // a newer fetch may own refreshTask now; leave it alone.
+            guard !Task.isCancelled else { return }
             self?.finish(result, for: place)
         }
     }

@@ -273,6 +273,12 @@ private struct BatterySettingsContent: View {
                     Button("Allow Bluetooth…") { power.requestBluetoothAccess() }
                         .buttonStyle(SparkVSecondaryButtonStyle())
                 }
+            } else if power.bluetoothAccess == .denied {
+                // Otherwise the AirPods band just never appears.
+                StatusSettingsRow(title: "AirPods battery needs Bluetooth access") {
+                    Button("Open Settings…") { power.requestBluetoothAccess() }
+                        .buttonStyle(SparkVSecondaryButtonStyle())
+                }
             }
         }
     }

@@ -485,7 +485,15 @@ final class MediaEngine: ObservableObject {
                         if let fallbackPlayer {
                             Task { _ = await self.players.seek(fallbackPlayer, to: target) }
                         } else {
+                            // Nothing else can seek it: show the player's own
+                            // position again (a later report with the same
+                            // anchor would keep the optimistic one) and say so.
                             self.pendingSeek = nil
+                            if let reported = self.lastAdapterTiming {
+                                let rate: Double = self.isPlaying ? (reported.rate > 0 ? reported.rate : 1) : 0
+                                self.timing = reported.reanchored(at: Date(), rate: rate)
+                            }
+                            self.post(notice: "Couldn’t seek in \(self.appName(for: bundleID))")
                         }
                     }
                 }
@@ -512,6 +520,10 @@ final class MediaEngine: ObservableObject {
     func skip15(forward: Bool) {
         if isAdapterSource, reportsSkip15, let adapter {
             let command: Command = forward ? .skipForward15 : .skipBackward15
+            // Where the fallback seek goes if the command fails: computed
+            // now, because the optimistic move below already shifts
+            // `elapsedTime` by 15 s (skip(by:) later would jump 30 s).
+            let fallbackTarget = elapsedTime + (forward ? 15 : -15)
             // Move the scrubber now; the player's report confirms it.
             if timing.isKnown {
                 let now = Date()
@@ -526,7 +538,7 @@ final class MediaEngine: ObservableObject {
                     MainActor.assumeIsolated {
                         guard let self else { return }
                         self.pendingSeek = nil
-                        self.skip(by: forward ? 15 : -15)
+                        self.seek(to: fallbackTarget)
                     }
                 }
             }
@@ -2121,7 +2133,7 @@ private final class PlayerBridge: @unchecked Sendable {
     func seek(_ player: ScriptablePlayer, to seconds: TimeInterval) async -> Bool {
         await perform {
             guard self.permission(for: player) == noErr else { return false }
-            if case .success = self.execute(player.seekScript(to: seconds), for: player) { return true }
+            if case .success = self.execute(player.seekScript(to: seconds), for: player, cache: false) { return true }
             return false
         }
     }
@@ -2182,7 +2194,7 @@ private final class PlayerBridge: @unchecked Sendable {
     fileprivate func addMusicTrack(toPlaylist playlist: String) async -> Result<Void, ScriptFailure> {
         await perform {
             guard self.permission(for: .music) == noErr else { return .failure(ScriptFailure(code: Int(errAEEventNotPermitted))) }
-            switch self.execute(ScriptablePlayer.musicAddScript(playlist: playlist), for: .music) {
+            switch self.execute(ScriptablePlayer.musicAddScript(playlist: playlist), for: .music, cache: false) {
             case .success: return .success(())
             case .failure(let failure): return .failure(failure)
             }
@@ -2268,13 +2280,15 @@ private final class PlayerBridge: @unchecked Sendable {
         return AEDeterminePermissionToAutomateTarget(address, typeWildCard, typeWildCard, false)
     }
 
-    private func execute(_ source: String, for player: ScriptablePlayer) -> Result<NSAppleEventDescriptor, ScriptFailure> {
+    private func execute(_ source: String, for player: ScriptablePlayer, cache: Bool = true) -> Result<NSAppleEventDescriptor, ScriptFailure> {
         let script: NSAppleScript
-        if let cached = compiled[source] {
+        if cache, let cached = compiled[source] {
             script = cached
         } else {
             guard let fresh = NSAppleScript(source: source) else { return .failure(ScriptFailure(code: 0)) }
-            compiled[source] = fresh
+            // Scripts with a value baked in (a seek position, a playlist
+            // name) differ every time: caching them grew without bound.
+            if cache { compiled[source] = fresh }
             script = fresh
         }
 
@@ -2283,7 +2297,7 @@ private final class PlayerBridge: @unchecked Sendable {
         if let error {
             let code = (error[NSAppleScript.errorNumber] as? Int) ?? 0
             if reportedErrors.insert("\(player.bundleID)|\(code)").inserted {
-                NSLog("SparkV: AppleScript error \(code) from \(player.name): \(error[NSAppleScript.errorMessage] ?? "")")
+                NSLog("SparkV: AppleScript error \(code) from \(player.name)")
             }
             return .failure(ScriptFailure(code: code))
         }

@@ -178,10 +178,10 @@ final class AmbientLightSettings: ObservableObject {
         return v.count == 3 ? (v[0], v[1], v[2]) : (0.20, 0.55, 1.0)
     }
 
-    @Published var overFullScreen: Bool { didSet { defaults.set(overFullScreen, forKey: Keys.overFullScreen) } }
-    /// Trackpad taps on the beat, like Music Haptics (felt with a finger on
-    /// a Force Touch trackpad; follows Settings › Trackpad Haptics).
+    /// Optional (off by default): trackpad taps on the beat, like Music
+    /// Haptics. Felt only with a finger on a Force Touch trackpad.
     @Published var beatHaptics: Bool { didSet { defaults.set(beatHaptics, forKey: Keys.beatHaptics) } }
+    @Published var overFullScreen: Bool { didSet { defaults.set(overFullScreen, forKey: Keys.overFullScreen) } }
 
     /// The tap was started once after the user turned the feature on, so the
     /// system prompt has been shown and later automatic starts can't prompt.
@@ -204,9 +204,9 @@ final class AmbientLightSettings: ObservableObject {
         let storedWidth = defaults.object(forKey: Keys.edgeWidth) as? Double
         edgeWidth = min(40, max(6, storedWidth ?? 16))
         overFullScreen = (defaults.object(forKey: Keys.overFullScreen) as? Bool) ?? true
+        beatHaptics = defaults.bool(forKey: Keys.beatHaptics)
         let storedCustom = defaults.array(forKey: Keys.customColor) as? [Double] ?? []
         customColor = storedCustom.count == 3 ? storedCustom : [0.20, 0.55, 1.0]
-        beatHaptics = (defaults.object(forKey: Keys.beatHaptics) as? Bool) ?? true
     }
 
     /// Lit and drawing something.

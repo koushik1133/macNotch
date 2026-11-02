@@ -89,7 +89,7 @@ final class TrayAIPanelModel: ObservableObject {
         showsSettings = false
         phase = .running(action)
         let targets = items
-        AppLog.log("Tray AI: \(action.id) on \(targets.count) item(s)")
+        AppLog.log("Tray AI: \(action.logName) on \(targets.count) item(s)")
         runTask = Task { [weak self] in
             do {
                 let result = try await TrayAIEngine.shared.run(action, on: targets)
@@ -99,7 +99,7 @@ final class TrayAIPanelModel: ObservableObject {
                 return
             } catch {
                 guard !Task.isCancelled else { return }
-                AppLog.log("Tray AI: \(action.id) failed: \(error.localizedDescription)")
+                AppLog.log("Tray AI: \(action.logName) failed: \(error.localizedDescription)")
                 self?.phase = .failed(action, error.localizedDescription)
             }
         }
@@ -108,7 +108,7 @@ final class TrayAIPanelModel: ObservableObject {
     private func finished(_ action: TrayAIAction, _ result: TrayAIResult) {
         phase = .done(action, result)
         lastResult = (action, result)
-        AppLog.log("Tray AI: \(action.id) done (\(result.producedBy))")
+        AppLog.log("Tray AI: \(action.logName) done (\(result.producedBy))")
         switch action {
         case .extractText:
             if !result.text.isEmpty {

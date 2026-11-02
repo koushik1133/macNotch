@@ -7,6 +7,14 @@ import QuartzCore
 /// feature is on, and drives the notch glow and the screen edges from one
 /// display link.
 ///
+/// "Music plays" means either Now Playing says so, or the analyzer itself
+/// hears sound: browsers (YouTube in Chrome, some Safari players) often
+/// report no Now Playing state, or report "paused" between videos. When
+/// capture is stopped, `AmbientOutputActivityMonitor` (a Core Audio property
+/// listener, no IO) notices any app starting playback and starts a short
+/// capture probe; capture then stays on while sound is heard and stops
+/// `idleGrace` seconds after both signals go quiet.
+///
 /// Permission rules: the System Audio Recording prompt only ever appears
 /// from `setEnabled(true)` / `requestAccess()` (the user's own click). An
 /// automatic start (music begins) never prompts: without the grant it shows
@@ -52,6 +60,22 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// task can neither clear a newer `startTask` nor stop a newer capture.
     private var startToken = 0
     private var stopTask: Task<Void, Never>?
+    /// Any app playing through the default output (starts capture probes).
+    private let outputActivity = AmbientOutputActivityMonitor()
+    /// Capture was started by output activity; until this time it may run
+    /// without Now Playing or heard sound (time to hear the music).
+    private var probeUntil: Double = 0
+    private var probeTask: Task<Void, Never>?
+    /// The last probe heard nothing (an app holding a silent stream, a
+    /// notification sound): no new probe for `probeCooldown` seconds.
+    private var lastFruitlessProbe: Double = -1_000
+    /// Last display frame that was live with music (picks the stop grace).
+    private var lastLiveAt: Double = -1_000
+    /// A "live" line was logged and no "idle" line yet.
+    private var loggedLive = false
+    private var loggedSilentTap = false
+    /// Asleep or another user's session: no probes.
+    private var suspended = false
     private var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
     private var thermalHot = false
@@ -70,8 +94,18 @@ final class AmbientLightController: NSObject, ObservableObject {
             .store(in: &cancellables)
         engine.onDigitalSilenceChange = { [weak self] silent in self?.digitalSilenceChanged(silent) }
         engine.onRouteChange = { [weak self] in self?.restartCapture() }
+        engine.onAudibleChange = { [weak self] _ in self?.evaluate(userInitiated: false) }
+        outputActivity.onChange = { [weak self] running in self?.outputActivityChanged(running) }
         observeSystem()
         rebuildPalette()
+        updateOutputMonitor()
+        prewarmEdgesIfNeeded()
+    }
+
+    /// Compiles the screen-edge shader in the background as soon as the
+    /// edges are in use, so the first light never compiles on the main thread.
+    private func prewarmEdgesIfNeeded() {
+        if settings.isActive, settings.scope == .notchAndEdges { AmbientEdgeGPU.prewarm() }
     }
 
     // MARK: Wiring
@@ -156,7 +190,60 @@ final class AmbientLightController: NSObject, ObservableObject {
 
     // MARK: State
 
-    private var wantsCapture: Bool { settings.isActive && isPlaying }
+    /// Seconds a probe may run before it must have heard something.
+    private static let probeWindow: Double = 6
+    private static let probeCooldown: Double = 20
+    /// Capture keeps running this long after music stops (Now Playing
+    /// paused / nil and nothing heard). Gaps between YouTube videos or
+    /// tracks, ads and short pauses used to stop and restart the tap every
+    /// 1–3 minutes (1.5 s grace); an idle tap on silence costs ~1 % of a core.
+    private static let idleGrace: Double = 12
+    /// Grace when the light wasn't live recently (a probe that heard nothing).
+    private static let shortGrace: Double = 2
+
+    private var wantsCapture: Bool {
+        settings.isActive && (isPlaying || engine.isHearingAudio || CACurrentMediaTime() < probeUntil)
+    }
+
+    /// Lit by music: capture runs and Now Playing reports playback or the
+    /// analyzer hears sound from any app.
+    private var isMusicLive: Bool {
+        settings.isActive && engine.isRunning && (isPlaying || engine.isHearingAudio)
+    }
+
+    private func updateOutputMonitor() {
+        if settings.isActive {
+            if !outputActivity.isMonitoring { outputActivity.start() }
+        } else if outputActivity.isMonitoring {
+            outputActivity.stop()
+            probeTask?.cancel()
+            probeTask = nil
+            probeUntil = 0
+        }
+    }
+
+    /// Some app started playing through the output. Only acted on while
+    /// capture is stopped (SparkV's own tap also runs the device).
+    private func outputActivityChanged(_ running: Bool) {
+        guard running, settings.isActive, !suspended, !isPlaying,
+              !engine.isRunning, startTask == nil else { return }
+        let now = CACurrentMediaTime()
+        guard now - lastFruitlessProbe >= Self.probeCooldown else { return }
+        beginProbe(now: now)
+    }
+
+    private func beginProbe(now: Double) {
+        probeUntil = now + Self.probeWindow
+        probeTask?.cancel()
+        probeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.probeWindow + 0.1))
+            guard let self, !Task.isCancelled else { return }
+            self.probeTask = nil
+            if !self.engine.isHearingAudio, !self.isPlaying { self.lastFruitlessProbe = CACurrentMediaTime() }
+            self.evaluate(userInitiated: false)
+        }
+        evaluate(userInitiated: false)
+    }
 
     private func playingChanged(_ playing: Bool) {
         isPlaying = playing
@@ -175,6 +262,8 @@ final class AmbientLightController: NSObject, ObservableObject {
                 self.edges.relayout()
             }
             self.updateFrameRate()
+            self.updateOutputMonitor()
+            self.prewarmEdgesIfNeeded()
             self.evaluate(userInitiated: false)
         }
     }
@@ -185,14 +274,20 @@ final class AmbientLightController: NSObject, ObservableObject {
             stopTask = nil
             if !engine.isRunning, startTask == nil {
                 startCapture(userInitiated: userInitiated)
+            } else if engine.isRunning, isMusicLive {
+                // Music came back during the stop grace (or is heard
+                // without Now Playing): capture is already running.
+                if case .running = status {} else { status = .running(source: engine.sourceName ?? backend.rawValue) }
             }
             startLink()
         } else {
             if !settings.isActive { status = .off }
             else if case .needsPermission = status {} else { status = .waitingForMusic }
             guard engine.isRunning || startTask != nil, stopTask == nil else { return }
-            // A short grace period: skipping tracks shouldn't restart capture.
-            let grace = settings.isActive ? 1.5 : 0.05
+            // Track gaps, ads and short pauses keep the tap (restarting costs
+            // a tap + aggregate rebuild and drops the first beats).
+            let recentlyLive = CACurrentMediaTime() - lastLiveAt < 30
+            let grace = settings.isActive ? (recentlyLive ? Self.idleGrace : Self.shortGrace) : 0.05
             stopTask = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(grace))
                 guard let self, !Task.isCancelled, !self.wantsCapture else { return }
@@ -231,7 +326,8 @@ final class AmbientLightController: NSObject, ObservableObject {
                 }
                 if chosen == .processTap { self.settings.hasStartedCaptureOnce = true }
                 self.backend = chosen
-                self.status = .running(source: self.engine.sourceName ?? chosen.rawValue)
+                // A probe start isn't "running" until it hears music.
+                self.status = self.isMusicLive ? .running(source: self.engine.sourceName ?? chosen.rawValue) : .waitingForMusic
                 self.startLink()
             } catch {
                 if error is CancellationError || self.startToken != token || Task.isCancelled { return }
@@ -245,7 +341,7 @@ final class AmbientLightController: NSObject, ObservableObject {
                             self.engine.stop()
                             return
                         }
-                        self.status = .running(source: self.engine.sourceName ?? "Screen Capture Audio")
+                        self.status = self.isMusicLive ? .running(source: self.engine.sourceName ?? "Screen Capture Audio") : .waitingForMusic
                         self.startLink()
                         return
                     } catch {
@@ -320,8 +416,16 @@ final class AmbientLightController: NSObject, ObservableObject {
 
     private func restartCapture() {
         guard engine.isRunning else { return }
+        let wasHearing = engine.isHearingAudio
+        AppLog.log("AmbientLight: output device changed; restarting capture")
         haltCapture()
-        evaluate(userInitiated: false)
+        // Audio-only music (no Now Playing): the restarted tap needs a probe
+        // window to hear it again.
+        if wasHearing, !isPlaying {
+            beginProbe(now: CACurrentMediaTime())
+        } else {
+            evaluate(userInitiated: false)
+        }
     }
 
     /// Only zeros from the tap while music plays: macOS is withholding the
@@ -332,11 +436,16 @@ final class AmbientLightController: NSObject, ObservableObject {
         let state = AmbientAudioPermission.preflight()
         guard state != .granted else { return } // genuinely silent
         if PermissionCenter.shared.isGranted(.screenRecording) {
-            AppLog.log("AmbientLight: tap delivers silence; switching to screen capture audio")
+            // Logged once: the backend stays .screenCapture from here on.
+            AppLog.log("AmbientLight: tap delivers silence (System Audio Recording \(state.rawValue)); switching to screen capture audio")
             backend = .screenCapture
             haltCapture()
             evaluate(userInitiated: false)
         } else {
+            if !loggedSilentTap {
+                loggedSilentTap = true
+                AppLog.log("AmbientLight: tap delivers silence (System Audio Recording \(state.rawValue)) and Screen Recording isn't granted; needs permission")
+            }
             status = .needsPermission
         }
     }
@@ -408,7 +517,16 @@ final class AmbientLightController: NSObject, ObservableObject {
         if previewing, !engine.isRunning {
             features = Self.previewFeatures(now: now, beat: &previewBeat)
         }
-        let live = (settings.isActive && isPlaying && engine.isRunning) || (previewing && settings.isEnabled)
+        let musicLive = isMusicLive
+        if musicLive {
+            lastLiveAt = now
+            if !loggedLive {
+                loggedLive = true
+                let why = isPlaying ? (engine.isHearingAudio ? "Now Playing + audio" : "Now Playing") : "audio heard, no Now Playing"
+                AppLog.log("AmbientLight: live (\(why), \(engine.sourceName ?? backend.rawValue), \(settings.mode.rawValue), \(settings.scope.rawValue))")
+            }
+        }
+        let live = musicLive || (previewing && settings.isEnabled)
         let frame = choreographer.step(.init(
             features: features,
             mode: settings.mode,
@@ -421,9 +539,10 @@ final class AmbientLightController: NSObject, ObservableObject {
         for view in notchViews.allObjects { view.glow.render(frame, palette: palette) }
         edges.setShown(settings.scope == .notchAndEdges && frame.presence > 0.001)
         edges.render(frame, palette: palette)
-        if live { feelBeat(features) }
+        if live, settings.beatHaptics { feelBeat(features) }
 
         if choreographer.isDark, !live {
+            logIdle()
             stopLink()
             return
         }
@@ -440,14 +559,13 @@ final class AmbientLightController: NSObject, ObservableObject {
         }
     }
 
-    /// Music Haptics: one tap per detected beat, firmer on strong (bass)
-    /// beats. Reuses the analyzer's beat counter, so it costs nothing extra.
+    /// Music Haptics (optional): one tap per detected beat, firmer on bass
+    /// hits. Reuses the analyzer's beat counter, so it costs nothing extra.
     private func feelBeat(_ features: AmbientAudioFeatures) {
         guard features.beatCount != lastFeltBeat else { return }
         let isNewBeat = lastFeltBeat != 0
         lastFeltBeat = features.beatCount
-        guard isNewBeat, settings.beatHaptics, !features.isSilent,
-              CACurrentMediaTime() - features.lastBeatTime < 0.25 else { return }
+        guard isNewBeat, !features.isSilent, CACurrentMediaTime() - features.lastBeatTime < 0.25 else { return }
         SparkVHaptics.play(features.bass > 0.6 ? .boundary : .detent)
     }
 
@@ -471,9 +589,20 @@ final class AmbientLightController: NSObject, ObservableObject {
         return f
     }
 
+    private func logIdle() {
+        guard loggedLive else { return }
+        loggedLive = false
+        AppLog.log("AmbientLight: idle (no music; capture \(engine.isRunning ? "stops after grace" : "stopped"))")
+    }
+
     // MARK: System
 
     private func suspendForSystem() {
+        suspended = true
+        probeTask?.cancel()
+        probeTask = nil
+        probeUntil = 0
+        logIdle()
         haltCapture()
         stopLink()
         if case .running = status { status = settings.isActive ? .waitingForMusic : .off }
@@ -522,7 +651,10 @@ final class AmbientLightController: NSObject, ObservableObject {
         observers.append((workspace, workspace.addObserver(
             forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.evaluate(userInitiated: false) }
+            MainActor.assumeIsolated {
+                self?.suspended = false
+                self?.evaluate(userInitiated: false)
+            }
         }))
         // A display link belongs to one screen: rebuild it when screens
         // change (the screen it ran on may be gone).
@@ -539,7 +671,10 @@ final class AmbientLightController: NSObject, ObservableObject {
         observers.append((workspace, workspace.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.evaluate(userInitiated: false) }
+            MainActor.assumeIsolated {
+                self?.suspended = false
+                self?.evaluate(userInitiated: false)
+            }
         }))
     }
 }

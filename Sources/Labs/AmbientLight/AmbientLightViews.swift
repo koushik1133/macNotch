@@ -48,7 +48,7 @@ struct AmbientLightSettingsView: View {
                 }
                 section("Feel") {
                     Toggle("Music Haptics", isOn: $settings.beatHaptics)
-                    Text("Your trackpad taps with the beat, firmer on the kick. Felt with a finger resting on a Force Touch trackpad; strength follows Settings › Accessibility › Trackpad Haptics.")
+                    Text("Optional. Your trackpad taps with the beat, firmer on the kick. Felt with a finger resting on a Force Touch trackpad; strength follows Settings › Accessibility › Trackpad Haptics.")
                         .font(.system(size: 11))
                         .foregroundStyle(SparkVTheme.textTertiary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -158,7 +158,9 @@ struct AmbientLightSettingsView: View {
             },
             set: { color in
                 guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return }
-                settings.customColor = [Double(rgb.redComponent), Double(rgb.greenComponent), Double(rgb.blueComponent)]
+                // Wide-gamut picks convert to extended sRGB (below 0 or above 1).
+                func unit(_ v: CGFloat) -> Double { min(1, max(0, Double(v))) }
+                settings.customColor = [unit(rgb.redComponent), unit(rgb.greenComponent), unit(rgb.blueComponent)]
                 if settings.syncToAlbumColors { settings.syncToAlbumColors = false }
             }
         )
@@ -336,7 +338,6 @@ struct AmbientLightMenuItems: View {
             get: { settings.scope == .notchAndEdges },
             set: { settings.scope = $0 ? .notchAndEdges : .notchOnly }
         ))
-        Toggle("Music Haptics", isOn: $settings.beatHaptics)
         Toggle("Match the Album Art", isOn: $settings.syncToAlbumColors)
         Divider()
         Button("Ambient Light Settings…") { AmbientLightSettingsWindowController.shared.show() }

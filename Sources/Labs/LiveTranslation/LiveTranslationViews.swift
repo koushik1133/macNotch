@@ -35,8 +35,16 @@ struct LiveTranslationBand: View {
                             .animation(nil, value: line.displayText)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let notice = controller.notice {
+                    // Nothing to caption yet and something is wrong: say what.
+                    Text(notice)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(SparkVTheme.warning)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text("Live translation · listening…")
+                    Text("Live captions · listening…")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(SparkVTheme.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -56,9 +64,12 @@ struct LiveTranslationChip: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "character.bubble.fill")
+            Image(systemName: line.isOriginal ? "captions.bubble.fill" : "character.bubble.fill")
                 .font(.system(size: 8, weight: .bold))
-            Text("\(LiveTranslationLanguages.shortTag(line.sourceLanguage)) → \(LiveTranslationLanguages.shortTag(line.targetLanguage))")
+            // Already in the target language: shown as spoken, no arrow.
+            Text(line.isOriginal
+                 ? LiveTranslationLanguages.shortTag(line.sourceLanguage)
+                 : "\(LiveTranslationLanguages.shortTag(line.sourceLanguage)) → \(LiveTranslationLanguages.shortTag(line.targetLanguage))")
                 .font(.system(size: 9, weight: .bold).monospaced())
             Text(line.speaker == .me ? "· You" : "· Others")
                 .font(.system(size: 9, weight: .medium))
@@ -156,6 +167,15 @@ struct LiveTranslationCaptionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             header
+            // A problem stays visible above the captions (e.g. "mic only").
+            if let notice = controller.notice, !controller.captions.isEmpty {
+                Label(notice, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(SparkVTheme.warning)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(notice)
+            }
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -203,6 +223,7 @@ struct LiveTranslationCaptionView: View {
     }
 
     private var placeholder: String {
+        if let notice = controller.notice { return notice }
         switch controller.status {
         case .needsDownload, .unavailable: return controller.statusText
         case .off: return "Live translation is off"
@@ -297,7 +318,7 @@ struct LiveTranslationCaptionRow: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(SparkVTheme.warning)
                     .padding(.leading, 2)
-            } else if showsOriginal {
+            } else if showsOriginal, !line.isOriginal {
                 Text("\(LiveTranslationLanguages.displayName(line.sourceLanguage)): \(line.sourceText)")
                     .font(.system(size: 11))
                     .foregroundStyle(SparkVTheme.textTertiary)

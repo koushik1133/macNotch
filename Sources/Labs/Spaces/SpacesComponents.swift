@@ -773,7 +773,7 @@ enum SpacesDropIngestor {
             let result = await store.ingest(input)
             cleanup?()
             guard var item = result else {
-                AppLog.log("Spaces: ingest returned nothing for \(input.sourceKey)")
+                AppLog.log("Spaces: ingest returned nothing for a \(input.sourceKey.split(separator: ":").first.map(String.init) ?? "drop")")
                 return
             }
             if let spaceID, item.spaceID != spaceID {

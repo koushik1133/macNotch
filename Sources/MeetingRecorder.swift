@@ -28,6 +28,14 @@ final class MeetingRecorder: ObservableObject {
     @Published private(set) var lastError: String?
     /// True while other participants (system audio) are being captured.
     @Published private(set) var isCapturingSystemAudio = false
+    /// Why other participants aren't being captured (Screen Recording not
+    /// allowed, capture failed), or nil. The meeting still records the mic.
+    @Published private(set) var systemAudioProblem: String?
+    /// A problem with the microphone stream found while recording (only
+    /// silence arrives, nothing is recognized), or nil.
+    @Published private(set) var micProblem: String?
+    /// True once the microphone stream produced recognized text.
+    @Published private(set) var hasRecognizedSpeech = false
 
     /// Called on the main actor for volatile AND final segments; a phrase
     /// keeps its id until its final version arrives.
@@ -44,7 +52,10 @@ final class MeetingRecorder: ObservableObject {
     private final class Session {
         let clock: MeetingClock
         var mic: MeetingMicCapture?
+        var micPipeline: MeetingStreamPipeline?
         var micTranscriber: MeetingTranscriber?
+        var watchdog: Task<Void, Never>?
+        var systemWatchdog: Task<Void, Never>?
         var system: MeetingSystemAudioCapture?
         var systemPipeline: MeetingStreamPipeline?
         var systemTranscriber: MeetingTranscriber?
@@ -74,6 +85,9 @@ final class MeetingRecorder: ObservableObject {
         generation += 1
         let token = generation
         lastError = nil
+        systemAudioProblem = nil
+        micProblem = nil
+        hasRecognizedSpeech = false
 
         try await MeetingPermissions.ensureMicrophoneAndSpeech()
         try checkCurrent(token)
@@ -115,17 +129,69 @@ final class MeetingRecorder: ObservableObject {
             throw CancellationError()
         }
         session.mic = mic
+        session.micPipeline = micPipeline
         session.micTranscriber = micTranscriber
         self.session = session
         isRecording = true
         AppLog.log("Meeting: recording started (mic: \(micTranscriber.backendName))")
+        session.watchdog = Task { [weak self] in await self?.watchMicrophone(session: session, token: token) }
 
         // System audio (best effort).
         if systemAllowed {
             await startSystemAudio(session: session, token: token)
         } else {
             lastError = Self.screenRecordingProblem
+            systemAudioProblem = Self.screenRecordingProblem
             AppLog.log("Meeting: screen recording not allowed, recording the microphone only")
+        }
+    }
+
+    /// Checks the microphone stream while nothing has been recognized yet:
+    /// no buffers, only digital silence, or speech-level audio that the
+    /// recognizer turns into nothing (then SpeechAnalyzer hands over to
+    /// SFSpeechRecognizer once). Each problem is shown (`micProblem`) and
+    /// logged once.
+    private func watchMicrophone(session: Session, token: Int) async {
+        var logged: Set<String> = []
+        var fellBack = false
+        var voicedAtFallback = 0
+        let started = ProcessInfo.processInfo.systemUptime
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled, token == generation, self.session === session, isRecording,
+                  let pipeline = session.micPipeline, let transcriber = session.micTranscriber else { return }
+            if transcriber.resultCount > 0 {
+                hasRecognizedSpeech = true
+                if micProblem != nil { micProblem = nil }
+                return
+            }
+            let age = ProcessInfo.processInfo.systemUptime - started
+            let stats = pipeline.stats
+            var problem: String?
+            var key = ""
+            if stats.buffers == 0, age >= 4 {
+                key = "none"
+                problem = "No sound is reaching SparkV from the microphone"
+            } else if stats.isDigitalSilence, age >= 4 {
+                key = "silence"
+                problem = "SparkV hears only silence. Check the mic isn't muted and SparkV is on in Privacy & Security › Microphone"
+            } else if stats.voicedBuffers >= 40 {
+                // ~3.5 s of speech-level audio and not one word.
+                if !fellBack, transcriber.fallBackToLegacy(reason: "no results after \(stats.voicedBuffers) voiced buffers") {
+                    fellBack = true
+                    voicedAtFallback = stats.voicedBuffers
+                    continue
+                }
+                if stats.voicedBuffers - voicedAtFallback >= 40 {
+                    key = "unrecognized"
+                    problem = "Sound is coming in but no speech is recognized"
+                }
+            }
+            if problem != micProblem { micProblem = problem }
+            if problem != nil, !logged.contains(key) {
+                logged.insert(key)
+                AppLog.log("Meeting: mic problem (\(key)): \(stats.buffers) buffers, peak \(Int(stats.peakDecibels)) dB, \(stats.voicedBuffers) voiced, \(transcriber.backendName)")
+            }
         }
     }
 
@@ -144,6 +210,7 @@ final class MeetingRecorder: ObservableObject {
             } catch {
                 AppLog.log("Meeting: system audio transcriber failed: \(error)")
                 lastError = "Couldn't transcribe other participants"
+                systemAudioProblem = lastError
                 return
             }
             guard token == generation, self.session === session else {
@@ -180,7 +247,10 @@ final class MeetingRecorder: ObservableObject {
             let message = MeetingPermissions.isScreenCaptureDenial(error)
                 ? Self.screenRecordingProblem
                 : "Couldn't capture system audio: \(error.localizedDescription)"
-            if self.session === session { lastError = message }
+            if self.session === session {
+                lastError = message
+                systemAudioProblem = message
+            }
             return
         }
         guard token == generation, self.session === session else {
@@ -189,7 +259,30 @@ final class MeetingRecorder: ObservableObject {
         }
         session.system = capture
         isCapturingSystemAudio = true
+        systemAudioProblem = nil
         AppLog.log("Meeting: system audio capture started (\(transcriber.backendName))")
+        if session.systemWatchdog == nil {
+            session.systemWatchdog = Task { [weak self] in await self?.watchSystemAudio(session: session, token: token) }
+        }
+    }
+
+    /// The microphone's SpeechAnalyzer -> SFSpeechRecognizer hand-over, for
+    /// the other participants: speech-level system audio and not one result.
+    private func watchSystemAudio(session: Session, token: Int) async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled, token == generation, self.session === session, isRecording,
+                  let pipeline = session.systemPipeline, let transcriber = session.systemTranscriber else { return }
+            if transcriber.resultCount > 0 { return }
+            let stats = pipeline.stats
+            // ~5 s of speech-level audio (ScreenCaptureKit hands ~21 ms
+            // buffers), so a stream that is only starting up isn't switched.
+            guard stats.voicedBuffers >= 250 else { continue }
+            if transcriber.fallBackToLegacy(reason: "no results after \(stats.voicedBuffers) voiced buffers") {
+                AppLog.log("Meeting: others: no words from SpeechAnalyzer, switched to SFSpeechRecognizer")
+            }
+            return
+        }
     }
 
     // MARK: Stop
@@ -200,6 +293,8 @@ final class MeetingRecorder: ObservableObject {
         guard let session, !isStopping else { return }
         isStopping = true
         self.session = nil
+        session.watchdog?.cancel()
+        session.systemWatchdog?.cancel()
 
         let mic = session.mic
         let system = session.system
@@ -218,9 +313,24 @@ final class MeetingRecorder: ObservableObject {
         micLevel = 0
         systemLevel = 0
         isCapturingSystemAudio = false
+        micProblem = nil
+        systemAudioProblem = nil
         isRecording = false
         isStopping = false
-        AppLog.log("Meeting: recording stopped")
+        AppLog.log("Meeting: recording stopped; \(Self.diagnostics(session))")
+    }
+
+    /// One line per stream: counts and levels only, never text.
+    private static func diagnostics(_ session: Session) -> String {
+        func describe(_ name: String, _ pipeline: MeetingStreamPipeline?, _ transcriber: MeetingTranscriber?) -> String {
+            guard let pipeline, let transcriber else { return "\(name) off" }
+            let stats = pipeline.stats
+            return "\(name) \(stats.buffers) buffers, peak \(Int(stats.peakDecibels.rounded())) dB, "
+                + "\(stats.voicedBuffers) voiced, \(transcriber.resultCount) results (\(transcriber.finalCount) final, "
+                + "\(transcriber.backendName.isEmpty ? "no recognizer" : transcriber.backendName))"
+        }
+        return describe("mic", session.micPipeline, session.micTranscriber) + "; "
+            + describe("system", session.systemPipeline, session.systemTranscriber)
     }
 
     // MARK: Callbacks
@@ -284,6 +394,7 @@ final class MeetingRecorder: ObservableObject {
         Task { await stopped?.stop() }
         guard session.systemRestarts < 2 else {
             lastError = "System audio stopped: \(message)"
+            systemAudioProblem = lastError
             return
         }
         session.systemRestarts += 1
@@ -398,6 +509,30 @@ final class MeetingStreamPipeline: @unchecked Sendable {
     /// Fed/skipped counters, for tests and diagnostics.
     private(set) var fedBuffers = 0
     private(set) var skippedBuffers = 0
+    private var receivedBuffers = 0
+    private var peakSample: Float = 0
+    private var voicedBuffers = 0
+
+    /// What arrived so far (any thread): buffers, loudest sample in dBFS
+    /// (-140 for digital silence) and buffers with speech-level energy.
+    struct Stats: Sendable {
+        var buffers: Int
+        var fed: Int
+        var peakDecibels: Float
+        var voicedBuffers: Int
+
+        /// Only zeros arrived: macOS hands an app silence (no error) when its
+        /// microphone access is off, the input is muted, or another app holds
+        /// the device exclusively.
+        var isDigitalSilence: Bool { buffers > 0 && peakDecibels < -100 }
+    }
+
+    var stats: Stats {
+        lock.lock(); defer { lock.unlock() }
+        return Stats(buffers: receivedBuffers, fed: fedBuffers,
+                     peakDecibels: 20 * log10(max(peakSample, 0.000_000_1)),
+                     voicedBuffers: voicedBuffers)
+    }
 
     init(
         gatesSilence: Bool,
@@ -416,9 +551,15 @@ final class MeetingStreamPipeline: @unchecked Sendable {
     /// Capture thread. Accepts any PCM format.
     func process(_ buffer: AVAudioPCMBuffer) {
         lock.lock(); defer { lock.unlock() }
+        receivedBuffers += 1
         guard let mono = mixer.mix(buffer) else { return }
         let duration = MeetingAudio.duration(of: mono)
         guard duration > 0 else { return }
+        if let samples = mono.floatChannelData?[0] {
+            var peak = peakSample
+            for index in 0..<Int(mono.frameLength) { peak = max(peak, abs(samples[index])) }
+            peakSample = peak
+        }
 
         // Start time: contiguous with the previous buffer unless a real gap
         // (device restart, stalled stream) shows up in arrival times.
@@ -434,7 +575,10 @@ final class MeetingStreamPipeline: @unchecked Sendable {
         let rms = MeetingAudio.rms(mono)
         let voiced = rms >= voiceRMS
         reportLevel(MeetingAudio.meterLevel(rms: rms), at: start + duration)
-        if voiced { lastVoicedEnd = start + duration }
+        if voiced {
+            lastVoicedEnd = start + duration
+            voicedBuffers += 1
+        }
 
         let open = !gatesSilence || voiced || start - lastVoicedEnd < Self.hangover
         guard open else {
