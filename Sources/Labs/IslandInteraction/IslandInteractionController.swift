@@ -100,6 +100,7 @@ final class IslandInteractionController: ObservableObject {
     private var coexistenceTask: Task<Void, Never>?
     private var stepAsideTask: Task<Void, Never>?
     private var sampleTask: Task<Void, Never>?
+    private var followUpTask: Task<Void, Never>?
     private var lastSample: Date = .distantPast
     private var escapeRegistrationFailed = false
     private var started = false
@@ -153,7 +154,8 @@ final class IslandInteractionController: ObservableObject {
         observers.forEach { $0.center.removeObserver($0.token) }
         observers.removeAll()
         settingsObserver = nil
-        [coexistenceTask, stepAsideTask, sampleTask].forEach { $0?.cancel() }
+        [coexistenceTask, stepAsideTask, sampleTask, followUpTask].forEach { $0?.cancel() }
+        followUpTask = nil
         coexistenceTask = nil
         stepAsideTask = nil
         sampleTask = nil
@@ -270,6 +272,19 @@ final class IslandInteractionController: ObservableObject {
     /// look (a manager revealed hidden ones). At most once a second.
     func wingsBecameVisible() {
         sampleMenuBar(force: false)
+    }
+
+    /// Another activity took the wings (a call starts while Clicky already
+    /// shows): the call app's status items and macOS's call indicator
+    /// appear around now, so look now and once more shortly after.
+    func wingsContentChanged() {
+        sampleMenuBar(force: false)
+        followUpTask?.cancel()
+        followUpTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            self?.sampleMenuBar(force: false)
+        }
     }
 
     private func sampleMenuBar(force: Bool) {

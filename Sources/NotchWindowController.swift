@@ -182,6 +182,7 @@ final class NotchWindowController: NSWindowController {
     private var lastInteraction = IslandInteractionStore.current
     /// The closed island had wings at the last look (menu bar sampling).
     private var wingsVisible = false
+    private var wingsKey = ""
     private var wingsCheckScheduled = false
     /// The pointer was on the closed island at the last move.
     private var pointerWasOnIsland = false
@@ -2694,8 +2695,13 @@ final class NotchWindowController: NSWindowController {
             guard let self else { return }
             self.wingsCheckScheduled = false
             let visible = !self.state.isExpanded && NotchActivityView.wingsSource(activities: self.activities, media: self.media) != nil
-            if visible, !self.wingsVisible { self.interaction.wingsBecameVisible() }
+            // Which activities own the wings: a change while they show
+            // (a call starting beside Clicky) re-measures the room too.
+            let key = visible ? [self.activities.compact?.id, self.activities.secondary?.id, self.activities.tertiary?.id]
+                .map { $0 ?? "-" }.joined(separator: "|") : ""
+            if visible, !self.wingsVisible || key != self.wingsKey { self.interaction.wingsContentChanged() }
             self.wingsVisible = visible
+            self.wingsKey = key
             // Dictation or Clicky may have started or stopped owning Esc.
             if self.state.isExpanded { self.updateEscape() }
         }

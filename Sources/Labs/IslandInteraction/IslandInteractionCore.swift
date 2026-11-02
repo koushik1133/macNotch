@@ -587,6 +587,12 @@ struct IslandWingClearance: Equatable, Sendable {
                 trailingEdge = min(trailingEdge, item.minX)
             } else if item.maxX <= housing.minX + 1 {
                 leadingEdge = max(leadingEdge, item.maxX)
+            } else if item.midX > housing.midX, item.maxX > housing.maxX + 1 {
+                // Tucked against the housing (the housing is a little wider
+                // than the camera): it still shows, so no room on that side.
+                trailingEdge = min(trailingEdge, housing.maxX)
+            } else if item.midX < housing.midX, item.minX < housing.minX - 1 {
+                leadingEdge = max(leadingEdge, housing.minX)
             }
         }
         if let appMenusMaxX, appMenusMaxX <= housing.minX + 1 {
