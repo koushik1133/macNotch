@@ -750,9 +750,9 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// Haptics on iPhone): sparing, tied to the rhythm you hear, stronger
     /// for stronger hits, never a buzz. Only real kicks tap: a beat whose
     /// bass stands out from the song's own average. Fast songs are felt
-    /// on every other beat; downbeats get the firm tap. Nothing plays when
-    /// no hand is on the Mac (an unfelt tap is wasted power), in Low Power
-    /// Mode or when the Mac is hot.
+    /// on every other beat; downbeats get the firm tap. Nothing plays in Low Power
+    /// Mode or when the Mac is hot. (An idle-input check skipped taps for a
+    /// finger resting still on the trackpad, so there is none.)
     private func feelBeat(_ features: AmbientAudioFeatures) {
         guard features.beatCount != lastFeltBeat else { return }
         let isNewBeat = lastFeltBeat != 0
@@ -762,8 +762,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         let bass = features.bass
         defer { beatBassAverage += (bass - beatBassAverage) * 0.15 }
         guard !lowPower, !thermalHot,
-              CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0) ?? .mouseMoved) < 20,
-              bass > 0.3, bass > beatBassAverage * 1.15 else { return }
+              bass > 0.2, bass > beatBassAverage * 1.05 else { return }
         let period = features.bpm > 40 && features.tempoConfidence > 0.4 ? 60 / Double(features.bpm) : 0.5
         let gap = period < 0.4 ? period * 1.9 : period * 0.9
         guard now - lastTapTime >= max(0.28, gap) else { return }
