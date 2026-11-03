@@ -61,6 +61,7 @@ final class NotchWindowController: NSWindowController {
     private var bandPointerObserver: AnyCancellable?
     /// A ringing call: collapses the drawer and passes through a hidden island.
     private var callRingingObserver: AnyCancellable?
+    private var feedbackLevelObserver: AnyCancellable?
     /// When a band with buttons may take clicks (see `ActivityBandClickGate`).
     private var bandClickGate = ActivityBandClickGate()
     /// This code made the collapsed panel take clicks (and so may undo it).
@@ -438,6 +439,14 @@ final class NotchWindowController: NSWindowController {
             .removeDuplicates()
             .sink { [weak self] _ in
                 DispatchQueue.main.async { MainActor.assumeIsolated { _ = self?.handleActivityBandPointer(moved: false) } }
+            }
+        // A volume or brightness bar lifts the island above full-screen apps.
+        feedbackLevelObserver = activities.$current
+            .map { $0?.kind.isLiveFeedback == true }
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.applyVisibility() } }
             }
         // A ringing call shows over full screen (`callRinging`) and the
         // drawer makes way for it, unless a drag or a menu is in progress.
@@ -1047,7 +1056,11 @@ final class NotchWindowController: NSWindowController {
         // without a notch it would cover the middle of that menu bar.
         let revealAbove = isRevealed && (geometry?.hasNotch ?? false)
         let lowered = placement.isFullScreen(placement.islandDisplayID) && !state.isExpanded && !visibility.isHidden && !revealAbove
-        let level: NSWindow.Level = lowered ? .floating : .statusBar
+        // Just under the menu bar macOS slides down (`.floating` sat under some
+        // full-screen apps, hiding the island and its volume bar there); a
+        // volume or brightness bar goes above everything.
+        let feedback = activities.current?.kind.isLiveFeedback == true
+        let level: NSWindow.Level = lowered && !feedback ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
         if panel.level != level { panel.level = level }
         // The teleprompter and the large mirror sit one level below the
         // island (in full screen too) and fade out while the drawer is open.
