@@ -381,6 +381,11 @@ final class PrivacyHardwareProbe: @unchecked Sendable {
     private var watchesCamera = false
     private var audioListeners: [(object: AudioObjectID, address: AudioObjectPropertyAddress, block: AudioObjectPropertyListenerBlock)] = []
     private var processListeners: [AudioObjectID: (address: AudioObjectPropertyAddress, block: AudioObjectPropertyListenerBlock)] = [:]
+    /// The input devices the listeners were installed for, and a pending
+    /// re-check: device-list notices come in bursts (aggregate devices,
+    /// AirPods), and re-installing on each one fed itself in a loop.
+    private var listenedInputs: Set<AudioObjectID> = []
+    private var deviceRecheckPending = false
     private var cameraListeners: [(object: CMIOObjectID, address: CMIOObjectPropertyAddress, block: CMIOObjectPropertyListenerBlock)] = []
     /// pid → (executable path, owner bundle ID).
     private var owners: [Int32: (path: String, owner: String?)] = [:]
@@ -445,15 +450,21 @@ final class PrivacyHardwareProbe: @unchecked Sendable {
         addAudioListener(Self.system, kAudioHardwarePropertyDevices) { [weak self] in
             // A headset or webcam mic came or went: listen to its device too
             // (re-installed on the next turn, not from inside this callback).
-            self?.queue.async { [weak self] in
-                guard let self, self.watchesMicrophone else { return }
+            guard let self, !self.deviceRecheckPending else { return }
+            self.deviceRecheckPending = true
+            self.queue.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self else { return }
+                self.deviceRecheckPending = false
+                guard self.watchesMicrophone, Set(self.inputDevices()) != self.listenedInputs else { return }
                 self.removeAudioListeners()
                 self.installAudioListeners()
                 self.changed()
             }
         }
         addAudioListener(Self.system, kAudioHardwarePropertyDefaultInputDevice) { [weak self] in self?.changed() }
-        for device in inputDevices() {
+        let inputs = inputDevices()
+        listenedInputs = Set(inputs)
+        for device in inputs {
             addAudioListener(device, kAudioDevicePropertyDeviceIsRunningSomewhere) { [weak self] in self?.changed() }
         }
         refreshProcessListeners()
