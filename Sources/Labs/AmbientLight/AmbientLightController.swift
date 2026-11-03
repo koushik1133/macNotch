@@ -49,6 +49,7 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// Last beat that tapped the trackpad (Music Haptics).
     private var lastFeltBeat: UInt64 = 0
     private var lastTapTime: Double = 0
+    private var lastFeltBass: Float = 0
     /// Running average of the bass on beats: a tap needs a kick above it.
     private var beatBassAverage: Float = 0.4
     private var cancellables: Set<AnyCancellable> = []
@@ -748,27 +749,22 @@ final class AmbientLightController: NSObject, ObservableObject {
 
     /// Music Haptics, after Apple's guidance (HIG › Playing haptics; Music
     /// Haptics on iPhone): sparing, tied to the rhythm you hear, stronger
-    /// for stronger hits, never a buzz. Only real kicks tap: a beat whose
-    /// bass stands out from the song's own average. Fast songs are felt
-    /// on every other beat; downbeats get the firm tap. Nothing plays in Low Power
-    /// Mode or when the Mac is hot. (An idle-input check skipped taps for a
-    /// finger resting still on the trackpad, so there is none.)
+    /// for stronger hits, never a buzz. Only kicks that stand out from the
+    /// song's own bass tap, at most about four a second, and the hardest
+    /// get the firm tap. Paused only when the Mac is hot.
     private func feelBeat(_ features: AmbientAudioFeatures) {
-        guard features.beatCount != lastFeltBeat else { return }
-        let isNewBeat = lastFeltBeat != 0
-        lastFeltBeat = features.beatCount
-        let now = CACurrentMediaTime()
-        guard isNewBeat, !features.isSilent, now - features.lastBeatTime < 0.12 else { return }
+        // Driven by the same bass envelope that pulses the light, on each
+        // frame: a kick is a sharp rise in bass, so the tap lands with the
+        // flash you see (the beat tracker runs a little behind the music).
         let bass = features.bass
-        defer { beatBassAverage += (bass - beatBassAverage) * 0.15 }
-        guard !lowPower, !thermalHot,
-              bass > 0.2, bass > beatBassAverage * 1.05 else { return }
-        let period = features.bpm > 40 && features.tempoConfidence > 0.4 ? 60 / Double(features.bpm) : 0.5
-        let gap = period < 0.4 ? period * 1.9 : period * 0.9
-        guard now - lastTapTime >= max(0.28, gap) else { return }
+        let rise = bass - lastFeltBass
+        lastFeltBass = bass
+        guard !thermalHot, !features.isSilent else { return }
+        let now = CACurrentMediaTime()
+        defer { beatBassAverage += (bass - beatBassAverage) * 0.02 }
+        guard rise > 0.12, bass > 0.3, bass > beatBassAverage * 1.1, now - lastTapTime >= 0.22 else { return }
         lastTapTime = now
-        let downbeat = features.tempoConfidence > 0.6 && features.beatCount % 4 == 0
-        SparkVHaptics.play(downbeat || bass > beatBassAverage * 1.6 ? .boundary : .detent)
+        SparkVHaptics.play(bass > 0.75 || rise > 0.35 ? .boundary : .detent)
     }
 
     /// A synthetic 120 BPM groove for the Settings preview.
