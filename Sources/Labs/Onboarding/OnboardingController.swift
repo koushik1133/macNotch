@@ -1,10 +1,22 @@
 import AppKit
 import Combine
 
-/// First-launch setup: Welcome, Terms & Privacy, then a live permissions
-/// checklist. Shows on first launch, when `OnboardingTerms.version` goes up,
-/// and once per build when an Accessibility grant stopped matching after a
-/// rebuild. Re-opens from the gear menu (`OnboardingMenuItems`).
+extension Notification.Name {
+    /// Posted on the main thread each time the notch drawer opens
+    /// (NotchWindowController.setExpanded(true)). Onboarding's Try It step
+    /// listens for it.
+    static let sparkVIslandDidExpand = Notification.Name("SparkV.islandDidExpand")
+}
+
+/// First-launch setup: Welcome, Terms & Privacy, Try It (hover the notch and
+/// watch the drawer open), a live permissions checklist, then Finish (Launch
+/// at Login and the menu bar icon through AppShell's own models, the look).
+/// Shows on first launch, when
+/// `OnboardingTerms.version` goes up, and once per build when an
+/// Accessibility grant stopped matching after a rebuild. Every step can be
+/// skipped, and the window can be closed at any point. Re-opens from the
+/// gear menu (`OnboardingMenuItems`: Welcome Tour…, Permissions & Setup…)
+/// and from Settings › General (`OnboardingSettingsSection`).
 @MainActor
 final class OnboardingController: ObservableObject {
     static let shared = OnboardingController()
@@ -14,18 +26,30 @@ final class OnboardingController: ObservableObject {
     static let permissionsDidChange = Notification.Name("SparkV.onboarding.permissionsDidChange")
 
     enum Step: Int, CaseIterable, Identifiable {
-        case welcome, terms, permissions
+        case welcome, terms, tryIt, permissions, finish
         var id: Int { rawValue }
         var title: String {
             switch self {
             case .welcome: "Welcome"
-            case .terms: "Terms & Privacy"
+            case .terms: "Terms"
+            case .tryIt: "Try It"
             case .permissions: "Permissions"
+            case .finish: "Finish"
             }
         }
     }
 
-    @Published var step: Step = .welcome
+    @Published var step: Step = .welcome {
+        didSet { if step != oldValue { stepDidChange(from: oldValue) } }
+    }
+    /// The tour started at Welcome (first launch, or Welcome Tour…), so
+    /// Terms leads on to Try It and Permissions to Finish. Opened at
+    /// Permissions or Terms, the window closes after that step instead.
+    @Published private(set) var isFullTour = false
+    /// The drawer opened while Try It was showing.
+    @Published private(set) var islandTried = false
+    /// Ten seconds on Try It without the drawer opening: show where it is.
+    @Published private(set) var showsTryHint = false
     @Published var agreesToTerms = false
     @Published private(set) var statuses: [OnboardingPermission: OnboardingPermissionStatus] = [:]
     /// Rows whose prompt is up or whose request is still running.
@@ -83,6 +107,10 @@ final class OnboardingController: ObservableObject {
     var dismisser: () -> Void = { OnboardingWindowController.shared.close() }
 
     private var userReportedGrant = false
+    private var islandObserver: NSObjectProtocol?
+    private var tryHintTask: Task<Void, Never>?
+    /// Seconds on Try It before the "can't find it?" hint.
+    static let tryHintDelay: Duration = .seconds(10)
     private var timer: Timer?
     private var isRefreshing = false
     /// Timer ticks since the last slow check (notifications, Downloads,
@@ -139,14 +167,17 @@ final class OnboardingController: ObservableObject {
     /// Opens the window. Without accepted terms it never skips past them.
     func show(step requested: Step? = nil) {
         var target = requested ?? (store.hasAcceptedCurrentTerms ? .permissions : .welcome)
-        if target == .permissions, !store.hasAcceptedCurrentTerms { target = .terms }
+        if target.rawValue > Step.terms.rawValue, !store.hasAcceptedCurrentTerms { target = .terms }
+        isFullTour = target == .welcome || (isVisible && isFullTour)
         step = target
+        // Re-entering Try It (step unchanged) starts listening again.
+        if target == .tryIt { beginTryIt() }
         agreesToTerms = store.hasAcceptedCurrentTerms
         isVisible = true
         // Prompts are allowed right after launch only while this is open.
         center.isOnboardingActive = true
         presenter(self)
-        startRefreshing()
+        updateRefreshing()
     }
 
     // MARK: Steps
@@ -155,12 +186,22 @@ final class OnboardingController: ObservableObject {
         switch step {
         case .welcome: step = .terms
         case .terms: acceptTerms()
-        case .permissions: finish()
+        case .tryIt: step = .permissions
+        case .permissions:
+            if isFullTour { step = .finish } else { finish() }
+        case .finish: finish()
         }
     }
 
+    /// Skips the current step (Try It, Permissions) without doing it.
+    func skip() {
+        next()
+    }
+
     func back() {
-        guard let previous = Step(rawValue: step.rawValue - 1) else { return }
+        guard var previous = Step(rawValue: step.rawValue - 1) else { return }
+        // Opened at Permissions or Terms, the tour has no Try It step.
+        if previous == .tryIt, !isFullTour { previous = .terms }
         step = previous
     }
 
@@ -170,7 +211,7 @@ final class OnboardingController: ObservableObject {
             store.acceptTerms()
             AppLog.log("Onboarding: accepted terms v\(OnboardingTerms.version)")
         }
-        step = .permissions
+        step = isFullTour ? .tryIt : .permissions
         Task { await refresh() }
     }
 
@@ -182,6 +223,7 @@ final class OnboardingController: ObservableObject {
     /// Done.
     func finish() {
         store.markCompleted()
+        if isFullTour { store.markFinishSeen() }
         OnboardingDragHelper.shared.close()
         dismisser()
         windowDidClose()
@@ -192,6 +234,62 @@ final class OnboardingController: ObservableObject {
         isVisible = false
         center.isOnboardingActive = false
         stopRefreshing()
+        endTryIt()
+    }
+
+    // MARK: Try It
+
+    /// Posted by the notch window when the drawer opens.
+    static let islandDidExpand = Notification.Name.sparkVIslandDidExpand
+
+    /// The island sits on a camera notch, or rests in the menu bar of a
+    /// display without one (wherever Island Placement put it).
+    var hasNotchedDisplay: Bool { LookIsland.isOnNotch }
+
+    private func stepDidChange(from old: Step) {
+        if step == .tryIt { beginTryIt() } else if old == .tryIt { endTryIt() }
+        updateRefreshing()
+    }
+
+    /// The live permission status (a 1 s timer, slow probes every 5 s) runs
+    /// only while the Permissions step shows; the other steps show none.
+    private func updateRefreshing() {
+        guard isVisible else { return }
+        if step == .permissions { startRefreshing() } else { stopRefreshing() }
+    }
+
+    /// Listens for the drawer opening (no polling) and arms the hint. Never
+    /// asks for any permission.
+    private func beginTryIt() {
+        islandTried = false
+        showsTryHint = false
+        if islandObserver == nil {
+            islandObserver = NotificationCenter.default.addObserver(forName: .sparkVIslandDidExpand, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.islandDidOpen() }
+            }
+        }
+        tryHintTask?.cancel()
+        tryHintTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.tryHintDelay)
+            guard !Task.isCancelled, let self, self.step == .tryIt, !self.islandTried else { return }
+            self.showsTryHint = true
+        }
+    }
+
+    private func endTryIt() {
+        if let islandObserver { NotificationCenter.default.removeObserver(islandObserver) }
+        islandObserver = nil
+        tryHintTask?.cancel()
+        tryHintTask = nil
+    }
+
+    /// The drawer opened while Try It shows (also used by tests).
+    func islandDidOpen() {
+        guard step == .tryIt, isVisible else { return }
+        islandTried = true
+        showsTryHint = false
+        store.triedIsland = true
+        AppLog.log("Onboarding: the user opened the drawer on Try It")
     }
 
     // MARK: Live status

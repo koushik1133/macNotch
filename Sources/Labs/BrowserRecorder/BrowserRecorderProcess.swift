@@ -202,7 +202,8 @@ final class BRRunnerProcess: @unchecked Sendable {
         let events = lines.compactMap { line -> BRRunnerEvent? in
             guard !line.isEmpty else { return nil }
             if let event = BRRunnerEvent.decode(line) { return event }
-            AppLog.log("BrowserRecorder: runner said: \(String(decoding: line.prefix(300), as: UTF8.self))")
+            // Not logged verbatim: page console output or typed values can show up here.
+            AppLog.log("BrowserRecorder: runner printed a non-event line (\(line.count) bytes)")
             return nil
         }
         guard !events.isEmpty else { return }

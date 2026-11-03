@@ -315,6 +315,7 @@ struct QuickCaptureShortcutRecorder: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Reset to \(QuickCaptureSettings.defaultShortcut.displayString)")
+                .accessibilityLabel("Reset to \(QuickCaptureSettings.defaultShortcut.displayString)")
             }
         }
         .onChange(of: model.isRecording) { _, recording in onRecordingChange(recording) }

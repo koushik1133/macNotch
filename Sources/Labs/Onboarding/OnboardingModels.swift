@@ -273,6 +273,7 @@ enum OnboardingTerms {
             "Camera, microphone, speech and screen content are processed on this Mac. Face Unlock data stays in your keychain.",
             "Clipboard history, Tray files, Spaces, notes and settings are stored only on this Mac, in your user account.",
             "SparkV has no account, no analytics and no tracking. It sends nothing to its developers.",
+            "Weather, lyrics and update checks stay offline until you set them up or turn them on; only then do they contact their services.",
             "Cloud AI is off unless you add your own API key and turn it on for a feature. Only the text that feature needs is sent to that provider.",
             "Each macOS permission is optional. You can turn any of them off in System Settings › Privacy & Security at any time.",
         ]),
@@ -293,6 +294,10 @@ struct OnboardingStore {
         static let trustedBuildIsAdHoc = "SparkV.onboarding.accessibilityTrustedBuildIsAdHoc"
         /// Build for which the stale-grant window already opened on launch.
         static let staleNoticeBuild = "SparkV.onboarding.staleNoticeBuild"
+        /// The drawer opened during Try It at least once.
+        static let triedIsland = "SparkV.onboarding.triedIsland"
+        /// When the full tour reached Finish and Done was clicked.
+        static let finishSeenAt = "SparkV.onboarding.finishSeenAt"
     }
 
     let defaults: UserDefaults
@@ -332,4 +337,12 @@ struct OnboardingStore {
         get { defaults.string(forKey: Key.staleNoticeBuild) }
         nonmutating set { defaults.set(newValue, forKey: Key.staleNoticeBuild) }
     }
+
+    var triedIsland: Bool {
+        get { defaults.bool(forKey: Key.triedIsland) }
+        nonmutating set { defaults.set(newValue, forKey: Key.triedIsland) }
+    }
+
+    var finishSeenAt: Date? { defaults.object(forKey: Key.finishSeenAt) as? Date }
+    func markFinishSeen(at date: Date = Date()) { defaults.set(date, forKey: Key.finishSeenAt) }
 }

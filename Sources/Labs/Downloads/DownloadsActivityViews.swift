@@ -34,6 +34,7 @@ enum DownloadsIcons {
 
 /// Small determinate ring (indeterminate: a rotating quarter arc).
 struct DownloadsRing: View {
+    @ObservedObject private var energy = SparkVEnergy.shared
     let fraction: Double?
     var lineWidth: CGFloat = 2.5
     var tint: Color = DownloadsPalette.accent
@@ -48,7 +49,8 @@ struct DownloadsRing: View {
                     .rotationEffect(.degrees(-90))
             } else {
                 // Unknown total: a spinning quarter arc, so it doesn't read as 25%.
-                TimelineView(.animation(minimumInterval: 1.0 / 20)) { context in
+                // Reduce Motion: a still quarter arc (paused at rest).
+                TimelineView(.animation(minimumInterval: energy.frameInterval(1.0 / 20), paused: energy.pausesDecoration || SparkVMotion.reduceMotion)) { context in
                     Circle()
                         .trim(from: 0, to: 0.25)
                         .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))

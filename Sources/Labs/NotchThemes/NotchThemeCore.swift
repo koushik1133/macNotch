@@ -73,6 +73,16 @@ struct NotchThemeContext: Equatable {
     var pointer: CGPoint?
     var reduceMotion: Bool
     var reduceTransparency: Bool
+    /// Low Power Mode or a warm Mac (`SparkVEnergy.isConstrained`): animated
+    /// layers draw at half their frame rate.
+    var lowPower: Bool = false
+
+    /// A layer's minimum frame interval (nil: display rate), doubled while
+    /// `lowPower`.
+    func frameInterval(_ base: Double?) -> Double? {
+        guard lowPower else { return base }
+        return (base ?? 1.0 / 60) * 2
+    }
 }
 
 /// What fills the island behind its content.
@@ -105,6 +115,18 @@ final class NotchThemeSettings: ObservableObject {
 
     @Published var background: NotchBackgroundStyle {
         didSet { defaults.set(background.rawValue, forKey: Self.backgroundKey) }
+    }
+
+    /// The theme the notch draws: Plain while Appearance › Decorative Glows
+    /// is off (the chosen theme is kept for when it comes back on).
+    var effectiveTheme: NotchThemeID {
+        LookOptions.current.themesAllowed ? theme : .plain
+    }
+
+    /// The island background in effect: Black while Decorative Glows is off,
+    /// with Reduce Transparency, and with higher contrast.
+    var effectiveBackground: NotchBackgroundStyle {
+        LookOptions.current.albumGlowAllowed ? background : .black
     }
 
     private let defaults: UserDefaults

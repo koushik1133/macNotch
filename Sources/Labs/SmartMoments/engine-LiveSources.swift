@@ -77,6 +77,7 @@ final class SmartMomentsLiveSources: ObservableObject {
     private var fastLoop: Task<Void, Never>?
     private var screenshotQuery: NSMetadataQuery?
     private var screenshotObserver: NSObjectProtocol?
+    private var screenshotQueryFailed = false
     private var screenshotsSince = Date()
     private var seenScreenshots: Set<String> = []
 
@@ -217,6 +218,8 @@ final class SmartMomentsLiveSources: ObservableObject {
         }
 
         updateScreenshotQuery()
+        // A settings change turned on a moment that needs the fast loop.
+        if fastLoop == nil, wantsFastLoop { scheduleFast(after: 0.6) }
     }
 
     // MARK: - Fast loop: screen sharing, presentations
@@ -227,16 +230,29 @@ final class SmartMomentsLiveSources: ObservableObject {
     }
 
     private var isHot: Bool {
-        if isOnCall() || isScreenSharing || isPresenting || hasExternalDisplay { return true }
+        // An external display alone isn't a reason: on a desk setup it kept
+        // the window-list read on main every 3 s all day. Calls, a share or
+        // presentation in effect, or a slideshow app running still are; the
+        // 15 s idle pace still catches a presentation on the second screen.
+        if isOnCall() || isScreenSharing || isPresenting { return true }
         let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
         return !running.isDisjoint(with: MomentPresentationHeuristics.slideshowApps.keys)
+    }
+
+    /// The fast loop is only scheduled while a moment needs it (sharing or
+    /// presentation detection, or one still in effect): idle, nothing wakes.
+    private var wantsFastLoop: Bool {
+        guard let engine else { return false }
+        return pollsSharing || engine.wants(.presentation) || presentDebouncer.isOn
     }
 
     private func scheduleFast(after delay: TimeInterval) {
         guard isRunning else { return }
         fastLoop?.cancel()
+        fastLoop = nil
+        guard wantsFastLoop else { return }
         fastLoop = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
+            try? await Task.sleep(for: .seconds(delay), tolerance: .seconds(max(0.2, delay * 0.1)))
             guard !Task.isCancelled, let self, self.isRunning else { return }
             self.sampleFast()
             self.scheduleFast(after: self.isHot ? Self.hotInterval : Self.idleInterval)
@@ -303,7 +319,8 @@ final class SmartMomentsLiveSources: ObservableObject {
 
     private func updateScreenshotQuery() {
         let wanted = isRunning && (engine?.wants(.screenshotTaken) ?? false)
-        if wanted, screenshotQuery == nil {
+        if !wanted { screenshotQueryFailed = false }
+        if wanted, screenshotQuery == nil, !screenshotQueryFailed {
             startScreenshotQuery()
         } else if !wanted, screenshotQuery != nil {
             stopScreenshotQuery()
@@ -328,6 +345,11 @@ final class SmartMomentsLiveSources: ObservableObject {
         if query.start() {
             screenshotQuery = query
         } else {
+            // Don't leak the observer, and don't retry (and log) every slow
+            // sample: try again only after the moment is turned off and on.
+            if let observer = screenshotObserver { NotificationCenter.default.removeObserver(observer) }
+            screenshotObserver = nil
+            screenshotQueryFailed = true
             AppLog.log("SmartMoments: screenshot query did not start")
         }
     }

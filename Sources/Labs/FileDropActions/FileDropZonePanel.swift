@@ -40,6 +40,7 @@ final class FileDropZonePanel: NSPanel {
         orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.16
+            context.timingFunction = .sparkVEaseOut
             animator().alphaValue = 1
         }
     }
@@ -51,7 +52,8 @@ final class FileDropZonePanel: NSPanel {
             return
         }
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
+            context.duration = 0.16
+            context.timingFunction = .sparkVEaseOut
             animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
@@ -70,14 +72,16 @@ private final class FileDropZoneHostingView<Content: View>: NSHostingView<Conten
 // MARK: - Shelf view
 
 /// The drop target that appears under the collapsed notch while a file
-/// drag nears it: Dropover-style instant-action buckets. "Actions" keeps the
-/// files and opens the strip; the others run right away.
+/// drag nears it (or at the pointer after a shake): Dropover-style
+/// instant-action buckets. "Actions" keeps the files and opens the strip;
+/// "Tray" keeps them on the shelf; the others run right away.
 struct FileDropTargetView: View {
     @ObservedObject var controller: FileDropController
 
     var body: some View {
         HStack(spacing: 6) {
             FileDropBucket(instant: .actions, controller: controller, wide: true)
+            FileDropBucket(instant: .tray, controller: controller)
             FileDropBucket(instant: .compress, controller: controller)
             FileDropBucket(instant: .space, controller: controller)
             FileDropBucket(instant: .airDrop, controller: controller)
@@ -143,19 +147,20 @@ private struct FileDropBucket: View {
                 .strokeBorder(active ? (SparkVTheme.isApple ? instant.tint.opacity(0.85) : SparkVTheme.red) : SparkVTheme.stroke,
                               style: StrokeStyle(lineWidth: active ? 1.5 : 1, dash: active && !SparkVTheme.isApple ? [4, 3] : []))
         )
-        .scaleEffect(active ? 1.04 : 1)
-        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: active)
+        .scaleEffect(active && !SparkVMotion.reduceMotion ? 1.04 : 1)
+        .animation(SparkVMotion.snappy, value: active)
         .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         .onDrop(of: FileDropController.acceptedTypes, isTargeted: $targeted.isOn) { providers in
             controller.hideZone(after: .milliseconds(120))
             controller.noteShelfDrop(instant)
+            SparkVHaptics.play(.drop)
             return controller.accept(providers, then: instant)
         }
         .onReceive(targeted.$isOn.removeDuplicates()) { on in
-            if on { NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now) }
+            if on { SparkVHaptics.play(.select) }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(instant == .actions ? "Drop for actions" : instant.title)
+        .accessibilityLabel(instant == .actions ? "Drop for actions" : (instant == .tray ? "Drop to keep on the Tray" : instant.title))
     }
 
     /// Apple: every bucket in its own color, white glyph (like the share
@@ -248,12 +253,13 @@ struct FileDropTile: View {
                     .strokeBorder(active ? SparkVTheme.accent : SparkVTheme.stroke,
                                   style: StrokeStyle(lineWidth: active ? 1.5 : 1, dash: active && !SparkVTheme.isApple ? [4, 3] : []))
             )
-            .scaleEffect(active ? 1.05 : 1)
-            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: active)
+            .scaleEffect(active && !SparkVMotion.reduceMotion ? 1.05 : 1)
+            .animation(SparkVMotion.snappy, value: active)
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hovered.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hovered.isOn)
         .onDrop(of: FileDropController.acceptedTypes, isTargeted: $targeted.isOn) { providers in
             controller.accept(providers, then: .actions)
         }
@@ -267,6 +273,7 @@ extension FileDropInstant {
     var tint: Color {
         switch self {
         case .actions: SparkVTheme.accent
+        case .tray: Color(red: 0.0, green: 0.74, blue: 0.62)
         case .compress: Color.orange
         case .space: Color(red: 0.55, green: 0.45, blue: 1.0)
         case .airDrop: Color(red: 0.0, green: 0.60, blue: 1.0)

@@ -426,7 +426,7 @@ final class SpaceStore: ObservableObject {
         profileCache = nil
 
         if let spaceID = item.spaceID {
-            AppLog.log("Spaces: filed “\(displayTitle.prefix(60))” → \(space(spaceID)?.name ?? "?") (\(decision.map { String(format: "%.2f", $0.confidence) } ?? "-"))")
+            AppLog.log("Spaces: filed an item (\(displayTitle.count) chars) → \(space(spaceID)?.name ?? "?") (\(decision.map { String(format: "%.2f", $0.confidence) } ?? "-"))")
             scheduleMemoryRefresh(spaceID)
         } else if let decision, worthSuggesting(decision) {
             addFileSuggestion(itemID: id, decision: decision)

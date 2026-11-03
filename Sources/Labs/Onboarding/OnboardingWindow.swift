@@ -1,8 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// The onboarding window: a fixed-size dark window, centered, with a
-/// transparent title bar (like CleanShot X and Raycast's setup windows).
+/// The onboarding window: a fixed-size dark window with a transparent title
+/// bar (like CleanShot X and Raycast's setup windows). It opens on the
+/// island's screen (wherever Island Placement put it, `LookIsland`),
+/// centered below the space the open drawer takes, so Try It can open the
+/// drawer without the window covering it.
 @MainActor
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
     static let shared = OnboardingWindowController()
@@ -17,7 +20,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         // the window is open so it can take focus and show in ⌘-Tab.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        if !window.isVisible { window.center() }
+        if !window.isVisible { place(window) }
         window.makeKeyAndOrderFront(nil)
     }
 
@@ -40,9 +43,31 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         LabsBWindowAppearance.follow(window)
         window.isReleasedWhenClosed = false
         window.setContentSize(OnboardingStyle.windowSize)
-        window.center()
+        place(window)
         window.delegate = self
         return window
+    }
+
+    /// Room left above the window for the open drawer (the tallest common
+    /// drawer is about 160 pt; text size can make it taller).
+    static let drawerClearance: CGFloat = 190
+
+    /// On the island's screen, centered, its top `drawerClearance` below the
+    /// menu bar; on a short screen it slides up as little as possible.
+    private func place(_ window: NSWindow) {
+        guard let screen = LookIsland.screen else {
+            window.center()
+            return
+        }
+        window.setFrame(Self.frame(for: window.frame.size, in: screen.visibleFrame), display: false)
+    }
+
+    /// The window frame for `size` in `visible` (a screen's visible frame).
+    static func frame(for size: CGSize, in visible: CGRect) -> CGRect {
+        let x = visible.midX - size.width / 2
+        let preferredTop = visible.maxY - drawerClearance
+        let top = max(min(preferredTop, visible.maxY), visible.minY + size.height)
+        return CGRect(x: x.rounded(), y: (top - size.height).rounded(), width: size.width, height: size.height)
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -57,7 +82,32 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 /// Gear-menu entries; drop `OnboardingMenuItems()` into `SettingsMenu`.
 struct OnboardingMenuItems: View {
     var body: some View {
+        Button("Welcome Tour…") { OnboardingController.shared.show(step: .welcome) }
         Button("Permissions & Setup…") { OnboardingController.shared.show(step: .permissions) }
         Button("Terms & Privacy…") { OnboardingController.shared.show(step: .terms) }
+    }
+}
+
+// MARK: - Settings section
+
+/// Settings › General: the way back into the tour and the terms. Launch at
+/// Login and the menu bar icon are AppShell's own sections in the same pane
+/// (`AppShellLoginItem`, `StatusItemController`), which the tour's Finish
+/// step also uses; Permissions & Setup is in Settings › System.
+struct OnboardingSettingsSection: View {
+    var body: some View {
+        Section {
+            LabeledContent {
+                HStack(spacing: 8) {
+                    Button("Terms & Privacy…") { OnboardingController.shared.show(step: .terms) }
+                    Button("Welcome Tour…") { OnboardingController.shared.show(step: .welcome) }
+                }
+            } label: {
+                Text("Welcome Tour")
+                Text("Try the notch again, review the terms, pick a look and text size.")
+            }
+        } header: {
+            Text("Tour")
+        }
     }
 }

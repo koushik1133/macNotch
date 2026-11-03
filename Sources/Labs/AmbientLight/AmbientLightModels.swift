@@ -88,6 +88,14 @@ enum AmbientBrandPalette: String, CaseIterable, Codable, Identifiable, Sendable 
     case sunset
     /// Green-teal aurora.
     case aurora
+    /// Deep cabin blue into indigo (premium EV night look).
+    case midnight
+    /// Molten orange into red.
+    case ember
+    /// Soft white with a hint of warmth.
+    case pure
+    /// One color the user picks; the light shades it for movement.
+    case custom
 
     var id: String { rawValue }
 
@@ -97,6 +105,10 @@ enum AmbientBrandPalette: String, CaseIterable, Codable, Identifiable, Sendable 
         case .electric: "Electric"
         case .sunset: "Sunset"
         case .aurora: "Aurora"
+        case .midnight: "Midnight"
+        case .ember: "Ember"
+        case .pure: "Pure"
+        case .custom: "Custom"
         }
     }
 
@@ -107,7 +119,20 @@ enum AmbientBrandPalette: String, CaseIterable, Codable, Identifiable, Sendable 
         case .electric: [(0.10, 0.85, 1.0), (0.18, 0.40, 1.0), (0.62, 0.25, 1.0), (0.10, 1.0, 0.80)]
         case .sunset: [(1.0, 0.62, 0.10), (1.0, 0.35, 0.30), (1.0, 0.25, 0.55), (1.0, 0.80, 0.35)]
         case .aurora: [(0.15, 1.0, 0.55), (0.10, 0.85, 0.85), (0.35, 0.55, 1.0), (0.70, 1.0, 0.30)]
+        case .midnight: [(0.10, 0.30, 1.0), (0.25, 0.20, 0.95), (0.05, 0.55, 1.0), (0.45, 0.25, 1.0)]
+        case .ember: [(1.0, 0.40, 0.05), (1.0, 0.15, 0.10), (1.0, 0.60, 0.15), (0.95, 0.25, 0.30)]
+        case .pure: [(1.0, 0.96, 0.90), (0.92, 0.95, 1.0), (1.0, 0.90, 0.80), (0.95, 0.97, 1.0)]
+        case .custom: Self.shades(of: AmbientLightSettings.storedCustomRGB())
         }
+    }
+
+    /// The picked color plus three nearby shades, so the light still moves.
+    static func shades(of c: (Double, Double, Double)) -> [(Double, Double, Double)] {
+        func mix(_ t: Double, _ to: (Double, Double, Double)) -> (Double, Double, Double) {
+            (c.0 + (to.0 - c.0) * t, c.1 + (to.1 - c.1) * t, c.2 + (to.2 - c.2) * t)
+        }
+        let rotated = (c.1, c.2, c.0)
+        return [c, mix(0.35, (1, 1, 1)), mix(0.18, rotated), mix(0.25, (c.0 * 0.6, c.1 * 0.6, c.2 * 0.6))]
     }
 }
 
@@ -125,6 +150,9 @@ final class AmbientLightSettings: ObservableObject {
         static let syncAlbum = "AmbientLight.syncToAlbumColors"
         static let palette = "AmbientLight.palette"
         static let edgeWidth = "AmbientLight.edgeWidth"
+        static let overFullScreen = "AmbientLight.overFullScreen"
+        static let customColor = "AmbientLight.customColor"
+        static let beatHaptics = "AmbientLight.beatHaptics"
         static let startedCaptureOnce = "AmbientLight.startedCaptureOnce"
     }
 
@@ -140,6 +168,20 @@ final class AmbientLightSettings: ObservableObject {
     @Published var palette: AmbientBrandPalette { didSet { defaults.set(palette.rawValue, forKey: Keys.palette) } }
     /// Screen-edge strip thickness in points (6...40).
     @Published var edgeWidth: Double { didSet { defaults.set(edgeWidth, forKey: Keys.edgeWidth) } }
+    /// The edges stay lit over full-screen apps and videos (screen sharing
+    /// still hides them).
+    /// The Custom palette's color, sRGB "r,g,b" in 0...1.
+    @Published var customColor: [Double] { didSet { defaults.set(customColor, forKey: Keys.customColor) } }
+
+    nonisolated static func storedCustomRGB() -> (Double, Double, Double) {
+        let v = UserDefaults.standard.array(forKey: Keys.customColor) as? [Double] ?? []
+        return v.count == 3 ? (v[0], v[1], v[2]) : (0.20, 0.55, 1.0)
+    }
+
+    /// Optional (off by default): trackpad taps on the beat, like Music
+    /// Haptics. Felt only with a finger on a Force Touch trackpad.
+    @Published var beatHaptics: Bool { didSet { defaults.set(beatHaptics, forKey: Keys.beatHaptics) } }
+    @Published var overFullScreen: Bool { didSet { defaults.set(overFullScreen, forKey: Keys.overFullScreen) } }
 
     /// The tap was started once after the user turned the feature on, so the
     /// system prompt has been shown and later automatic starts can't prompt.
@@ -156,11 +198,15 @@ final class AmbientLightSettings: ObservableObject {
         mode = defaults.string(forKey: Keys.mode).flatMap(AmbientLightMode.init(rawValue:)) ?? .ambient
         let storedIntensity = defaults.object(forKey: Keys.intensity) as? Double
         intensity = min(1, max(0.2, storedIntensity ?? 0.75))
-        scope = defaults.string(forKey: Keys.scope).flatMap(AmbientLightScope.init(rawValue:)) ?? .notchOnly
+        scope = defaults.string(forKey: Keys.scope).flatMap(AmbientLightScope.init(rawValue:)) ?? .notchAndEdges
         syncToAlbumColors = (defaults.object(forKey: Keys.syncAlbum) as? Bool) ?? true
         palette = defaults.string(forKey: Keys.palette).flatMap(AmbientBrandPalette.init(rawValue:)) ?? .sparkV
         let storedWidth = defaults.object(forKey: Keys.edgeWidth) as? Double
         edgeWidth = min(40, max(6, storedWidth ?? 16))
+        overFullScreen = (defaults.object(forKey: Keys.overFullScreen) as? Bool) ?? true
+        beatHaptics = defaults.bool(forKey: Keys.beatHaptics)
+        let storedCustom = defaults.array(forKey: Keys.customColor) as? [Double] ?? []
+        customColor = storedCustom.count == 3 ? storedCustom : [0.20, 0.55, 1.0]
     }
 
     /// Lit and drawing something.
@@ -239,6 +285,10 @@ enum AmbientLightStatus: Equatable, Sendable {
     case requestingPermission
     /// System Audio Recording is off for SparkV.
     case needsPermission
+    /// Music plays; system-audio capture is starting.
+    case starting
+    /// A start failed or timed out; another try is scheduled.
+    case retrying(String)
     /// Capturing and lit.
     case running(source: String)
     /// Capture failed (with a short reason).
@@ -249,7 +299,9 @@ enum AmbientLightStatus: Equatable, Sendable {
         case .off: "Off"
         case .waitingForMusic: "Waiting for music"
         case .requestingPermission: "Asking for System Audio Recording…"
-        case .needsPermission: "Allow System Audio Recording for SparkV in System Settings › Privacy & Security."
+        case .starting: "Starting…"
+        case .retrying(let reason): "Couldn't start system audio capture (\(reason)) — retrying"
+        case .needsPermission: "Needs System Audio Recording permission. Allow SparkV in System Settings › Privacy & Security."
         case .running(let source): "Listening (\(source))"
         case .failed(let reason): "Couldn't listen: \(reason)"
         }

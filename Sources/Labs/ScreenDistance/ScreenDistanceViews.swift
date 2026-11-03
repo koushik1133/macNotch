@@ -288,6 +288,7 @@ struct ScreenDistanceSettingsSection: View {
                 HStack {
                     Text("Warn closer than").font(.system(size: 12))
                     Slider(value: $controller.thresholdCM, in: ScreenDistanceSettings.thresholdRange, step: 5)
+                        .accessibilityLabel("Warn closer than")
                     Text("\(Int(controller.thresholdCM)) cm").font(.system(size: 12).monospacedDigit()).frame(width: 46, alignment: .trailing)
                 }
                 HStack {
@@ -297,6 +298,7 @@ struct ScreenDistanceSettingsSection: View {
                     }
                     .labelsHidden()
                     .frame(width: 130)
+                    .accessibilityLabel("Check every")
                     Spacer()
                 }
                 Toggle("Full-screen alert (otherwise only the band under the notch)", isOn: $controller.showsFullScreenAlert)
@@ -357,7 +359,7 @@ struct ScreenDistanceChipButton: View {
             .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 
@@ -374,7 +376,8 @@ struct ScreenDistanceSwitch: View {
                 Circle().fill(Color.white).padding(2)
             }
             .frame(width: 30, height: 18)
-            .animation(.easeOut(duration: 0.15), value: isOn)
+            // Knob slide: the interruptible snappy spring for toggles.
+            .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: isOn)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

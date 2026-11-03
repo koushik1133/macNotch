@@ -235,8 +235,11 @@ struct FanPresetButtonStyle: ButtonStyle {
                     .strokeBorder(selected ? Color.clear : SparkVTheme.stroke)
             )
             .contentShape(Rectangle())
+            .animation(SparkVMotion.hover(), value: selected)
+            .modifier(FanPressFeedback(isPressed: configuration.isPressed))
     }
 }
+
 
 // MARK: - One fan
 
@@ -363,6 +366,7 @@ struct FanCard: View {
                 if !editing { controller.setMode(.constant(rpm: draft.rpm), for: fan.index) }
             }
             .tint(SparkVTheme.accent)
+            .accessibilityLabel("Speed")
             HStack {
                 Text("\(Int(limits.lowerBound)) (fan minimum)")
                 Spacer()
@@ -415,6 +419,7 @@ struct FanCard: View {
                 if !editing { commitCurve() }
             }
             .tint(SparkVTheme.accent)
+            .accessibilityLabel(title)
             Text(controller.temperatureText(value.wrappedValue))
                 .font(SparkVTheme.headline(11.5).monospacedDigit())
                 .frame(width: 44, alignment: .trailing)

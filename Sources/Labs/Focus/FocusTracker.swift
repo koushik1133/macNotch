@@ -172,7 +172,7 @@ final class FocusActivityTracker {
         poll?.cancel()
         poll = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: Self.titlePollInterval)
+                try? await Task.sleep(for: SparkVEnergy.shared.duration(Self.titlePollInterval))
                 guard !Task.isCancelled else { return }
                 self?.refreshTitle()
             }

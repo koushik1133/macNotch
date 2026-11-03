@@ -271,7 +271,7 @@ struct MagneticRippleNotchLayer: View {
 
     var body: some View {
         MotionStage(island: MotionIsland(context)) { frame in
-            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: paused)) { timeline in
+            TimelineView(.animation(minimumInterval: context.frameInterval(1.0 / 60), paused: paused)) { timeline in
                 let now = debugTime ?? timeline.date.timeIntervalSinceReferenceDate
                 ZStack {
                     if !context.reduceTransparency {
@@ -508,7 +508,7 @@ struct AuroraNotchLayer: View {
 
     var body: some View {
         MotionStage(island: MotionIsland(context)) { frame in
-            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: paused)) { timeline in
+            TimelineView(.animation(minimumInterval: context.frameInterval(1.0 / 30), paused: paused)) { timeline in
                 let now = context.reduceMotion ? 0 : (debugTime ?? timeline.date.timeIntervalSinceReferenceDate)
                 ZStack {
                     if !context.reduceTransparency {
@@ -648,7 +648,7 @@ struct ParticleSparkNotchLayer: View {
 
     var body: some View {
         MotionStage(island: MotionIsland(context)) { frame in
-            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: paused)) { timeline in
+            TimelineView(.animation(minimumInterval: context.frameInterval(1.0 / 60), paused: paused)) { timeline in
                 let now = debugTime ?? timeline.date.timeIntervalSinceReferenceDate
                 Canvas { ctx, _ in
                     let edge = frame.edgePath

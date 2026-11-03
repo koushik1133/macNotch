@@ -1,0 +1,14 @@
+/* SparkV — Deutsch. Texte der macOS-Berechtigungsabfragen (Info.plist). */
+
+"NSAppleEventsUsageDescription" = "SparkV liest den aktuellen Titel aus Musik und Spotify und sendet ihnen Befehle zum Abspielen, Pausieren und Überspringen. Wenn du „In Spaces sichern“ wählst, liest es die geöffnete Seite aus Safari, Chrome, Arc, Edge oder Brave oder die ausgewählte Nachricht in Mail. Der Job-Agent liest Adresse und Titel der Jobseite, die du mit fn + Control erfasst. Während Fokus liest es die Adresse des vorderen Browser-Tabs, um Websites zu erkennen, die du blockieren wolltest. Während eines Modus öffnet SparkV deine gewählte Musik in einem eigenen Safari-Fenster (oder spielt eine Playlist in Musik), schließt nur dieses Fenster, wenn der Modus endet, und wechselt über System Events zwischen hellem und dunklem Erscheinungsbild.";
+"NSBluetoothAlwaysUsageDescription" = "SparkV zeigt den Akkustand deiner AirPods und Kopfhörer, wenn sie sich verbinden.";
+"NSCalendarsFullAccessUsageDescription" = "SparkV zeigt dein nächstes Meeting unter der Notch mit einer Beitreten-Taste für einen Klick.";
+"NSRemindersFullAccessUsageDescription" = "SparkV fügt die Meeting-Aufgaben, die du abhakst, zu Erinnerungen hinzu. Nichts wird hinzugefügt, solange du nicht auf „Hinzufügen“ klickst.";
+"NSAudioCaptureUsageDescription" = "SparkV hört, was dein Mac abspielt, solange Ambientlicht an ist, damit die Notch mit deiner Musik leuchtet. Der Ton wird auf diesem Mac ausgewertet und nie aufgezeichnet.";
+"NSCameraUsageDescription" = "SparkV nutzt deine FaceTime-HD-Kamera für die private Spiegelvorschau, um dich zu warnen, wenn du zu nah am Bildschirm sitzt (Bildschirmabstand, wenn du ihn einschaltest), und – wenn du es einrichtest – um dein Gesicht zu erkennen und deinen Mac zu entsperren. Video wird auf dem Gerät verarbeitet und verlässt nie deinen Mac.";
+"NSDesktopFolderUsageDescription" = "SparkV sichert deine Bildschirmaufnahmen auf dem Schreibtisch und bewegt einen Download dorthin, wenn du ihn dorthin sortierst.";
+"NSDocumentsFolderUsageDescription" = "SparkV bewegt einen Download in deinen Dokumente-Ordner, wenn du ihn dorthin sortierst.";
+"NSDownloadsFolderUsageDescription" = "SparkV zeigt den Downloadfortschritt unter der Notch und hilft dir, fertige Downloads zu sortieren. Dateien werden nur bewegt, wenn du einen Ordner wählst oder eine Regel zum automatischen Sortieren einschaltest.";
+"NSFileProviderDomainUsageDescription" = "SparkV hält einen SparkV-Ordner in iCloud Drive aktuell, damit du deine Meetings und Notizen auf dem iPhone lesen kannst.";
+"NSMicrophoneUsageDescription" = "SparkV hört zu, während du diktierst, Clicky fragst, ein Meeting aufnimmst oder eine Bildschirmaufnahme kommentierst, und macht aus deiner Sprache auf diesem Mac Text.";
+"NSSpeechRecognitionUsageDescription" = "SparkV transkribiert Diktate, Clicky-Fragen und Meetings mit Spracherkennung auf dem Gerät. Der Ton verlässt nie deinen Mac.";

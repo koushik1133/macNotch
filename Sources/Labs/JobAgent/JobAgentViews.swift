@@ -269,7 +269,7 @@ struct JobAgentDrawerContent: View {
         default:
             if let browser = controller.browserNeedingAccess {
                 Button("Allow reading the URL from \(browser.name)") { controller.requestBrowserAccess() }
-                    .buttonStyle(.plain).font(.system(size: 10, weight: .semibold)).foregroundStyle(SparkVTheme.link)
+                    .buttonStyle(SparkVPressStyle()).font(.system(size: 10, weight: .semibold)).foregroundStyle(SparkVTheme.link)
                     .lineLimit(1)
             }
         }
@@ -313,7 +313,7 @@ struct JobAgentDrawerContent: View {
                 .overlay(Capsule().strokeBorder(SparkVTheme.stroke))
                 .foregroundStyle(SparkVTheme.text)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 

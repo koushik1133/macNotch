@@ -345,8 +345,12 @@ final class CloudSyncController: ObservableObject {
         pollTask = Task { [weak self] in
             var lastFull = Date()
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(Self.pollInterval * 1_000_000_000))
+                // Low Power Mode or a warm Mac: a third as often.
+                let wait = SparkVEnergy.shared.interval(Self.pollInterval)
+                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
                 guard !Task.isCancelled, let self else { return }
+                // Displays asleep: nobody is waiting; the wake catches up.
+                if SparkVEnergy.shared.screensAsleep { continue }
                 if Date().timeIntervalSince(lastFull) >= Self.fullCheckInterval {
                     lastFull = Date()
                     self.schedule(full: true, after: 0)
@@ -545,27 +549,27 @@ final class CloudSyncController: ObservableObject {
         var imported = 0
         for arrival in arrivals {
             guard !arrival.isDuplicate else {
-                log("“\(arrival.name)” was already imported; moved to Inbox/Imported")
+                log("“\(arrival.name)” was already imported; moved to Inbox/Imported", appLog: "a duplicate was moved to Inbox/Imported")
                 continue
             }
             switch arrival.kind {
             case .text:
                 guard let text = arrival.text else { continue }
                 SpaceStore.shared.addManual(title: arrival.title, text: text, url: nil, spaceID: nil, kind: .note)
-                log("Imported “\(arrival.name)” into the Spaces Inbox")
+                log("Imported “\(arrival.name)” into the Spaces Inbox", appLog: "imported a note into the Spaces Inbox")
             case .link:
                 guard let link = arrival.link else { continue }
                 SpaceStore.shared.addManual(title: arrival.title, text: link.absoluteString, url: link, spaceID: nil, kind: .link)
-                log("Imported link “\(arrival.title)” into the Spaces Inbox")
+                log("Imported link “\(arrival.title)” into the Spaces Inbox", appLog: "imported a link into the Spaces Inbox")
             case .image, .file:
                 guard let copy = arrival.localCopy else { continue }
                 if let tray {
                     // The Tray hands new items to Spaces itself when that source is on.
                     tray.addFile(copy)
-                    log("Put “\(arrival.name)” on the Tray")
+                    log("Put “\(arrival.name)” on the Tray", appLog: "put a \(arrival.kind == .image ? "picture" : "file") on the Tray")
                 } else {
                     SpaceIngestCenter.file(copy, userInitiated: true)
-                    log("Imported “\(arrival.name)” into Spaces")
+                    log("Imported “\(arrival.name)” into Spaces", appLog: "imported a \(arrival.kind == .image ? "picture" : "file") into Spaces")
                 }
             }
             imported += 1
@@ -598,10 +602,12 @@ final class CloudSyncController: ObservableObject {
 
     // MARK: - Log and persistence
 
-    private func log(_ text: String) {
+    /// `appLog` stands in for `text` in SparkV.log when the line names what
+    /// arrived from the phone (titles, file names); the in-app list keeps it.
+    private func log(_ text: String, appLog: String? = nil) {
         activity.insert(ActivityLine(date: Date(), text: text), at: 0)
         if activity.count > 40 { activity.removeLast(activity.count - 40) }
-        AppLog.log("CloudSync: \(text)")
+        AppLog.log("CloudSync: \(appLog ?? text)")
     }
 
     private func summary(_ r: CloudSyncReport) -> String {

@@ -335,9 +335,19 @@ struct ModeEditorView: View {
 
 // MARK: - Sidebar
 
+/// Motion for the Modes editor (tokens from SparkVMotion).
+private enum ModeMotion {
+    /// Disclosure rows and inline editors opening: strong ease-out, 180 ms;
+    /// Reduce Motion keeps a short fade.
+    static var disclose: Animation { SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)) }
+    /// The sidebar selection pill sliding to another mode: strong ease-in-out.
+    static var selection: Animation { SparkVMotion.respecting(SparkVMotion.easeInOut()) }
+}
+
 private struct ModeSidebar: View {
     @ObservedObject var model: ModeEditorModel
     @ObservedObject var engine: ModeEngine
+    @Namespace private var selectionPill
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -350,12 +360,14 @@ private struct ModeSidebar: View {
                     ForEach(engine.modes) { mode in
                         ModeSidebarRow(mode: mode,
                                        isSelected: model.selectedID == mode.id,
-                                       isActive: engine.activeModeID == mode.id) {
+                                       isActive: engine.activeModeID == mode.id,
+                                       selectionPill: selectionPill) {
                             model.select(mode.id)
                         }
                     }
                 }
                 .padding(.horizontal, 10)
+                .animation(ModeMotion.selection, value: model.selectedID)
             }
             Spacer(minLength: 0)
             Rectangle().fill(SparkVTheme.stroke).frame(height: 1)
@@ -384,6 +396,7 @@ private struct ModeSidebar: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .help("More")
+                .accessibilityLabel("More")
             }
             .padding(.horizontal, 8)
             .frame(height: 36)
@@ -411,7 +424,9 @@ private struct ModeSidebarRow: View {
     let mode: SparkMode
     let isSelected: Bool
     let isActive: Bool
+    let selectionPill: Namespace.ID
     let action: () -> Void
+    @StateObject private var hover = ViewFlag()
 
     var body: some View {
         Button(action: action) {
@@ -434,18 +449,25 @@ private struct ModeSidebarRow: View {
             }
             .padding(.horizontal, 8)
             .frame(height: 34)
-            .background(
-                RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
-                    .fill(isSelected ? SparkVTheme.surfaceHover : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
-                    .strokeBorder(isSelected ? SparkVTheme.stroke : Color.clear)
-            )
+            .sparkVHoverFill(hover.isOn && !isSelected, cornerRadius: SparkVTheme.cornerSmall)
+            .background {
+                // One pill that slides between rows (matched geometry).
+                if isSelected {
+                    RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
+                        .fill(SparkVTheme.surfaceHover)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
+                                .strokeBorder(SparkVTheme.stroke)
+                        )
+                        .matchedGeometryEffect(id: "selection", in: selectionPill)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { hover.isOn = $0 }
     }
+
 }
 
 private struct ModeBarButton: View {
@@ -460,8 +482,9 @@ private struct ModeBarButton: View {
                 .frame(width: 26, height: 24)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -483,7 +506,7 @@ private struct ModeDetail: View {
                 ModeGroup(title: "When it ends") { options }
                 ModeGroup(title: "Icon & Color") {
                     Button {
-                        withAnimation(.easeOut(duration: 0.15)) { model.showsAppearance.toggle() }
+                        withAnimation(ModeMotion.disclose) { model.showsAppearance.toggle() }
                     } label: {
                         HStack(spacing: 10) {
                             ModeBadge(symbol: mode.symbol, colorHex: mode.colorHex, size: 26)
@@ -545,11 +568,11 @@ private struct ModeDetail: View {
         let isActive = engine.activeModeID == mode.id
         return HStack(spacing: 16) {
             Button {
-                withAnimation(.easeOut(duration: 0.15)) { model.showsAppearance = true }
+                withAnimation(ModeMotion.disclose) { model.showsAppearance = true }
             } label: {
                 ModeBadge(symbol: mode.symbol, colorHex: mode.colorHex, size: 58)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Change Icon and Color")
             VStack(alignment: .leading, spacing: 4) {
                 TextField("Mode Name", text: $mode.name)
@@ -582,7 +605,7 @@ private struct ModeDetail: View {
                     )
                     .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .fixedSize()
             .disabled(engine.isBusy)
             .help(isActive ? (mode.restoreOnExit ? "Turn off and put your setup back" : "Turn off") : "Turn on now")
@@ -618,7 +641,7 @@ private struct ModeDetail: View {
                             .overlay(Circle().strokeBorder(Color.white, lineWidth: mode.colorHex.caseInsensitiveCompare(hex) == .orderedSame ? 2 : 0))
                             .padding(2)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help(hex)
                 }
                 ColorPicker("Custom Color", selection: ModeColors.binding($mode.colorHex), supportsOpacity: false)
@@ -644,7 +667,8 @@ private struct ModeDetail: View {
                             )
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
+                    .accessibilityLabel(symbol.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
                 }
             }
         }
@@ -662,7 +686,7 @@ private struct ModeDetail: View {
                     isExpanded: model.expandedAction == index,
                     isFirst: index == 0,
                     isLast: index == mode.actions.count - 1,
-                    onToggle: { withAnimation(.easeOut(duration: 0.15)) { model.toggleExpanded(index) } },
+                    onToggle: { withAnimation(ModeMotion.disclose) { model.toggleExpanded(index) } },
                     onMove: { model.moveAction(at: index, by: $0, in: mode.id) },
                     onRemove: { model.removeAction(at: index, from: mode.id) }
                 )
@@ -692,7 +716,7 @@ private struct ModeDetail: View {
                 Section(group.0) {
                     ForEach(group.1) { kind in
                         Button {
-                            withAnimation(.easeOut(duration: 0.15)) { model.addAction(kind, to: mode.id) }
+                            withAnimation(ModeMotion.disclose) { model.addAction(kind, to: mode.id) }
                         } label: {
                             Label(kind.title, systemImage: kind.symbol)
                         }
@@ -754,6 +778,7 @@ private struct ModeDetail: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+                .accessibilityLabel("Turn off automatically")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -820,6 +845,7 @@ private struct ModeToggleRow: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
+                .accessibilityLabel(title)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -885,12 +911,14 @@ private struct ModeActionRow: View {
                     .font(.system(size: 15))
                     .foregroundStyle(SparkVTheme.textTertiary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Remove Action")
+            .accessibilityLabel("Remove Action")
         }
         .padding(.horizontal, 14)
         .frame(height: 48)
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
     }
 
     private func smallButton(_ symbol: String, help: String, disabled: Bool, _ action: @escaping () -> Void) -> some View {
@@ -902,9 +930,10 @@ private struct ModeActionRow: View {
                 .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(disabled ? Color.clear : SparkVTheme.surface))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .disabled(disabled)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -943,6 +972,7 @@ private struct ModeActionEditor: View {
             .labelsHidden()
             .frame(width: 180)
             .modeNote("macOS asks once to let SparkV control System Events.")
+            .accessibilityLabel("Appearance")
         case .pomodoro(let focus, let rest):
             VStack(alignment: .leading, spacing: 8) {
                 Stepper("Focus for \(focus) min", value: Binding(get: { focus }, set: { action = .pomodoro(focusMinutes: $0, breakMinutes: rest) }), in: 5...180, step: 5)
@@ -1000,6 +1030,7 @@ private struct ModePercentSlider: View {
                 Image(systemName: lowSymbol).font(.system(size: 11)).foregroundStyle(.secondary)
                 Slider(value: $value, in: 0...1)
                     .controlSize(.small)
+                    .accessibilityLabel(label)
                 Image(systemName: highSymbol).font(.system(size: 11)).foregroundStyle(.secondary)
                 Text("\(Int((value * 100).rounded()))%")
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
@@ -1028,6 +1059,7 @@ private struct ModeOnOffPicker: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 180)
+            .accessibilityLabel("\(onTitle) or \(offTitle)")
             if let note {
                 Text(note)
                     .font(.system(size: 11))
@@ -1070,6 +1102,7 @@ struct ModeWallpaperSwatch: View {
 @MainActor
 enum ModeThumbnailCache {
     private static var cache: [String: NSImage] = [:]
+    private static var purgeRegistered = false
 
     static func image(_ path: String) -> NSImage? {
         if let hit = cache[path] { return hit }
@@ -1082,6 +1115,12 @@ enum ModeThumbnailCache {
               ] as CFDictionary)
         else { return nil }
         let image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+        // 640 px thumbnails: bounded, and dropped under memory pressure.
+        if !purgeRegistered {
+            purgeRegistered = true
+            SparkVEnergy.shared.onMemoryPressure { cache.removeAll() }
+        }
+        if cache.count >= 24 { cache.removeAll() }
         cache[path] = image
         return image
     }
@@ -1245,7 +1284,7 @@ private struct ModeWallpaperEditor: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(title)
     }
 
@@ -1459,8 +1498,9 @@ private struct ModeAppListEditor: View {
                                     .font(.system(size: 11))
                                     .foregroundStyle(Color.white.opacity(0.45))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SparkVPressStyle())
                             .help("Remove \(ModeAppCatalog.name(id))")
+                            .accessibilityLabel("Remove \(ModeAppCatalog.name(id))")
                         }
                         .padding(.leading, 6)
                         .padding(.trailing, 5)
@@ -1587,8 +1627,9 @@ private struct ModeURLListEditor: View {
                     Button { if urls.indices.contains(index) { urls.remove(at: index) } } label: {
                         Image(systemName: "minus.circle").foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("Remove")
+                    .accessibilityLabel("Remove")
                 }
             }
             Button {

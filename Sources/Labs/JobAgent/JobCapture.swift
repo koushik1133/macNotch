@@ -212,20 +212,26 @@ final class JobBrowserBridge: @unchecked Sendable {
         case errAEEventNotPermitted: return .denied(name)
         default: return .unavailable
         }
+        // A busy or hung browser would otherwise hold "Reading the page…"
+        // (and block fn+Control) for AppleScript's 2-minute default.
         let source: String
         if Self.safariLike.contains(bundleID) {
             source = """
-            tell application id "\(bundleID)"
-                if (count of documents) is 0 then return ""
-                return (URL of front document) & linefeed & (name of front document)
-            end tell
+            with timeout of 3 seconds
+                tell application id "\(bundleID)"
+                    if (count of documents) is 0 then return ""
+                    return (URL of front document) & linefeed & (name of front document)
+                end tell
+            end timeout
             """
         } else {
             source = """
-            tell application id "\(bundleID)"
-                if (count of windows) is 0 then return ""
-                return (URL of active tab of front window) & linefeed & (title of active tab of front window)
-            end tell
+            with timeout of 3 seconds
+                tell application id "\(bundleID)"
+                    if (count of windows) is 0 then return ""
+                    return (URL of active tab of front window) & linefeed & (title of active tab of front window)
+                end tell
+            end timeout
             """
         }
         guard let script = NSAppleScript(source: source) else { return .unavailable }

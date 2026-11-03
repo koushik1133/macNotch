@@ -18,15 +18,22 @@ final class AmbientSpectralAnalyzer {
         var trebleRange: ClosedRange<Double> = 2_500...12_000
         /// Frequencies that count as "kick / bass" for beat detection.
         var beatLowRange: ClosedRange<Double> = 30...220
-        /// Envelope time constants in seconds (attack, release).
-        var bassEnvelope: (Double, Double) = (0.008, 0.16)
-        var midEnvelope: (Double, Double) = (0.015, 0.22)
-        var trebleEnvelope: (Double, Double) = (0.004, 0.10)
-        var levelEnvelope: (Double, Double) = (0.02, 0.35)
+        /// Envelope time constants in seconds (attack, release), one-pole
+        /// exponential. A kick reaches ~95 % in three attack constants
+        /// (~60 ms for bass) and fades over ~3 release constants, so hits
+        /// read as distinct swells instead of 10 ms spikes, without flicker.
+        var bassEnvelope: (Double, Double) = (0.022, 0.26)
+        var midEnvelope: (Double, Double) = (0.03, 0.30)
+        var trebleEnvelope: (Double, Double) = (0.015, 0.20)
+        var levelEnvelope: (Double, Double) = (0.04, 0.40)
         /// Dynamic range mapped to 0...1 under the running peak, in dB.
         var dynamicRange: Float = 34
-        /// How fast the automatic gain's peak falls, dB per second.
-        var peakDecayPerSecond: Float = 2.5
+        /// How fast the automatic gain's peak falls, dB per second, after it
+        /// has been held for `peakHold` seconds. A quiet song (or a lower
+        /// app volume) is brought back to full range within a few seconds;
+        /// the hold keeps the gain from pumping up between bars.
+        var peakDecayPerSecond: Float = 4
+        var peakHold: Double = 1.5
         /// Adaptive threshold: mean + k * standard deviation of the recent
         /// onset values, over `thresholdWindow` seconds.
         var thresholdK: Float = 1.25
@@ -104,6 +111,12 @@ final class AmbientSpectralAnalyzer {
     // Silence.
     private var quietTime: Double = 0
     private var zeroTime: Double = 0
+    private var peakAge: (bass: Double, mid: Double, treble: Double, level: Double) = (0, 0, 0, 0)
+    /// Seconds the input has stayed above the silence floor (dips shorter
+    /// than `soundGapBridge` don't reset it). The pump uses it to tell music
+    /// from a single click or notification ding.
+    private(set) var soundTime: Double = 0
+    private let soundGapBridge: Double = 0.25
 
     init(sampleRate: Double, fftSize: Int = 2048, hopSize: Int = 512, tuning: Tuning = Tuning()) {
         precondition(fftSize.nonzeroBitCount == 1 && hopSize <= fftSize)
@@ -165,7 +178,8 @@ final class AmbientSpectralAnalyzer {
         previousOnset = 0; previousPreviousOnset = 0; previousThreshold = 0
         lowFluxScale = 1e-3; fullFluxScale = 1e-3
         bpm = 0; tempoConfidence = 0; pendingBPM = 0
-        quietTime = 0; zeroTime = 0
+        quietTime = 0; zeroTime = 0; soundTime = 0
+        peakAge = (0, 0, 0, 0)
         lastBeatTime = -10
     }
 
@@ -185,6 +199,7 @@ final class AmbientSpectralAnalyzer {
         let rmsDB = 10 * log10(meanSquare + 1e-20)
         quietTime = rmsDB < tuning.silenceFloorDB ? quietTime + hopSeconds : 0
         zeroTime = maxMagnitude == 0 ? zeroTime + hopSeconds : 0
+        if quietTime == 0 { soundTime += hopSeconds } else if quietTime > soundGapBridge { soundTime = 0 }
 
         // Slide the hop into the circular window buffer.
         if let base = samples.baseAddress {
@@ -209,12 +224,16 @@ final class AmbientSpectralAnalyzer {
         let trebleDB = bandDB(trebleBins)
         let levelDB = bandDB(bassBins.lowerBound..<trebleBins.upperBound)
         let decay = tuning.peakDecayPerSecond * Float(hopSeconds)
-        peakDB.bass = max(bassDB, peakDB.bass - decay, -70)
-        peakDB.mid = max(midDB, peakDB.mid - decay, -70)
-        peakDB.treble = max(trebleDB, peakDB.treble - decay, -70)
-        peakDB.level = max(levelDB, peakDB.level - decay, -70)
-        let silent = quietTime >= tuning.silenceHold
         let gate: Float = rmsDB < tuning.silenceFloorDB ? 0 : 1
+        // The automatic gain doesn't adapt to silence (a pause would pull the
+        // peak down and make the next bar blinding).
+        if gate > 0 {
+            peakDB.bass = trackPeak(peakDB.bass, bassDB, age: &peakAge.bass, decay: decay, dt: hopSeconds)
+            peakDB.mid = trackPeak(peakDB.mid, midDB, age: &peakAge.mid, decay: decay, dt: hopSeconds)
+            peakDB.treble = trackPeak(peakDB.treble, trebleDB, age: &peakAge.treble, decay: decay, dt: hopSeconds)
+            peakDB.level = trackPeak(peakDB.level, levelDB, age: &peakAge.level, decay: decay, dt: hopSeconds)
+        }
+        let silent = quietTime >= tuning.silenceHold
         envelope.bass = follow(envelope.bass, gate * normalize(bassDB, peak: peakDB.bass), coefficients.bass)
         envelope.mid = follow(envelope.mid, gate * normalize(midDB, peak: peakDB.mid), coefficients.mid)
         envelope.treble = follow(envelope.treble, gate * normalize(trebleDB, peak: peakDB.treble), coefficients.treble)
@@ -354,6 +373,17 @@ final class AmbientSpectralAnalyzer {
             vDSP_sve(p.baseAddress! + bins.lowerBound, 1, &sum, vDSP_Length(bins.count))
         }
         return 10 * log10(sum + 1e-14)
+    }
+
+    /// Peak follower with hold: rises at once, holds, then falls linearly in dB.
+    private func trackPeak(_ peak: Float, _ db: Float, age: inout Double, decay: Float, dt: Double) -> Float {
+        if db >= peak {
+            age = 0
+            return db
+        }
+        age += dt
+        let falling = age > tuning.peakHold ? peak - decay : peak
+        return max(db, falling, -70)
     }
 
     private func normalize(_ db: Float, peak: Float) -> Float {

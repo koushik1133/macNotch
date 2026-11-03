@@ -3,24 +3,37 @@ import CoreGraphics
 import QuartzCore
 
 // Screen edges: one borderless, click-through, non-activating panel per
-// screen, above normal windows and the Dock but below the menu bar and menus,
-// drawing `AmbientEdgeStrips`. Kept out of screenshots and recordings
-// (`sharingType = .none`), left out of full-screen spaces (no
-// `.fullScreenAuxiliary`), and hidden on a screen that shows a full-screen
-// window or while the screen is shared.
+// screen covering the whole screen frame, menu bar strip included, so the
+// light runs along the true physical edge and around the notch. It sits at
+// the island's level (`.statusBar`, above the menu bar; `.floating` while the
+// island is lowered over a full-screen app) and is ordered just below the
+// island, so the island's black body stays on top and the light seems to
+// spill out from behind it. Kept out of screenshots and recordings
+// (`sharingType = .none`), joins full-screen spaces too, and hidden while the
+// screen is shared (and over full-screen windows only if the user asks).
+// Drawn by `AmbientEdgeMetalRenderer`, or by `AmbientEdgeStrips` when Metal
+// isn't available.
 
 final class AmbientEdgePanel: NSPanel {
-    let strips: AmbientEdgeStrips
+    /// Fallback when Metal (or the runtime shader) is unavailable.
+    let strips: AmbientEdgeStrips?
+    let metal: AmbientEdgeMetalRenderer?
     let displayID: CGDirectDisplayID
 
     init(screen: NSScreen, displayID: CGDirectDisplayID) {
-        strips = AmbientEdgeStrips()
+        if let gpu = AmbientEdgeGPU.shared {
+            metal = AmbientEdgeMetalRenderer(gpu: gpu)
+            strips = nil
+        } else {
+            metal = nil
+            strips = AmbientEdgeStrips()
+        }
         self.displayID = displayID
         super.init(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         // isFloatingPanel resets `level`, so it comes first.
         isFloatingPanel = true
-        level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        level = Self.targetLevel
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         ignoresMouseEvents = true
         isOpaque = false
         backgroundColor = .clear
@@ -29,10 +42,13 @@ final class AmbientEdgePanel: NSPanel {
         isReleasedWhenClosed = false
         animationBehavior = .none
         hidesOnDeactivate = false
+        becomesKeyOnlyIfNeeded = true
         isExcludedFromWindowsMenu = true
         let view = NSView(frame: CGRect(origin: .zero, size: screen.frame.size))
         view.wantsLayer = true
-        view.layer?.addSublayer(strips.root)
+        view.layer?.isOpaque = false
+        if let metal { view.layer?.addSublayer(metal.layer) }
+        if let strips { view.layer?.addSublayer(strips.root) }
         contentView = view
         fit(to: screen)
     }
@@ -40,15 +56,80 @@ final class AmbientEdgePanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
+    /// The island's level: above the menu bar normally, lowered with it over
+    /// full-screen apps.
+    @MainActor static var targetLevel: NSWindow.Level { ExtrasIslandCover.islandLevel }
+
     func fit(to screen: NSScreen) {
         setFrame(screen.frame, display: false)
-        let menuBar = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
-        // With the menu bar hidden, visibleFrame reaches the top: keep a
-        // notch-height margin on notched screens anyway.
-        let topInset = max(menuBar, screen.safeAreaInsets.top)
-        strips.root.contentsScale = screen.backingScaleFactor
-        strips.layout(bounds: CGRect(origin: .zero, size: screen.frame.size), topInset: topInset,
-                      thickness: CGFloat(AmbientLightSettings.shared.edgeWidth))
+        let size = screen.frame.size
+        let edgeWidth = CGFloat(AmbientLightSettings.shared.edgeWidth)
+        if let metal {
+            metal.layout(size: size, backingScale: screen.backingScaleFactor,
+                         cornerRadius: Self.cornerRadius(of: displayID), notch: Self.notch(of: screen), edgeWidth: edgeWidth)
+        }
+        if let strips {
+            strips.root.contentsScale = screen.backingScaleFactor
+            // The top strip runs along the very top edge (over the menu bar).
+            strips.layout(bounds: CGRect(origin: .zero, size: size), topInset: 0, thickness: edgeWidth)
+        }
+    }
+
+    /// The window server wasn't showing the panel last frame.
+    private var wasOccluded = false
+
+    func render(_ frame: AmbientVisualFrame, palette: AmbientLightPalette, mode: AmbientLightMode,
+                intensity: Double, reduceMotion: Bool) {
+        // Not on screen (display asleep, screen locked, just ordered in):
+        // no frame. A drawable the window server never takes back would make
+        // `nextDrawable()` wait up to 1 s on the main thread.
+        guard occlusionState.contains(.visible) else {
+            wasOccluded = true
+            return
+        }
+        if wasOccluded {
+            // Whatever was last presented may be stale: draw afresh.
+            wasOccluded = false
+            invalidateContent()
+        }
+        if let metal {
+            metal.render(frame, palette: palette, mode: mode, intensity: intensity, reduceMotion: reduceMotion)
+        } else {
+            strips?.render(frame, palette: palette)
+        }
+    }
+
+    func invalidateContent() {
+        metal?.invalidate()
+        strips?.invalidate()
+    }
+
+    /// Shows the panel and keeps it just under the island on this screen.
+    func present() {
+        let target = Self.targetLevel
+        if level != target { level = target }
+        orderFrontRegardless()
+        for window in NSApp.windows where window is NotchPanel && window.isVisible && window.level == level
+            && window.frame.intersects(frame) {
+            order(.below, relativeTo: window.windowNumber)
+            break
+        }
+    }
+
+    /// Built-in MacBook displays have rounded corners (about 10–12 pt);
+    /// external ones are square (a small radius keeps the light's corner soft).
+    static func cornerRadius(of displayID: CGDirectDisplayID) -> CGFloat {
+        CGDisplayIsBuiltin(displayID) != 0 ? 12 : 4
+    }
+
+    /// The camera housing in points from the screen's top-left: left x,
+    /// right x, height. Nil on screens without a notch.
+    static func notch(of screen: NSScreen) -> (x0: CGFloat, x1: CGFloat, height: CGFloat)? {
+        let height = screen.safeAreaInsets.top
+        guard height > 0, let left = screen.auxiliaryTopLeftArea?.width, let right = screen.auxiliaryTopRightArea?.width else { return nil }
+        let x0 = left, x1 = screen.frame.width - right
+        guard x1 - x0 > 40, x1 - x0 < screen.frame.width / 2 else { return nil }
+        return (x0, x1, height)
     }
 }
 
@@ -64,6 +145,8 @@ final class AmbientScreenEdgeGlow {
     /// Reasons other features set (a SparkV screen recording, a meeting
     /// that shares the screen). Any reason hides every edge.
     private var externalReasons: Set<String> = []
+    /// Cached here (read on show and every suppression check), not per frame.
+    private var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
     init() {
         let center = NSWorkspace.shared.notificationCenter
@@ -109,8 +192,11 @@ final class AmbientScreenEdgeGlow {
     /// Per display frame.
     func render(_ frame: AmbientVisualFrame, palette: AmbientLightPalette) {
         guard isShown else { return }
+        let settings = AmbientLightSettings.shared
+        let mode = settings.mode
+        let intensity = settings.intensity
         for panel in panels.values where panel.isVisible {
-            panel.strips.render(frame, palette: palette)
+            panel.render(frame, palette: palette, mode: mode, intensity: intensity, reduceMotion: reduceMotion)
         }
     }
 
@@ -122,7 +208,7 @@ final class AmbientScreenEdgeGlow {
 
     /// Re-sends colors on the next frame (palette changed).
     func invalidate() {
-        for panel in panels.values { panel.strips.invalidate() }
+        for panel in panels.values { panel.invalidateContent() }
     }
 
     func tearDown() {
@@ -156,14 +242,17 @@ final class AmbientScreenEdgeGlow {
 
     func refreshSuppression() {
         guard isShown else { return }
+        reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         screenShared = AmbientDisplaySuppression.isScreenShared()
-        suppressed = AmbientDisplaySuppression.displaysWithFullScreenWindows()
+        // Over full-screen apps is the default: then the window list (the
+        // costly part of this check) isn't read at all.
+        suppressed = AmbientLightSettings.shared.overFullScreen ? [] : AmbientDisplaySuppression.displaysWithFullScreenWindows()
         let hideAll = screenShared || !externalReasons.isEmpty
         for (id, panel) in panels {
             let visible = !hideAll && !suppressed.contains(id)
-            if visible, !panel.isVisible {
-                panel.strips.invalidate()
-                panel.orderFrontRegardless()
+            if visible, !panel.isVisible || panel.level != AmbientEdgePanel.targetLevel {
+                panel.invalidateContent()
+                panel.present()
             } else if !visible, panel.isVisible {
                 panel.orderOut(nil)
             }

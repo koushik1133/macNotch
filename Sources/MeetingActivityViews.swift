@@ -16,11 +16,18 @@ struct MeetingRecordingBand: View {
             HStack(spacing: 10) {
                 MeetingPulsingDot(isOn: Int(elapsed) % 2 == 0)
 
-                Text(elapsed < 10 ? "Let participants know you're recording" : "Recording meeting")
+                // After the reminder: a microphone problem, or "mic only"
+                // when other participants can't be captured, stays visible.
+                let problem = recorder.micProblem
+                let micOnly = recorder.systemAudioProblem != nil
+                Text(elapsed < 10 ? "Let participants know you're recording"
+                     : problem ?? (micOnly ? "Recording your mic only" : "Recording meeting"))
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(elapsed < 10 ? SparkVTheme.warning : SparkVTheme.text)
+                    .foregroundStyle(elapsed < 10 || problem != nil ? SparkVTheme.warning : SparkVTheme.text)
                     .lineLimit(1)
+                    .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .help(problem ?? recorder.systemAudioProblem ?? "")
 
                 MeetingLevelMeter(symbol: "mic.fill", level: recorder.micLevel)
                 MeetingLevelMeter(symbol: "speaker.wave.2.fill", level: recorder.systemLevel)
@@ -37,8 +44,9 @@ struct MeetingRecordingBand: View {
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(SparkVTheme.textSecondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("Bookmark this moment")
+                    .accessibilityLabel("Bookmark this moment")
                 }
             }
         }
@@ -106,6 +114,39 @@ struct MeetingAnswerBand: View {
     }
 }
 
+/// Shown once per launch when a recording can't capture other participants
+/// (Screen Recording not allowed, or allowed but SparkV not restarted yet).
+struct MeetingSystemAudioNoticeBand: View {
+    let needsRelaunch: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "speaker.slash.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(SparkVTheme.warning)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Only your microphone is captured")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SparkVTheme.text)
+                // Restarting now would end this recording, so only say it.
+                Text(needsRelaunch
+                     ? "Quit and reopen SparkV after this call so it can hear the others"
+                     : "To hear others, allow SparkV in Privacy & Security › Screen & System Audio Recording")
+                    .font(.system(size: 11))
+                    .foregroundStyle(SparkVTheme.textSecondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if !needsRelaunch {
+                Button("Open Settings") { MeetingPermissions.openScreenRecordingSettings() }
+                    .buttonStyle(SparkVPrimaryButtonStyle())
+                    .controlSize(.small)
+            }
+        }
+    }
+}
+
 /// One-line status: notes ready, nothing captured, a failure.
 struct MeetingStatusBand: View {
     let symbol: String
@@ -139,18 +180,29 @@ struct MeetingPulsingDot: View {
     let isOn: Bool
 
     var body: some View {
+        // Differentiate Without Color: a record glyph, not only a red dot.
+        // Reduce Motion: steady.
+        let pulses = !SparkVMotion.reduceMotion
         ZStack {
-            Circle()
-                .fill(SparkVTheme.recording.opacity(0.35))
-                .frame(width: 14, height: 14)
-                .scaleEffect(isOn ? 1 : 0.55)
-            Circle()
-                .fill(SparkVTheme.recording)
-                .frame(width: 8, height: 8)
-                .opacity(isOn ? 1 : 0.6)
+            if SparkVTheme.differentiateWithoutColor {
+                Image(systemName: "record.circle.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(SparkVTheme.recording)
+                    .opacity(isOn || !pulses ? 1 : 0.6)
+            } else {
+                Circle()
+                    .fill(SparkVTheme.recording.opacity(0.35))
+                    .frame(width: 14, height: 14)
+                    .scaleEffect(isOn || !pulses ? 1 : 0.55)
+                Circle()
+                    .fill(SparkVTheme.recording)
+                    .frame(width: 8, height: 8)
+                    .opacity(isOn || !pulses ? 1 : 0.6)
+            }
         }
         .frame(width: 14, height: 14)
-        .animation(.easeInOut(duration: 0.9), value: isOn)
+        .animation(pulses ? .easeInOut(duration: 0.9) : nil, value: isOn)
+        .accessibilityLabel("Recording")
     }
 }
 
@@ -173,7 +225,7 @@ struct MeetingLevelMeter: View {
                         .frame(width: 2.5, height: 4 + CGFloat(index) * 2)
                 }
             }
-            .animation(.easeOut(duration: 0.12), value: clamped)
+            .animation(SparkVMotion.easeOut(0.12), value: clamped)
         }
     }
 

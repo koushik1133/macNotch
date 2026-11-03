@@ -68,6 +68,7 @@ final class FanController: ObservableObject {
     private var loopInterval: TimeInterval?
     private var appNapToken: NSObjectProtocol?
     private var observers: [NSObjectProtocol] = []
+    private var energyObserver: NSObjectProtocol?
     private var lastActivity: FanActivityState??
 
     init(sampler: FanSensorSampler = FanSensorSampler(),
@@ -186,6 +187,8 @@ final class FanController: ObservableObject {
         helper.disconnect()
         for observer in observers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         observers.removeAll()
+        if let energyObserver { NotificationCenter.default.removeObserver(energyObserver) }
+        energyObserver = nil
         endAppNapGuard()
         activitySink?(nil)
     }
@@ -316,7 +319,9 @@ final class FanController: ObservableObject {
     private var desiredInterval: TimeInterval? {
         if viewers > 0 { return 1.5 }
         if wantsManual || manualFanCount > 0 { return 2 }
-        if settings.activity == .always, hasFans { return 3 }
+        // Background watching (nobody looking, Auto fans): slower in Low
+        // Power Mode; a warm Mac keeps the normal pace so fan curves react.
+        if settings.activity == .always, hasFans { return SparkVEnergy.shared.isLowPowerMode ? 9 : 3 }
         return nil
     }
 
@@ -477,6 +482,10 @@ final class FanController: ObservableObject {
         observers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.didWake() }
         })
+        // Low Power Mode changes the background pace (`desiredInterval`).
+        energyObserver = NotificationCenter.default.addObserver(forName: SparkVEnergy.didChange, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateLoop() }
+        }
     }
 
     /// Sleep: the helper also returns fans to Auto on its own; doing it here

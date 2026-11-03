@@ -463,8 +463,9 @@ struct SpacesChip: View {
                 Button(action: onRemove) {
                     Image(systemName: "xmark").font(.system(size: 7, weight: .bold))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .foregroundStyle(tint.opacity(0.7))
+                .accessibilityLabel("Remove \(text)")
             }
         }
         .font(.system(size: 10.5, weight: .medium))
@@ -563,9 +564,11 @@ struct SpacesIconButton: View {
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -770,7 +773,7 @@ enum SpacesDropIngestor {
             let result = await store.ingest(input)
             cleanup?()
             guard var item = result else {
-                AppLog.log("Spaces: ingest returned nothing for \(input.sourceKey)")
+                AppLog.log("Spaces: ingest returned nothing for a \(input.sourceKey.split(separator: ":").first.map(String.init) ?? "drop")")
                 return
             }
             if let spaceID, item.spaceID != spaceID {

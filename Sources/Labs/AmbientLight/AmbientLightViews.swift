@@ -22,6 +22,7 @@ struct AmbientLightSettingsView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "sun.min").foregroundStyle(SparkVTheme.textSecondary)
                         Slider(value: $settings.intensity, in: 0.2...1)
+                            .accessibilityLabel("Brightness")
                         Image(systemName: "sun.max.fill").foregroundStyle(SparkVTheme.textSecondary)
                     }
                 }
@@ -31,23 +32,37 @@ struct AmbientLightSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                    .accessibilityLabel("Where")
                     if settings.scope == .notchAndEdges {
                         HStack(spacing: 10) {
                             Text("Edge Width").font(.system(size: 12)).foregroundStyle(SparkVTheme.textSecondary)
                             Slider(value: $settings.edgeWidth, in: 6...40)
+                                .accessibilityLabel("Edge width")
                         }
-                        Text("A thin strip of light along every screen edge, like a car's door lights. It hides itself over full-screen apps and while your screen is shared, and never shows up in screenshots or recordings.")
+                        Toggle("Over Full-Screen Apps", isOn: $settings.overFullScreen)
+                        Text("A strip of light along every screen edge, above every window. It hides while your screen is shared and never shows up in screenshots or recordings.")
                             .font(.system(size: 11))
                             .foregroundStyle(SparkVTheme.textTertiary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                section("Feel") {
+                    Toggle("Music Haptics", isOn: $settings.beatHaptics)
+                    Text("Optional. Your trackpad taps with the beat, firmer on the kick. Felt with a finger resting on a Force Touch trackpad; strength follows Settings › Accessibility › Trackpad Haptics.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(SparkVTheme.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 section("Colors") {
                     Toggle("Match the Album Art", isOn: $settings.syncToAlbumColors)
-                    HStack(spacing: 8) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                         ForEach(AmbientBrandPalette.allCases) { brand in
                             paletteChip(brand)
                         }
+                    }
+                    if settings.palette == .custom {
+                        ColorPicker("Your Color", selection: customColor, supportsOpacity: false)
+                            .font(.system(size: 12))
                     }
                     Text(settings.syncToAlbumColors
                          ? "Colors come from the playing track's cover; the palette below is used when the cover has none."
@@ -84,6 +99,7 @@ struct AmbientLightSettingsView: View {
             Toggle("", isOn: Binding(get: { settings.isEnabled }, set: { controller.setEnabled($0) }))
                 .toggleStyle(.switch)
                 .labelsHidden()
+                .accessibilityLabel("Ambient Light")
         }
     }
 
@@ -117,7 +133,7 @@ struct AmbientLightSettingsView: View {
     private var statusColor: Color {
         switch controller.status {
         case .running: SparkVTheme.success
-        case .needsPermission, .failed: SparkVTheme.warning
+        case .needsPermission, .failed, .retrying: SparkVTheme.warning
         default: SparkVTheme.textTertiary
         }
     }
@@ -133,10 +149,29 @@ struct AmbientLightSettingsView: View {
         }
     }
 
+    /// The Custom palette's color as a SwiftUI binding (stored as sRGB).
+    private var customColor: Binding<Color> {
+        Binding(
+            get: {
+                let c = settings.customColor
+                return Color(.sRGB, red: c[0], green: c[1], blue: c[2])
+            },
+            set: { color in
+                guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+                // Wide-gamut picks convert to extended sRGB (below 0 or above 1).
+                func unit(_ v: CGFloat) -> Double { min(1, max(0, Double(v))) }
+                settings.customColor = [unit(rgb.redComponent), unit(rgb.greenComponent), unit(rgb.blueComponent)]
+                if settings.syncToAlbumColors { settings.syncToAlbumColors = false }
+            }
+        )
+    }
+
     private func paletteChip(_ brand: AmbientBrandPalette) -> some View {
         let selected = settings.palette == brand
         return Button {
             settings.palette = brand
+            // Picking a theme means using it, not the album art.
+            if brand == .custom, settings.syncToAlbumColors { settings.syncToAlbumColors = false }
         } label: {
             VStack(spacing: 4) {
                 HStack(spacing: 2) {
@@ -149,8 +184,9 @@ struct AmbientLightSettingsView: View {
             .padding(6)
             .background(RoundedRectangle(cornerRadius: 8).fill(selected ? SparkVTheme.surfaceHover : SparkVTheme.surface))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? SparkVTheme.accent.opacity(0.6) : SparkVTheme.stroke))
+            .animation(SparkVMotion.hover(), value: selected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 
     private var footer: some View {
@@ -225,8 +261,11 @@ private struct AmbientModeCard: View {
             .background(shape.fill(isSelected ? SparkVTheme.accentSoft : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
             .overlay(shape.strokeBorder(isSelected ? SparkVTheme.accent.opacity(0.55) : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(shape)
+            .animation(SparkVMotion.hover(), value: hover.isOn)
+            .animation(SparkVMotion.hover(), value: isSelected)
         }
-        .buttonStyle(.plain)
+        // Large card: a lighter press than a button.
+        .buttonStyle(SparkVPressStyle(scale: 0.98))
         .onHover { hover.isOn = $0 }
     }
 }
@@ -332,11 +371,51 @@ struct AmbientLightHubTile: View {
             .frame(maxWidth: .infinity, minHeight: AgentHubMetrics.tileHeight)
             .background(LabsBHubTileBackground(isActive: on, isHovered: hover.isOn, tint: tint))
             .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous))
+            .animation(SparkVMotion.hover(), value: hover.isOn)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .contextMenu { AmbientLightMenuItems() }
         .help(on ? "Ambient Light (\(settings.mode.title)) is on. Click to turn off, right-click for modes."
                  : "Ambient Light: the notch glows with your music. Click to turn on.")
+    }
+}
+
+// MARK: - Settings pane
+
+/// The main switches in Settings › Media; the full options stay in the
+/// Ambient Light window.
+struct AmbientLightSettingsSection: View {
+    @ObservedObject private var settings = AmbientLightSettings.shared
+    @ObservedObject private var controller = AmbientLightController.shared
+
+    var body: some View {
+        MPSettingsSection(title: "Ambient Light",
+                          summary: "The notch and screen edges glow with your music, over every app and Space.",
+                          systemImage: "light.beacon.max.fill",
+                          accessory: {
+                              MPHeaderSwitch(label: "Ambient Light",
+                                             isOn: Binding(get: { settings.isEnabled }, set: { controller.setEnabled($0) }))
+                          }) {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Where", selection: $settings.scope) {
+                    ForEach(AmbientLightScope.allCases) { scope in Text(scope.title).tag(scope) }
+                }
+                .pickerStyle(.segmented)
+                Toggle("Over Full-Screen Apps", isOn: $settings.overFullScreen)
+                    .disabled(settings.scope != .notchAndEdges)
+                Toggle("Music Haptics", isOn: $settings.beatHaptics)
+                Text(controller.status.text)
+                    .font(.system(size: 11))
+                    .foregroundStyle(SparkVTheme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Button("Colors and More…") { AmbientLightSettingsWindowController.shared.show() }
+                        .buttonStyle(SparkVSecondaryButtonStyle())
+                    Spacer()
+                }
+            }
+            .disabled(!settings.isEnabled)
+        }
     }
 }

@@ -6,6 +6,7 @@ final class WidgetsTabUI: ObservableObject {
         case widgets = "Widgets"
         case clocks = "Cities"
         case habits = "Habits"
+        case weather = "Weather"
         var id: String { rawValue }
     }
 
@@ -36,6 +37,8 @@ struct WidgetModels {
     var volume: VolumeKnobModel
     var gauges: SystemGaugesSampler
     var network: NetworkSpeedSampler
+    var weather: WeatherController = .shared
+    var reminders: RemindersController = .shared
     /// False draws the samplers' current values without starting them.
     var samples = true
     /// Fixed clock for renders.
@@ -97,24 +100,28 @@ struct WidgetsTabView: View {
             let page = min(ui.page, max(0, pages.count - 1))
             HStack(spacing: WidgetStyle.spacing) {
                 ZStack(alignment: .topLeading) {
+                    // Content swaps crossfade with a light blur, so the two
+                    // pages never read as a double exposure.
                     if ui.isEditing {
                         WidgetsEditPage(settings: settings, ui: ui, models: models)
-                            .transition(.opacity)
+                            .transition(.sparkVCrossfade)
                     } else if pages.isEmpty {
-                        emptyState.transition(.opacity)
+                        emptyState.transition(.sparkVCrossfade)
                     } else {
                         gridPage(pages[page], grid: grid)
                             .id(page)
-                            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                            .transition(.sparkVCrossfade)
                     }
                 }
                 .frame(width: area.width, height: area.height, alignment: .topLeading)
                 WidgetsRail(ui: ui, pageCount: ui.isEditing ? 0 : pages.count, page: page)
                     .frame(width: WidgetStyle.railWidth, height: area.height)
             }
-            .animation(.easeInOut(duration: 0.2), value: ui.isEditing)
-            .animation(.easeInOut(duration: 0.2), value: page)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: settings.enabled)
+            // Swaps: strong ease-out (enter/exit). Reflowing widgets move on
+            // screen with an interruptible spring (toggles can come fast).
+            .animation(SparkVMotion.easeOut(SparkVMotion.Duration.standard), value: ui.isEditing)
+            .animation(SparkVMotion.easeOut(SparkVMotion.Duration.standard), value: page)
+            .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: settings.enabled)
         }
     }
 
@@ -122,12 +129,15 @@ struct WidgetsTabView: View {
         let free = WidgetGridLayout.freeCells(placements, columns: grid.columns, rows: grid.rows)
         let hidden = WidgetKind.allCases.filter { !settings.isEnabled($0) }
         return ZStack(alignment: .topLeading) {
-            ForEach(placements, id: \.kind) { placement in
+            ForEach(Array(placements.enumerated()), id: \.element.kind) { index, placement in
                 let frame = grid.frame(placement)
                 widget(placement.kind, size: placement.size)
                     .frame(width: frame.width, height: frame.height)
+                    // Cards come in one after another (40 ms apart) when the
+                    // page appears; renders (fixed date) draw them settled.
+                    .modifier(WidgetStaggeredEntrance(index: index, isEnabled: models.fixedDate == nil))
                     .offset(x: frame.minX, y: frame.minY)
-                    .transition(.opacity)
+                    .transition(.sparkVEnter)
             }
             if let cell = free.first, !hidden.isEmpty {
                 let frame = grid.frame(column: cell.column, row: cell.row)
@@ -147,11 +157,20 @@ struct WidgetsTabView: View {
             case .habits: HabitsWidget(store: models.habits, size: size, onEdit: { ui.edit(.habits) }, fixedDate: models.fixedDate)
             case .gauges: SystemGaugesWidget(sampler: models.gauges, size: size, samples: models.samples)
             case .network: NetworkSpeedWidget(sampler: models.network, size: size, samples: models.samples)
+            case .script: ScriptWidgetCell(compact: size == .small)
+            case .weather: WeatherWidget(controller: models.weather, size: size, onEdit: { ui.edit(.weather) }, fixedDate: models.fixedDate)
+            case .reminders: RemindersWidget(controller: models.reminders, size: size, fixedDate: models.fixedDate)
+            case .brightness: HUDBrightnessWidget()
             }
         }
         .contextMenu {
             if kind == .clocks { Button("Choose Cities…") { ui.edit(.clocks) } }
             if kind == .habits { Button("Edit Habits…") { ui.edit(.habits) } }
+            if kind == .weather {
+                Button("Weather City…") { ui.edit(.weather) }
+                Button("Refresh Weather") { models.weather.refresh() }.disabled(!models.weather.isConfigured)
+            }
+            if kind == .reminders { Button("Open Reminders") { models.reminders.openRemindersApp() } }
             Button("Move Earlier") { settings.move(kind, by: -1) }.disabled(settings.enabled.first == kind)
             Button("Move Later") { settings.move(kind, by: 1) }.disabled(settings.enabled.last == kind)
             Divider()
@@ -165,7 +184,7 @@ struct WidgetsTabView: View {
             VStack(spacing: 5) {
                 Image(systemName: "square.grid.2x2").font(.system(size: 16, weight: .semibold)).foregroundStyle(WidgetStyle.secondaryText)
                 Text("Choose widgets").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(SparkVTheme.text)
-                Text("World clocks, volume, habits, system and network")
+                Text("World clocks, volume, habits, system, network, weather and reminders")
                     .font(.system(size: 9)).foregroundStyle(WidgetStyle.tertiaryText)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -173,7 +192,31 @@ struct WidgetsTabView: View {
             .overlay(RoundedRectangle(cornerRadius: WidgetStyle.cornerRadius, style: .continuous).strokeBorder(WidgetStyle.cardStroke))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
+    }
+}
+
+/// Staggered entrance for one grid card: fades up from 96 % (fade only under
+/// Reduce Motion), `SparkVMotion.stagger(index)` after the page appears. It
+/// is decorative, so the card takes clicks while it plays.
+private struct WidgetStaggeredEntrance: ViewModifier {
+    let index: Int
+    let isEnabled: Bool
+    @StateObject private var shown = ViewFlag()
+
+    func body(content: Content) -> some View {
+        let visible = shown.isOn || !isEnabled
+        let still = SparkVMotion.reduceMotion
+        content
+            .opacity(visible ? 1 : 0)
+            .scaleEffect(visible || still ? 1 : SparkVMotion.enterScale, anchor: .top)
+            .offset(y: visible || still ? 0 : -4)
+            .onAppear {
+                guard isEnabled, !shown.isOn else { return }
+                withAnimation(SparkVMotion.easeOut(SparkVMotion.Duration.standard).delay(SparkVMotion.stagger(index))) {
+                    shown.isOn = true
+                }
+            }
     }
 }
 
@@ -224,11 +267,13 @@ private struct RailButton: View {
                 .frame(width: WidgetStyle.railWidth, height: WidgetStyle.railWidth)
                 .background(Circle().fill(isActive ? SparkVTheme.accent : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface)))
                 .overlay(Circle().strokeBorder(isActive ? Color.clear : LabsBStyle.chipStroke, lineWidth: 1))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -258,6 +303,7 @@ private struct AddWidgetTile: View {
                 RoundedRectangle(cornerRadius: WidgetStyle.cornerRadius, style: .continuous)
                     .strokeBorder(hover.isOn ? SparkVTheme.choose(apple: Color.white.opacity(0.4), sparkv: SparkVTheme.red.opacity(0.6)) : Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
             )
+            .animation(SparkVMotion.hover(), value: hover.isOn)
             .contentShape(Rectangle())
         }
         .menuStyle(.button)
@@ -293,6 +339,7 @@ private struct WidgetsEditPage: View {
                 case .widgets: WidgetPicker(settings: settings)
                 case .clocks: WorldClockEditor(store: models.clocks)
                 case .habits: HabitEditor(store: models.habits)
+                case .weather: WeatherCityEditor(controller: models.weather)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -304,6 +351,7 @@ private struct WidgetsEditPage: View {
         case .widgets: "Order follows the numbers; right-click a widget to move it"
         case .clocks: "Up to 3 cities"
         case .habits: "Up to \(HabitStore.maxHabits) habits"
+        case .weather: OpenMeteo.attribution
         }
     }
 }
@@ -353,6 +401,7 @@ private struct WidgetToggleTile: View {
                 RoundedRectangle(cornerRadius: WidgetStyle.cornerRadius, style: .continuous)
                     .strokeBorder(SparkVTheme.isApple ? Color.clear : (on ? kind.tint.opacity(0.5) : SparkVTheme.stroke), lineWidth: 1)
             )
+            .animation(SparkVMotion.hover(), value: hover.isOn)
             .overlay(alignment: .topTrailing) {
                 ZStack {
                     Circle().fill(on ? kind.tint : Color.white.opacity(0.12))
@@ -365,7 +414,7 @@ private struct WidgetToggleTile: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .help(on ? "Hide \(kind.title)" : "Show \(kind.title)")
     }
@@ -374,9 +423,20 @@ private struct WidgetToggleTile: View {
 // MARK: - Home accessory
 
 /// Fits beside the media column in the Home view (56x56 pt): the volume
-/// knob without its card, which pairs with the playback controls.
+/// knob without its card, which pairs with the playback controls. Once a
+/// weather city is set (and unless "Show on Home" is off), the day's
+/// weather takes its place.
 struct WidgetsHomeAccessory: View {
+    @ObservedObject private var weather = WeatherController.shared
+
     var body: some View {
-        VolumeKnobWidget(compact: true)
+        if weather.showsHomeGlance {
+            WeatherHomeGlance(controller: weather)
+                .transition(.sparkVCrossfade)
+        } else {
+            VolumeKnobWidget(compact: true)
+                .contextMenu { SoundOutputMenuItems() }
+                .transition(.sparkVCrossfade)
+        }
     }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Something shown briefly (or persistently) by the closed island: a volume
@@ -17,8 +18,8 @@ import SwiftUI
 /// `symbol` (or the kind's) on the left and `compactText` (or a small dot) on
 /// the right.
 struct LiveActivity: Identifiable {
-    enum Kind: String {
-        case volume, brightness, battery, airPods, timer, meeting, notification
+    enum Kind: String, CaseIterable {
+        case volume, brightness, battery, airPods, timer, meeting, notification, call, media
 
         /// SF Symbol for the automatic compact and minimal forms.
         var symbol: String {
@@ -30,18 +31,37 @@ struct LiveActivity: Identifiable {
             case .timer: "timer"
             case .meeting: "calendar"
             case .notification: "bell.fill"
+            case .call: "phone.fill"
+            case .media: "music.note"
             }
         }
 
         var tint: Color {
             switch self {
-            case .volume, .notification: SparkVTheme.text
+            case .volume, .notification, .media: SparkVTheme.text
             case .brightness: SparkVTheme.choose(apple: Color.yellow, sparkv: SparkVTheme.text)
             case .battery: SparkVTheme.success
             case .airPods: SparkVTheme.text
             // Apple: the iOS Clock orange for timers, the accent for meetings.
             case .timer: SparkVTheme.choose(apple: Color.orange, sparkv: SparkVTheme.red)
             case .meeting: SparkVTheme.accent
+            // Calls are green in both looks, as on iPhone.
+            case .call: SparkVTheme.success
+            }
+        }
+
+        /// Name for menus, lists and VoiceOver ("Timer", "Now Playing").
+        var displayName: String {
+            switch self {
+            case .volume: "Volume"
+            case .brightness: "Brightness"
+            case .battery: "Battery"
+            case .airPods: "AirPods"
+            case .timer: "Timer"
+            case .meeting: "Meeting"
+            case .notification: "Notification"
+            case .call: "Call"
+            case .media: "Now Playing"
             }
         }
 
@@ -66,8 +86,9 @@ struct LiveActivity: Identifiable {
     /// Posting again with the same id replaces the previous one in place.
     let id: String
     let kind: Kind
-    /// Higher wins. Suggested: HUDs 90, notifications 70, meetings 60,
-    /// battery/AirPods 50, running timer 20.
+    /// Higher wins. Suggested: incoming call 95, HUDs 90, notifications 70,
+    /// meetings 60, battery/AirPods 50, ongoing call 30, running timer 20,
+    /// now playing 5.
     let priority: Int
     /// How long it shows; nil stays until dismissed. Alerts of at most
     /// `NotchMetrics.alertMaxDuration` are queued: the time counts only
@@ -94,14 +115,29 @@ struct LiveActivity: Identifiable {
     /// Short text for the automatic trailing view ("8 min", "45%", "12:04").
     var compactText: String?
     /// Posting with a different key than last time (or a first post with a
-    /// key) shows the expanded band for `NotchMetrics.activityPeekDuration`,
-    /// e.g. "soon" → "now" for a meeting.
+    /// key) shows the expanded band for the peek time (Settings › Activities
+    /// › Timing, 4 s by default), e.g. "soon" → "now" for a meeting.
     var peekKey: String?
     /// Custom compact views, about 20 pt tall and at most ~90 pt wide.
     var compactLeading: (() -> AnyView)?
     var compactTrailing: (() -> AnyView)?
     /// Single-icon form, shown next to another activity's compact views.
     var minimal: (() -> AnyView)?
+
+    /// Short human name for the Live Activities list, the gear menu's
+    /// "Show in Wings" picker and VoiceOver ("Timer 18:42", "Zoom call").
+    /// Default: the kind's name.
+    var title: String?
+    /// The band has buttons: while the pointer is on it the panel takes
+    /// clicks, and hovering it never opens the drawer (`opensTab` is
+    /// ignored for the band, not for the wings).
+    var isInteractive = false
+    /// What VoiceOver reads for the closed island while this activity shows
+    /// (band and wings read as one element). Never put hidden text here.
+    var accessibilityText: String?
+    /// Spoken to VoiceOver when the activity first appears or its `peekKey`
+    /// changes (rate limited; see `ActivityAnnouncer`).
+    var announcement: ActivityAnnouncement?
 
     init(
         id: String,
@@ -142,6 +178,14 @@ struct LiveActivity: Identifiable {
     /// The symbol and tint the automatic compact and minimal forms use.
     var resolvedSymbol: String { symbol ?? kind.symbol }
     var resolvedTint: Color { tint ?? kind.tint }
+    /// `title`, else the kind's name plus the compact text ("Timer 12:04").
+    var resolvedTitle: String {
+        if let title, !title.isEmpty { return title }
+        if let compactText, !compactText.isEmpty { return "\(kind.displayName) \(compactText)" }
+        return kind.displayName
+    }
+    /// `accessibilityText`, else `resolvedTitle`.
+    var resolvedAccessibilityText: String { accessibilityText ?? resolvedTitle }
 
     // MARK: Builders
 
@@ -179,6 +223,35 @@ struct LiveActivity: Identifiable {
         copy.peekKey = key
         return copy
     }
+
+    func titled(_ title: String?) -> LiveActivity {
+        var copy = self
+        copy.title = title
+        return copy
+    }
+
+    /// The band takes clicks (buttons) while the pointer is on it.
+    func interactive(_ isInteractive: Bool = true) -> LiveActivity {
+        var copy = self
+        copy.isInteractive = isInteractive
+        return copy
+    }
+
+    /// What VoiceOver reads for the island while this activity shows.
+    func accessibility(_ text: String?) -> LiveActivity {
+        var copy = self
+        copy.accessibilityText = text
+        return copy
+    }
+
+    /// Spoken to VoiceOver when the activity appears or re-peeks, if the
+    /// user keeps announcements of `category` on. `important` asks
+    /// VoiceOver to speak it even while SparkV isn't the front app.
+    func announcing(_ text: String?, as category: ActivityAnnouncement.Category, important: Bool = false) -> LiveActivity {
+        var copy = self
+        copy.announcement = text.map { ActivityAnnouncement(text: $0, category: category, isImportant: important) }
+        return copy
+    }
 }
 
 /// Measured widths of the compact content beside the camera housing,
@@ -189,11 +262,58 @@ struct IslandWings: Equatable {
     static let zero = IslandWings(leading: 0, trailing: 0)
 }
 
+/// One running (persistent) activity, for lists and pickers.
+struct LiveActivitySummary: Identifiable, Equatable {
+    let id: String
+    let kind: LiveActivity.Kind
+    let title: String
+    let symbol: String
+    let priority: Int
+    let opensTab: NotchState.Tab?
+}
+
+/// User timing the center reads (Settings › Activities). Closures so tests
+/// can pin them.
+struct ActivityCenterTiming {
+    /// How long a persistent activity peeks in the band.
+    var peekSeconds: @MainActor () -> TimeInterval
+    /// Alerts in the band wait while the pointer is on them.
+    var pausesOnHover: @MainActor () -> Bool
+    /// Longest wait for a hovered alert, so a parked pointer can't freeze
+    /// the queue.
+    var hoverCap: TimeInterval
+    /// Activities visible at once in the wings: 2 (compact + one minimal)
+    /// or 3 (compact + a minimal on each side).
+    var visibleLimit: @MainActor () -> Int
+
+    /// Values from `ActivityTimingSettings` / `LiveActivitiesSettings`.
+    static var live: ActivityCenterTiming {
+        ActivityCenterTiming(
+            peekSeconds: { ActivityTimingSettings.shared.peekSeconds },
+            pausesOnHover: { ActivityTimingSettings.shared.pausesOnHover },
+            hoverCap: ActivityTimingSettings.hoverHoldCap,
+            visibleLimit: { LiveActivitiesSettings.shared.maxVisible }
+        )
+    }
+
+    /// The built-in defaults, for tests.
+    static var standard: ActivityCenterTiming {
+        ActivityCenterTiming(
+            peekSeconds: { NotchMetrics.activityPeekDuration },
+            pausesOnHover: { true },
+            hoverCap: 30,
+            visibleLimit: { 3 }
+        )
+    }
+}
+
 /// Collects live activities from every feature and decides what the closed
-/// island shows: one activity in the band (expanded) and one in the wings
-/// (compact). Transient alerts wait their turn by priority instead of
-/// overriding each other; persistent activities stay in the wings while an
-/// alert plays in the band.
+/// island shows: one activity in the band (expanded), one in the wings
+/// (compact) and up to two more as minimal icons beside it. Transient
+/// alerts wait their turn by priority instead of overriding each other;
+/// persistent activities stay in the wings while an alert plays in the band.
+/// The user can pin which running activity rests in the wings
+/// (`cycleCompact()`, `pin(id:)`).
 @MainActor
 final class ActivityCenter: ObservableObject {
     /// The activity in the band under the notch (expanded), or nil.
@@ -203,10 +323,22 @@ final class ActivityCenter: ObservableObject {
     /// Another persistent activity, shown in its minimal form after the
     /// compact one's trailing view.
     @Published private(set) var secondary: LiveActivity?
+    /// A third persistent activity, shown in its minimal form before the
+    /// compact one's leading view (when the user allows three at once).
+    @Published private(set) var tertiary: LiveActivity?
     /// Bumped on every post so views re-render when an activity updates in place.
     @Published private(set) var revision = 0
+    /// Bumped only when the band's own activity is posted again or another
+    /// one takes the band, so a band with buttons keeps its hover and press
+    /// state while unrelated activities update.
+    @Published private(set) var bandRevision = 0
     /// Content widths the island measured for the current wings.
     @Published private(set) var measuredWings = IslandWings.zero
+    /// The running activity the user picked for the wings, if any. Cleared
+    /// when it ends.
+    @Published private(set) var pinnedCompactID: String?
+    /// Every persistent activity, highest priority first.
+    @Published private(set) var running: [LiveActivitySummary] = []
 
     /// Transient alerts waiting for their turn (not counting the one showing).
     var queuedAlertIDs: [String] {
@@ -219,6 +351,9 @@ final class ActivityCenter: ObservableObject {
 
     /// Ids of every live activity, for tests and diagnostics.
     var activeIDs: Set<String> { Set(entries.keys) }
+
+    /// The live activity with `id`, if posted.
+    func activity(id: String) -> LiveActivity? { entries[id]?.activity }
 
     private struct Entry {
         var activity: LiveActivity
@@ -247,21 +382,38 @@ final class ActivityCenter: ObservableObject {
     private var wakeTask: Task<Void, Never>?
     private var isDrawerOpen = false
     private var isBandHeld = false
+    /// When the pointer came onto the band (nil while it isn't there).
+    private var hoverStartedAt: Date?
+    /// The alert kept on screen by the hover last time round.
+    private var heldAlertID: String?
+    /// The band's activity last time round.
+    private var bandID: String?
+    /// `revision` at the last time the slots were published.
+    private var publishedRevision = -1
     private let clock: () -> Date
+    private let timing: ActivityCenterTiming
+    private let announcer: ActivityAnnouncer
 
-    init(clock: @escaping () -> Date = { Date() }) {
+    init(clock: @escaping () -> Date = { Date() }, timing: ActivityCenterTiming? = nil, announcer: ActivityAnnouncer? = nil) {
         self.clock = clock
+        self.timing = timing ?? .live
+        self.announcer = announcer ?? .shared
     }
 
     // MARK: Posting
 
-    func post(_ activity: LiveActivity) {
+    func post(_ activity: LiveActivity, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.post(activity, file: file, line: line) }) else { return }
         let now = clock()
         postCounter &+= 1
         let transient = activity.duration.map { $0 <= NotchMetrics.alertMaxDuration } ?? false
         let wallExpiry = activity.duration.map { now.addingTimeInterval($0) }
+        let peekTime = timing.peekSeconds()
+        let isNew: Bool
+        var peekKeyChanged = false
 
         if var entry = entries[activity.id] {
+            isNew = false
             let oldKey = entry.activity.peekKey
             let wasShowing = entry.shownSince != nil
             entry.activity = activity
@@ -274,10 +426,12 @@ final class ActivityCenter: ObservableObject {
             entry.shownSince = transient && wasShowing ? now : nil
             entry.expiresAt = transient && !activity.kind.isLiveFeedback ? nil : wallExpiry
             if let key = activity.peekKey, key != oldKey {
-                entry.peekUntil = now.addingTimeInterval(NotchMetrics.activityPeekDuration)
+                entry.peekUntil = now.addingTimeInterval(peekTime)
+                peekKeyChanged = true
             }
             entries[activity.id] = entry
         } else {
+            isNew = true
             var entry = Entry(
                 activity: activity, order: postCounter, firstOrder: postCounter, lastPosted: now,
                 isTransient: transient, remaining: activity.duration ?? 0, shownSince: nil,
@@ -287,21 +441,25 @@ final class ActivityCenter: ObservableObject {
             // tucks into the wings, unless it has a compact form already.
             if !transient, activity.peekKey != nil
                 || (activity.presentation == .automatic && !activity.hasCustomCompact) {
-                entry.peekUntil = now.addingTimeInterval(NotchMetrics.activityPeekDuration)
+                entry.peekUntil = now.addingTimeInterval(peekTime)
             }
             entries[activity.id] = entry
         }
         revision &+= 1
+        if activity.id == bandID { bandRevision &+= 1 }
         recompute()
+        announcer.consider(activity, isNew: isNew, peekKeyChanged: peekKeyChanged)
     }
 
-    func dismiss(id: String) {
+    func dismiss(id: String, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.dismiss(id: id, file: file, line: line) }) else { return }
         guard entries.removeValue(forKey: id) != nil else { return }
         revision &+= 1
         recompute()
     }
 
-    func dismissAll(kind: LiveActivity.Kind) {
+    func dismissAll(kind: LiveActivity.Kind, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.dismissAll(kind: kind, file: file, line: line) }) else { return }
         let before = entries.count
         entries = entries.filter { $0.value.activity.kind != kind }
         guard entries.count != before else { return }
@@ -309,52 +467,145 @@ final class ActivityCenter: ObservableObject {
         recompute()
     }
 
-    /// Shows a persistent activity expanded for a while (default
-    /// `NotchMetrics.activityPeekDuration`), then back to compact.
-    func peek(id: String, for duration: TimeInterval = NotchMetrics.activityPeekDuration) {
+    /// Shows a persistent activity expanded for a while (default: the
+    /// user's peek time), then back to compact.
+    func peek(id: String, for duration: TimeInterval? = nil, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.peek(id: id, for: duration, file: file, line: line) }) else { return }
         guard var entry = entries[id] else { return }
-        entry.peekUntil = clock().addingTimeInterval(duration)
+        entry.peekUntil = clock().addingTimeInterval(duration ?? timing.peekSeconds())
         entries[id] = entry
         recompute()
     }
 
     /// Re-evaluates expiries, peeks and the queue now (they also run on
     /// their own timers).
-    func refresh() {
+    func refresh(file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.refresh(file: file, line: line) }) else { return }
         recompute()
+    }
+
+    // MARK: Choosing what rests in the wings
+
+    /// Rests `id` (a running persistent activity) in the wings until it
+    /// ends; nil goes back to priority order.
+    func pin(id: String?, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.pin(id: id, file: file, line: line) }) else { return }
+        let target = id.flatMap { entries[$0] }.flatMap { $0.isTransient ? nil : $0.id }
+        guard target != pinnedCompactID else { return }
+        pinnedCompactID = target
+        recompute()
+    }
+
+    /// Shows the next running activity in the wings (priority order, then
+    /// back to automatic). Returns the activity now in the wings.
+    @discardableResult
+    func cycleCompact(file: StaticString = #fileID, line: UInt = #line) -> LiveActivity? {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in _ = self?.cycleCompact(file: file, line: line) }) else { return nil }
+        let order = running.map(\.id)
+        guard order.count > 1 else { return compact }
+        let shown = compact.flatMap { c in order.contains(c.id) ? c.id : nil } ?? order[0]
+        let index = order.firstIndex(of: shown) ?? 0
+        let next = order[(index + 1) % order.count]
+        pinnedCompactID = next == order[0] ? nil : next
+        recompute()
+        if let compact {
+            announcer.announce("Showing \(compact.resolvedTitle)", id: "activities.cycle", category: .general)
+        }
+        return compact
     }
 
     // MARK: Island state
 
     /// While the drawer is open nothing shows, so queued alerts don't
     /// spend their time unseen.
-    func setDrawerOpen(_ open: Bool) {
+    func setDrawerOpen(_ open: Bool, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.setDrawerOpen(open, file: file, line: line) }) else { return }
         guard isDrawerOpen != open else { return }
         isDrawerOpen = open
+        if open { hoverStartedAt = nil }
         recompute()
     }
 
     /// Dictation or Clicky is using the band: alerts that wanted it show
     /// compact in the wings instead.
-    func setBandHeld(_ held: Bool) {
+    func setBandHeld(_ held: Bool, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.setBandHeld(held, file: file, line: line) }) else { return }
         guard isBandHeld != held else { return }
         isBandHeld = held
         recompute()
     }
 
-    func reportWings(_ wings: IslandWings) {
+    /// The pointer is on the band under the notch: the alert there (and a
+    /// peek) waits until it leaves, at most `hoverCap`.
+    func setHovered(_ hovered: Bool, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.setHovered(hovered, file: file, line: line) }) else { return }
+        if hovered {
+            guard hoverStartedAt == nil else { return }
+            hoverStartedAt = clock()
+        } else {
+            guard hoverStartedAt != nil else { return }
+            hoverStartedAt = nil
+            // A peek that ran out under the pointer lingers a moment.
+            if let id = bandID, var entry = entries[id], !entry.isTransient, let until = entry.peekUntil {
+                entry.peekUntil = max(until, clock().addingTimeInterval(1))
+                entries[id] = entry
+            }
+        }
+        recompute()
+    }
+
+    /// True while a hovered band holds its clock.
+    var isHoldingForHover: Bool { isHolding(now: clock()) }
+
+    func reportWings(_ wings: IslandWings, file: StaticString = #fileID, line: UInt = #line) {
+        guard Self.isOnMain(file: file, line: line, { [weak self] in self?.reportWings(wings, file: file, line: line) }) else { return }
         guard abs(wings.leading - measuredWings.leading) > 0.5
             || abs(wings.trailing - measuredWings.trailing) > 0.5
         else { return }
         measuredWings = wings
     }
 
+    // MARK: Main thread
+
+    /// Callers that already logged running off the main thread (one line each).
+    nonisolated(unsafe) private static var offMainCallers: Set<String> = []
+    nonisolated private static let offMainLock = NSLock()
+
+    /// The class is @MainActor, but Swift 5 mode lets ObjC delegate
+    /// callbacks (IOBluetooth, CoreAudio, XPC replies…) call it on any
+    /// thread. Mutating the @Published state there deadlocks SwiftUI
+    /// (AttributeGraph waits on main while main waits on the publisher's
+    /// lock). Off main, the call re-runs on the main queue (false: the
+    /// caller returns at once) and the caller is logged once.
+    nonisolated private static func isOnMain(
+        file: StaticString, line: UInt, _ retry: @escaping @MainActor () -> Void
+    ) -> Bool {
+        if Thread.isMainThread { return true }
+        let caller = "\(file):\(line)"
+        offMainLock.lock()
+        let isFirst = offMainCallers.insert(caller).inserted
+        offMainLock.unlock()
+        if isFirst {
+            AppLog.log("ActivityCenter: called off the main thread from \(caller); hopped to main")
+        }
+        nonisolated(unsafe) let retry = retry
+        DispatchQueue.main.async { MainActor.assumeIsolated { retry() } }
+        return false
+    }
+
     // MARK: Resolution
 
-    private func wantsBand(_ entry: Entry, now: Date) -> Bool {
+    private func isHolding(now: Date) -> Bool {
+        guard let since = hoverStartedAt, !isDrawerOpen, timing.pausesOnHover() else { return false }
+        return now.timeIntervalSince(since) < timing.hoverCap
+    }
+
+    private func wantsBand(_ entry: Entry, now: Date, holding: Bool) -> Bool {
         let activity = entry.activity
         if activity.presentation == .expanded || activity.isUrgent { return true }
         if let until = entry.peekUntil, until > now { return true }
+        // A peek under the pointer stays until the pointer leaves.
+        if holding, entry.id == bandID, entry.peekUntil != nil { return true }
         // A taller-than-one-line band without a compact form is text to read
         // (a suggested meeting answer, live captions): a symbol and a dot
         // would hide it, so it keeps the band. `.compact` opts out.
@@ -366,13 +617,16 @@ final class ActivityCenter: ObservableObject {
         return false
     }
 
-    private func prune(now: Date) {
+    private func prune(now: Date, holding: Bool) {
+        let held = holding ? heldAlertID : nil
         entries = entries.filter { _, entry in
             if let expiry = entry.expiresAt, expiry <= now { return false }
             guard entry.isTransient, !entry.activity.kind.isLiveFeedback else { return true }
             if let since = entry.shownSince {
                 return since.addingTimeInterval(entry.remaining) > now
             }
+            // On screen with its clock held by the pointer.
+            if entry.id == held { return true }
             // Stale: an alert that waited this long is old news.
             return now.timeIntervalSince(entry.lastPosted) < NotchMetrics.alertQueueMaxWait
                 && entry.remaining > 0.05
@@ -397,29 +651,48 @@ final class ActivityCenter: ObservableObject {
 
     private func recompute() {
         let now = clock()
+        let holding = isHolding(now: now)
         var band: Entry?
         var wings: Entry?
         var second: Entry?
+        var third: Entry?
         var alertShown = false
+        var lives: [Entry] = []
+
+        // The pointer left (or the cap passed): the held alert's clock runs
+        // again with the time it had left.
+        if !holding, let held = heldAlertID {
+            if var entry = entries[held], entry.shownSince == nil {
+                entry.shownSince = now
+                entries[held] = entry
+            }
+            heldAlertID = nil
+        }
 
         for _ in 0..<4 {
-            prune(now: now)
+            prune(now: now, holding: holding)
             band = nil
             wings = nil
             second = nil
+            third = nil
             alertShown = false
 
-            let lives = entries.values.filter { !$0.isTransient }.sorted { lhs, rhs in
+            lives = entries.values.filter { !$0.isTransient }.sorted { lhs, rhs in
                 lhs.priority == rhs.priority ? lhs.order > rhs.order : lhs.priority > rhs.priority
             }
-            let live = lives.first
+            if let pinned = pinnedCompactID, !lives.contains(where: { $0.id == pinned }) {
+                pinnedCompactID = nil
+            }
             let alert = headAlert()
 
             if !isDrawerOpen {
-                let liveWantsBand = live.map { wantsBand($0, now: now) } ?? false
+                // The highest-priority persistent activity that wants the
+                // band (urgent, expanded, peeking) gets it, even when a
+                // higher one rests in the wings.
+                let bandLive = lives.first { wantsBand($0, now: now, holding: holding) }
                 if let alert {
-                    let liveOutranks = live.map { liveWantsBand && $0.priority > alert.priority } ?? false
-                    if wantsBand(alert, now: now), !isBandHeld, !liveOutranks {
+                    let liveOutranks = bandLive.map { $0.priority > alert.priority } ?? false
+                    if wantsBand(alert, now: now, holding: holding), !isBandHeld, !liveOutranks {
                         band = alert
                     } else {
                         // No room in the band: the alert still shows, compact.
@@ -427,36 +700,41 @@ final class ActivityCenter: ObservableObject {
                     }
                     alertShown = true
                 }
-                if let live {
-                    if liveWantsBand, !isBandHeld, band == nil {
-                        band = live
-                    } else if wings == nil {
-                        wings = live
-                    }
+                if let bandLive, !isBandHeld, band == nil {
+                    band = bandLive
                 }
-                // While the top one peeks in the band, the next one keeps
-                // the wings (e.g. a running timer while a meeting announces itself).
-                if wings == nil, let next = lives.first(where: { $0.id != band?.id }) {
-                    wings = next
+                // The wings: the user's pick, else the top running activity
+                // not in the band (e.g. a running timer while a meeting
+                // announces itself).
+                if wings == nil {
+                    let pinned = pinnedCompactID.flatMap { id in lives.first { $0.id == id && $0.id != band?.id } }
+                    wings = pinned ?? lives.first { $0.id != band?.id }
                 }
-                // A second persistent activity rides along in minimal form.
+                // More running activities ride along in minimal form.
                 if let wingID = wings?.id, wings?.isTransient == false {
-                    second = lives.first { $0.id != wingID && $0.id != band?.id }
+                    let others = lives.filter { $0.id != wingID && $0.id != band?.id }
+                    second = others.first
+                    if timing.visibleLimit() >= 3, others.count > 1 { third = others[1] }
                 }
             }
 
-            // Start or pause the alerts' clocks.
+            // Start or pause the alerts' clocks. A band under the pointer
+            // keeps its alert on screen with the clock stopped.
             let shownID = alertShown ? alert?.id : nil
+            let holdsShown = holding && shownID != nil && shownID == band?.id
             headAlertID = alert?.id
             var dropped = false
             for (id, var entry) in entries where entry.isTransient && !entry.activity.kind.isLiveFeedback {
-                if id == shownID {
+                if id == shownID, !holdsShown {
                     if entry.shownSince == nil { entry.shownSince = now }
                 } else if let since = entry.shownSince {
                     entry.remaining -= now.timeIntervalSince(since)
                     entry.shownSince = nil
-                    // Not worth bringing back for a blink.
-                    if entry.remaining < NotchMetrics.alertMinResume {
+                    if id == shownID {
+                        // Held by the pointer: give it a moment once it leaves.
+                        entry.remaining = max(entry.remaining, NotchMetrics.alertMinResume + 0.4)
+                    } else if entry.remaining < NotchMetrics.alertMinResume {
+                        // Not worth bringing back for a blink.
                         entries.removeValue(forKey: id)
                         dropped = true
                         continue
@@ -466,16 +744,33 @@ final class ActivityCenter: ObservableObject {
                 }
                 entries[id] = entry
             }
+            heldAlertID = holdsShown ? shownID : nil
             if !dropped { break }
         }
 
-        current = band?.activity
-        compact = wings?.activity
-        secondary = second?.activity
-        scheduleWake(now: now)
+        let newBandID = band?.id
+        if newBandID != bandID {
+            bandID = newBandID
+            bandRevision &+= 1
+        }
+        // Each @Published assignment invalidates every view that reads the
+        // center, so unchanged slots aren't assigned again. Content only
+        // changes through `post`/`dismiss`, which bump `revision`.
+        let fresh = revision != publishedRevision
+        publishedRevision = revision
+        if fresh || current?.id != band?.id { current = band?.activity }
+        if fresh || compact?.id != wings?.id { compact = wings?.activity }
+        if fresh || secondary?.id != second?.id { secondary = second?.activity }
+        if fresh || tertiary?.id != third?.id { tertiary = third?.activity }
+        let summaries = lives.map {
+            LiveActivitySummary(id: $0.id, kind: $0.activity.kind, title: $0.activity.resolvedTitle,
+                                symbol: $0.activity.resolvedSymbol, priority: $0.priority, opensTab: $0.activity.opensTab)
+        }
+        if summaries != running { running = summaries }
+        scheduleWake(now: now, holding: holding)
     }
 
-    private func scheduleWake(now: Date) {
+    private func scheduleWake(now: Date, holding: Bool) {
         wakeTask?.cancel()
         wakeTask = nil
         var deadlines: [Date] = []
@@ -485,11 +780,13 @@ final class ActivityCenter: ObservableObject {
             if entry.isTransient, !entry.activity.kind.isLiveFeedback {
                 if let since = entry.shownSince {
                     deadlines.append(since.addingTimeInterval(entry.remaining))
-                } else {
+                } else if entry.id != heldAlertID {
                     deadlines.append(entry.lastPosted.addingTimeInterval(NotchMetrics.alertQueueMaxWait))
                 }
             }
         }
+        // A parked pointer stops holding after the cap.
+        if holding, let since = hoverStartedAt { deadlines.append(since.addingTimeInterval(timing.hoverCap)) }
         guard let next = deadlines.min() else { return }
         let delay = max(0.05, next.timeIntervalSince(now))
         wakeTask = Task { [weak self] in
@@ -497,5 +794,67 @@ final class ActivityCenter: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.recompute()
         }
+    }
+}
+
+// MARK: - Motion helpers for bands, overlays and their panels
+
+/// Small helpers on top of `SparkVMotion` for the live bands and the
+/// floating panels they open (AppKit windows can't take a SwiftUI curve).
+enum LiveBandMotion {
+    /// `SparkVMotion.easeOut`'s curve, cubic-bezier(0.23, 1, 0.32, 1), for AppKit.
+    static var easeOutTiming: CAMediaTimingFunction {
+        CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+    }
+
+    /// Fades a panel (ordered front at alpha 0, or mid fade-out) to full
+    /// opacity with a strong ease-out, rising `rise` points into place
+    /// (Reduce Motion: fade only).
+    @MainActor
+    static func fadeIn(_ window: NSWindow, duration: Double = SparkVMotion.Duration.small, rise: CGFloat = 0) {
+        let target = window.frame
+        let lift = SparkVMotion.reduceMotion ? 0 : rise
+        if lift != 0 { window.setFrame(target.offsetBy(dx: 0, dy: -lift), display: false) }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = easeOutTiming
+            window.animator().alphaValue = 1
+            if lift != 0 { window.animator().setFrame(target, display: true) }
+        }
+    }
+
+    /// Fades a panel out (ease-out, a touch faster than it came in), then
+    /// orders it out and restores its alpha, unless it was shown again
+    /// meanwhile (a fade-in set its alpha back to 1).
+    @MainActor
+    static func fadeOut(_ window: NSWindow, duration: Double = SparkVMotion.Duration.hover, completion: (@MainActor () -> Void)? = nil) {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = duration
+            context.timingFunction = easeOutTiming
+            window.animator().alphaValue = 0
+        }, completionHandler: {
+            MainActor.assumeIsolated {
+                guard window.alphaValue < 0.01 else { return }
+                window.orderOut(nil)
+                window.alphaValue = 1
+                completion?()
+            }
+        })
+    }
+}
+
+/// Press feedback for custom `ButtonStyle`s that draw their own fill:
+/// 0.97 on press (100 ms), back a little slower (160 ms), no scale with
+/// Reduce Motion. Same feel as `SparkVPressStyle`.
+struct LiveBandPressEffect: ViewModifier {
+    let isPressed: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !SparkVMotion.reduceMotion ? SparkVMotion.pressedScale : 1)
+            .animation(
+                SparkVMotion.easeOut(isPressed ? SparkVMotion.Duration.press : SparkVMotion.Duration.release),
+                value: isPressed
+            )
     }
 }

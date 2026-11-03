@@ -78,6 +78,36 @@ struct IslandShape: Shape {
     }
 }
 
+/// The island's outline for either surface: the notch silhouette above,
+/// or a continuous-corner capsule (the Pill style, and Minimal on a
+/// display without a notch). Both radii animate, so the island can spring
+/// between resting, band and open sizes in either shape.
+struct IslandSilhouette: Shape {
+    var shape: IslandSurface.Shape
+    /// Shoulder flare (notch only; 0 for a pill).
+    var topRadius: CGFloat
+    /// Bottom corners (notch) or every corner (pill).
+    var bottomRadius: CGFloat
+
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(topRadius, bottomRadius) }
+        set {
+            topRadius = newValue.first
+            bottomRadius = newValue.second
+        }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        switch shape {
+        case .notch:
+            return IslandShape(topRadius: topRadius, bottomRadius: bottomRadius).path(in: rect)
+        case .pill:
+            let radius = max(0, min(bottomRadius, rect.height / 2, rect.width / 2))
+            return RoundedRectangle(cornerRadius: radius, style: .continuous).path(in: rect)
+        }
+    }
+}
+
 /// There's no public API for "just the geometry of one continuous corner," so this
 /// builds a reference rect with only the two corners wanted (others pinned to 0)
 /// and reads its emitted path elements back out. Not memoized, so it stays exact
@@ -156,7 +186,8 @@ private enum IslandContinuousCorner {
 ///
 /// Compact: the body grows sideways inside the menu-bar height, a wing on
 /// each side of the camera housing fitted to its content, so nothing below
-/// the menu bar is covered. The wings may differ in width; the body then
+/// the menu bar is covered, and stopping short of the nearest menu bar
+/// item (`IslandInteractionStore.wingClearance`). The wings may differ in width; the body then
 /// shifts so the housing stays centered over the camera.
 /// Expanded: a symmetric band under the notch, at least
 /// `NotchMetrics.activityWidth` wide.
@@ -188,6 +219,11 @@ struct IslandClosedLayout: Equatable {
                 leading = max(leading, trailing)
                 trailing = leading
             }
+            // Never over a menu bar item (Labs/IslandInteraction measures
+            // the room on each side; unlimited when that is off).
+            let room = IslandInteractionStore.wingClearance
+            leading = IslandWingClearance.cap(leading, clearance: room.leading, floor: restingWing)
+            trailing = IslandWingClearance.cap(trailing, clearance: room.trailing, floor: restingWing)
         }
         if let band {
             // Symmetric: the band is centered under the camera.

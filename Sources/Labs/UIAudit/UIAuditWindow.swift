@@ -200,7 +200,7 @@ struct UIAuditWindowView: View {
                     .help("This run only. Lets the audit click controls that look like pay, checkout, delete, remove, cancel subscription, transfer or log out. Leave off on real accounts.")
                 Spacer()
                 Button(ui.showAdvanced ? "Hide options" : "More options") { ui.showAdvanced.toggle() }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .font(SparkVTheme.caption(11))
                     .foregroundStyle(SparkVTheme.link)
             }
@@ -512,6 +512,7 @@ struct UIAuditWindowView: View {
                 .menuStyle(.borderlessButton)
                 .fixedSize()
                 .disabled(controller.lastReport == nil)
+                .accessibilityLabel("More")
             UIAuditPromptButton(controller: controller, size: 28)
         }
     }
@@ -554,7 +555,14 @@ struct UIAuditCountChips: View {
             ForEach([UIAuditSeverity.critical, .high, .medium, .low], id: \.self) { level in
                 if let n = counts[level], n > 0 {
                     HStack(spacing: 3) {
-                        Circle().fill(UIAuditStyle.color(level)).frame(width: 6, height: 6)
+                        SparkVStatusDot(kind: level == .critical ? .error : (level == .low ? .idle : .warning),
+                                        color: UIAuditStyle.color(level), size: 6, label: "")
+                        // The level's initial too: colour alone doesn't say which.
+                        if SparkVTheme.differentiateWithoutColor {
+                            Text(String(level.label.prefix(1)))
+                                .font(.system(size: compact ? 9 : 10.5, weight: .bold))
+                                .foregroundStyle(SparkVTheme.textSecondary)
+                        }
                         Text("\(n)")
                             .font(.system(size: compact ? 9.5 : 11, weight: .semibold))
                             .foregroundStyle(SparkVTheme.text)
@@ -564,6 +572,8 @@ struct UIAuditCountChips: View {
                     .background(Capsule().fill(SparkVTheme.surface))
                     .overlay(Capsule().strokeBorder(SparkVTheme.stroke))
                     .help("\(n) \(level.rawValue)")
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(n) \(level.label)")
                 }
             }
         }
@@ -594,7 +604,7 @@ struct UIAuditPromptButton: View {
                         .fill(controller.lastReport == nil ? SparkVTheme.surface : SparkVTheme.accent))
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .disabled(controller.lastReport == nil || (controller.lastReport?.issueCount ?? 0) == 0)
             .help("Copy a self-contained fix prompt for a coding agent (grouped by page, with selectors, repro steps, expected vs actual and acceptance criteria)")
         }
@@ -680,8 +690,11 @@ struct UIAuditFindingRow: View {
                         .clipShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.stroke))
                 }
-                .buttonStyle(.plain)
+                // Large thumbnail: a gentler 0.98 so the press doesn't read as a jump.
+                .buttonStyle(SparkVPressStyle(scale: 0.98))
+
                 .help("Open screenshot")
+                .accessibilityLabel("Open screenshot")
             }
         }
         .padding(.leading, 4)

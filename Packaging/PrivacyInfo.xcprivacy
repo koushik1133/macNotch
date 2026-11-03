@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  SparkV privacy manifest. SparkV collects no data and does no tracking:
+  everything runs on this Mac. Online features (Groq formatting and answers
+  with the user's own key, update checks against GitHub) are off until the
+  user turns them on, run in real time and send nothing to the developer.
+  If that ever changes, declare the data type here (not linked, no tracking).
+
+  Required-reason APIs SparkV uses:
+  - UserDefaults (CA92.1): its own settings.
+  - File timestamps (C617.1, 3B52.1, DDA9.1): dates of files in its own
+    Application Support folder, of files the user dropped or chose
+    (Tray, Converter, Downloads, screenshots), and shown to the user.
+  - System boot time (35F9.1): ProcessInfo.systemUptime to measure time
+    between events inside the app (dictation, meeting transcripts, media).
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+				<string>3B52.1</string>
+				<string>DDA9.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

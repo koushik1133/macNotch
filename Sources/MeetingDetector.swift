@@ -1218,6 +1218,7 @@ enum MeetingCallIcon {
             }
             let found = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
                 .map { NSWorkspace.shared.icon(forFile: $0.path) }
+            if cache.count >= 64 { cache.removeAll() }
             cache[bundleID] = found
             if let found { return found }
         }
@@ -1231,8 +1232,10 @@ enum MeetingCallIcon {
 /// elsewhere), for hover and press on the call prompt.
 @MainActor
 enum MeetingHaptics {
-    static func hover() { NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now) }
-    static func press() { NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now) }
+    /// Hovering never taps the trackpad (Trackpad Haptics: only presses,
+    /// swipes, drops and detents do).
+    static func hover() {}
+    static func press(_ event: SparkVHaptic = .select) { SparkVHaptics.play(event) }
 }
 
 // MARK: - Views
@@ -1330,6 +1333,8 @@ private struct DetectedCallRow: View {
             }
             .frame(width: 12)
             .onAppear {
+                // Constant ripple; still under Reduce Motion or on a hot Mac.
+                guard !SparkVMotion.reduceMotion, !SparkVEnergy.shared.pausesDecoration else { return }
                 withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { pulse.isOn = true }
             }
 
@@ -1342,9 +1347,9 @@ private struct DetectedCallRow: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            MeetingCallPill(title: "Take Notes", systemImage: "record.circle", isPrimary: true, action: start)
+            MeetingCallPill(title: "Take Notes", systemImage: "record.circle", isPrimary: true, haptic: .success, action: start)
                 .help("Record this call and write notes. Let participants know you're recording.")
-            MeetingCallPill(title: nil, systemImage: "xmark", isPrimary: false, action: dismiss)
+            MeetingCallPill(title: nil, systemImage: "xmark", isPrimary: false, haptic: .close, action: dismiss)
                 .help("Not this call")
         }
         .frame(height: 20)
@@ -1357,13 +1362,14 @@ struct MeetingCallPill: View {
     let title: String?
     let systemImage: String
     let isPrimary: Bool
+    var haptic: SparkVHaptic = .select
     let action: () -> Void
 
     @StateObject private var hover = ViewFlag()
 
     var body: some View {
         Button {
-            MeetingHaptics.press()
+            MeetingHaptics.press(haptic)
             action()
         } label: {
             HStack(spacing: 3) {

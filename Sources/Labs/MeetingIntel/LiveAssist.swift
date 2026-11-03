@@ -116,6 +116,8 @@ final class LiveMeetingAssist: ObservableObject, MeetingLiveAssisting {
     }
 
     var userFirst: String { MeetingAIText.firstName(userName) }
+    /// The live recorder, for the caption band's listening / problem line.
+    var recorder: MeetingRecorder? { assistant?.recorder }
     /// Flags the user hasn't dismissed, in time order.
     var visibleFlags: [MeetingFlag] { flags.filter { !$0.isDismissed }.sorted { $0.at < $1.at } }
     var showsTalkMeter: Bool { prefs.talkMeter }
@@ -827,7 +829,10 @@ struct MeetingCaptionBand: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 let lines = Array(assist.captionLines.suffix(2))
-                if lines.isEmpty {
+                if lines.isEmpty, let recorder = assist.recorder {
+                    // Nothing said yet: "Listening…", or what's wrong.
+                    MeetingCaptionListening(recorder: recorder)
+                } else if lines.isEmpty {
                     captionRow(MeetingCaptionLine(id: UUID(), speaker: .others, text: "Listening…", isFinal: false, at: 0),
                                isNewest: true)
                 } else {
@@ -848,8 +853,9 @@ struct MeetingCaptionBand: View {
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(SparkVTheme.textSecondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("Bookmark this moment")
+                    .accessibilityLabel("Bookmark this moment")
                     Button {
                         assist.captionsVisible = false
                     } label: {
@@ -857,8 +863,9 @@ struct MeetingCaptionBand: View {
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(SparkVTheme.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("Hide captions (recording continues)")
+                    .accessibilityLabel("Hide captions (recording continues)")
                 }
                 if assist.showsTalkMeter {
                     HStack(spacing: 6) {
@@ -895,6 +902,29 @@ struct MeetingCaptionBand: View {
     }
 }
 
+/// The caption band before the first words: "Listening…", with the
+/// microphone problem or "your mic only" when there is one.
+struct MeetingCaptionListening: View {
+    @ObservedObject var recorder: MeetingRecorder
+
+    var body: some View {
+        let problem = recorder.micProblem
+        HStack(spacing: 7) {
+            Capsule()
+                .fill(problem == nil ? SparkVTheme.textSecondary : SparkVTheme.warning)
+                .frame(width: 2, height: 12)
+            Text(problem ?? (recorder.systemAudioProblem != nil
+                             ? "Listening to your mic only (allow Screen Recording to caption others)"
+                             : "Listening…"))
+                .font(SparkVTheme.body(problem == nil ? 12.5 : 11.5))
+                .foregroundStyle(problem == nil ? SparkVTheme.textTertiary : SparkVTheme.warning)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .help(problem ?? recorder.systemAudioProblem ?? "")
+    }
+}
+
 /// One-line toast (≤3 s) when something is flagged.
 struct MeetingFlagToast: View {
     let flag: MeetingFlag
@@ -927,7 +957,7 @@ struct MeetingFlagToast: View {
 
             MeetingIntelLiveBadge(compact: true)
             Button("Undo", action: onUndo)
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .font(SparkVTheme.caption(11))
                 .foregroundStyle(SparkVTheme.textSecondary)
         }
@@ -997,7 +1027,8 @@ struct MeetingFlagTimeline: View {
                     } label: {
                         row(flag, isFirst: index == 0, isLast: index == items.count - 1)
                     }
-                    .buttonStyle(.plain)
+                    // Large row: a lighter press than a button.
+                    .buttonStyle(SparkVPressStyle(scale: 0.99))
                 }
             }
         }

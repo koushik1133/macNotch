@@ -107,8 +107,9 @@ struct UniversalSearchMicButton: View {
                 )
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(controller.isDictating ? "Stop dictating" : "Dictate your search")
         .accessibilityLabel(controller.isDictating ? "Stop dictating" : "Dictate search")
     }
@@ -138,8 +139,9 @@ private struct UniversalSearchAskToggle: View {
             .overlay(Capsule().strokeBorder(on ? Color.clear : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(on ? "Back to search (Tab)" : "Ask a question about your results (Tab)")
     }
 }
@@ -223,8 +225,9 @@ private struct UniversalSearchChip: View {
             .overlay(Capsule().strokeBorder(isOn ? Color.clear : SparkVTheme.stroke, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
     }
 }
@@ -251,6 +254,8 @@ private struct UniversalSearchResultsList: View {
                             .id(result.id)
                             .onTapGesture(count: 2) { controller.activate(result) }
                             .onTapGesture { controller.select(result.id) }
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { controller.select(result.id) }
                         }
                     }
                 }
@@ -282,7 +287,7 @@ private struct UniversalSearchSectionHeader: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(UniversalSearchPalette.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("Show all \(source.title) results")
             }
         }
@@ -505,7 +510,7 @@ private struct UniversalSearchFooter: View {
     @ViewBuilder private var status: some View {
         if controller.isDictating {
             HStack(spacing: 5) {
-                Circle().fill(SparkVTheme.recording).frame(width: 6, height: 6)
+                SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 6, label: "")
                 Text("Listening… click the mic to finish")
             }
             .font(.system(size: 11, weight: .medium))
@@ -586,6 +591,8 @@ private struct UniversalSearchAskView: View {
                                 .contentShape(Rectangle())
                                 .onTapGesture(count: 2) { controller.activate(r) }
                                 .onTapGesture { controller.select(r.id) }
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction { controller.select(r.id) }
                             }
                         }
                     }

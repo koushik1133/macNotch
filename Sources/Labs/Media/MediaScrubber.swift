@@ -27,6 +27,8 @@ final class ScrubberInteraction: ObservableObject {
     @Published var isHovering = false
     /// 0...1 while the knob is being dragged, nil otherwise.
     @Published var dragFraction: Double?
+    /// Last 5 % step felt while dragging (not published: haptics only).
+    var hapticStep: Int?
 }
 
 /// Thin progress line under the track info that turns into a slider on
@@ -37,6 +39,7 @@ final class ScrubberInteraction: ObservableObject {
 /// Position is interpolated from `MediaEngine.timing` in a 30 fps
 /// `TimelineView` that pauses with playback, so nothing republishes per frame.
 struct MediaScrubber: View {
+    @ObservedObject private var energy = SparkVEnergy.shared
     @EnvironmentObject private var media: MediaEngine
     @ObservedObject var bookmarks: MediaBookmarkStore
     /// Fill color of the elapsed part.
@@ -62,7 +65,7 @@ struct MediaScrubber: View {
         let timing = media.timing
         let ticks = bookmarks.bookmarks(forTrack: media.trackKey).map(\.position)
         let animating = previewDate == nil && timing.rate > 0 && interaction.dragFraction == nil
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !animating)) { context in
+        TimelineView(.animation(minimumInterval: energy.frameInterval(1.0 / 30), paused: !animating || energy.pausesDecoration)) { context in
             let now = previewDate ?? context.date
             let live = timing.position(at: now)
             let position = interaction.dragFraction.map { $0 * timing.duration } ?? live
@@ -112,7 +115,8 @@ struct MediaScrubber: View {
                     .frame(width: labelWidth, alignment: .trailing)
             }
         }
-        .animation(.easeOut(duration: 0.18), value: active)
+        // Hover thickens the bar and brings in the knob: strong ease-out, 180 ms.
+        .animation(SparkVMotion.easeOut(SparkVMotion.Duration.small), value: active)
     }
 
     private func trailingLabel(timing: PlaybackTiming, position: TimeInterval, hours: Bool) -> String {
@@ -154,7 +158,11 @@ struct MediaScrubber: View {
                         .frame(width: Self.knobSize, height: Self.knobSize)
                         .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
                         .position(x: min(max(Self.knobSize / 2, width * fraction), width - Self.knobSize / 2), y: midY)
-                        .transition(.scale(scale: 0.3).combined(with: .opacity))
+                        // Grows out of the bar's own thickness (5 of 9 pt),
+                        // not from a dot; fade only under Reduce Motion.
+                        .transition(SparkVMotion.reduceMotion
+                            ? .opacity
+                            : .scale(scale: Self.activeBarHeight / Self.knobSize).combined(with: .opacity))
                 }
             }
             .frame(width: width, height: geometry.size.height)
@@ -164,15 +172,37 @@ struct MediaScrubber: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard media.canSeek else { return }
-                        interaction.dragFraction = Self.fraction(
+                        let fraction = Self.fraction(
                             atX: value.location.x, width: width, duration: timing.duration, ticks: ticks
                         )
+                        if interaction.dragFraction == nil {
+                            // A click jumps the knob with a quick ease-out;
+                            // the drag that may follow tracks the pointer 1:1
+                            // and retargets that motion at once.
+                            withAnimation(SparkVMotion.reduceMotion ? nil : SparkVMotion.easeOut(SparkVMotion.Duration.hover)) {
+                                interaction.dragFraction = fraction
+                            }
+                            interaction.hapticStep = Int(fraction * 20)
+                        } else {
+                            interaction.dragFraction = fraction
+                            let step = Int(fraction * 20)
+                            if step != interaction.hapticStep {
+                                interaction.hapticStep = step
+                                SparkVHaptics.play(fraction <= 0 || fraction >= 1 ? .boundary : .detent)
+                            }
+                        }
                     }
                     .onEnded { value in
+                        // Always release the knob, even when the track
+                        // stopped being seekable mid-drag (a live stream,
+                        // the player quit): otherwise it stays stuck.
+                        defer {
+                            interaction.dragFraction = nil
+                            interaction.hapticStep = nil
+                        }
                         guard media.canSeek else { return }
                         let target = Self.fraction(atX: value.location.x, width: width, duration: timing.duration, ticks: ticks)
                         media.seek(to: target * timing.duration)
-                        interaction.dragFraction = nil
                     }
             )
             .help(media.canSeek ? "Drag to seek" : "")

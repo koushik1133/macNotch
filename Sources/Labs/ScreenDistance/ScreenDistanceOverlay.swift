@@ -43,7 +43,9 @@ final class ScreenDistanceOverlayController: ScreenDistanceOverlayPresenting {
         }
         primaryPanel?.makeKey()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.3
+            // A full-screen sheet: the drawer duration with a strong ease-out.
+            context.duration = SparkVMotion.Duration.drawer
+            context.timingFunction = ScreenDistanceOverlayTiming.easeOut
             for panel in panels { panel.animator().alphaValue = 1 }
         }
     }
@@ -63,7 +65,9 @@ final class ScreenDistanceOverlayController: ScreenDistanceOverlayPresenting {
         }
         guard animated else { finish(); return }
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.45
+            // Exits are quicker than entrances (was 0.45 s, default curve).
+            context.duration = SparkVMotion.Duration.standard
+            context.timingFunction = ScreenDistanceOverlayTiming.easeOut
             for panel in closing { panel.animator().alphaValue = 0 }
         }, completionHandler: {
             MainActor.assumeIsolated { finish() }
@@ -219,7 +223,7 @@ struct ScreenDistanceOverlayView: View {
                         .font(.system(size: 40, weight: .semibold))
                         .foregroundStyle(safe ? ScreenDistanceStyle.good : ScreenDistanceStyle.warning)
                 }
-                .animation(.easeOut(duration: 0.2), value: safe)
+                .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: safe)
 
                 VStack(spacing: 8) {
                     Text(safe ? "That’s better" : "Your Mac screen is too close")
@@ -259,8 +263,9 @@ struct ScreenDistanceOverlayView: View {
                                 .strokeBorder(safe ? Color.clear : SparkVTheme.stroke)
                         )
                         .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous))
+                        .animation(SparkVMotion.hover(), value: safe)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .disabled(!safe)
                 .keyboardShortcut(.defaultAction)
                 .accessibilityHint(safe ? "" : "Available once you move back")
@@ -290,6 +295,13 @@ struct ScreenDistanceOverlayView: View {
                 .foregroundStyle(SparkVTheme.textSecondary)
                 .underline(color: SparkVTheme.choose(apple: SparkVTheme.textTertiary, sparkv: SparkVTheme.red.opacity(0.7)))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
+
+/// cubic-bezier(0.23, 1, 0.32, 1), the SparkVMotion strong ease-out, for
+/// the AppKit panel fades.
+private enum ScreenDistanceOverlayTiming {
+    static var easeOut: CAMediaTimingFunction { CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1) }
+}
+

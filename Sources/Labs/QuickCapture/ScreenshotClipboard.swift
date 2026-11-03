@@ -72,11 +72,24 @@ final class ScreenshotClipboardController: ObservableObject {
         guard !isRunning else { return }
         isRunning = true
         updateWatcher()
-        // The location can change in the Screenshot app's Options menu.
+        updateRefreshLoop()
+    }
+
+    /// The location can change in the Screenshot app's Options menu: re-read
+    /// it now and then, only while the feature is on and the displays awake.
+    private func updateRefreshLoop() {
+        let wanted = isRunning && isEnabled
+        guard wanted else {
+            refreshTask?.cancel()
+            refreshTask = nil
+            return
+        }
+        guard refreshTask == nil else { return }
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
+                try? await Task.sleep(for: SparkVEnergy.shared.duration(.seconds(60)))
                 guard !Task.isCancelled else { return }
+                if SparkVEnergy.shared.screensAsleep { continue }
                 self?.updateWatcher()
             }
         }
@@ -96,6 +109,7 @@ final class ScreenshotClipboardController: ObservableObject {
         defaults.set(enabled, forKey: Keys.enabled)
         if enabled { giveConsent() }
         updateWatcher()
+        updateRefreshLoop()
     }
 
     /// Explicit go-ahead for a protected folder (e.g. after the location changed).

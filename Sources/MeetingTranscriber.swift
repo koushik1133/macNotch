@@ -95,47 +95,116 @@ enum MeetingAudio {
 /// Downmixes any PCM buffer to a new mono Float32 buffer at the same sample
 /// rate (the result never aliases the input, so taps may reuse theirs).
 /// Not thread-safe: use from one capture thread at a time.
+///
+/// The downmix is done by hand for every layout. AVAudioConverter's own
+/// downmix turns a 3-channel input (the MacBook microphone array, some
+/// aggregate devices) into pure silence, which the transcriber then hears as
+/// a silent meeting (the same bug DictationController's MonoDownmix fixes).
+/// Stereo is averaged; three or more channels use the first one with
+/// signal. Channels that are digital silence (unused channels of an
+/// aggregate device) are skipped so they don't pull the level down.
 final class MeetingMonoMixer {
+    /// Format-only converter (same channel count, Float32 deinterleaved) for
+    /// the rare sample formats read by hand below (e.g. Float64).
     private var converter: AVAudioConverter?
     private var converterSource: AVAudioFormat?
 
     func mix(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
         let source = buffer.format
         let frames = buffer.frameLength
-        guard frames > 0, source.sampleRate > 0, source.channelCount > 0,
+        let channelCount = Int(source.channelCount)
+        guard frames > 0, source.sampleRate > 0, channelCount > 0,
               let target = MeetingAudio.monoFloatFormat(sampleRate: source.sampleRate),
               let output = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: frames),
               let destination = output.floatChannelData?[0] else {
             return nil
         }
+        let count = Int(frames)
+        // Interleaved buffers keep every channel in the first pointer.
+        let stride = source.isInterleaved ? channelCount : 1
 
-        // Fast path: deinterleaved Float32 (AVAudioEngine taps, ScreenCaptureKit).
-        if source.commonFormat == .pcmFormatFloat32, !source.isInterleaved, let channels = buffer.floatChannelData {
-            let channelCount = Int(source.channelCount)
-            let count = Int(frames)
-            let scale = 1 / Float(channelCount)
-            for index in 0..<count {
-                var value: Float = 0
-                for channel in 0..<channelCount { value += channels[channel][index] }
-                destination[index] = value * scale
+        switch source.commonFormat {
+        case .pcmFormatFloat32:
+            guard let channels = buffer.floatChannelData else { return nil }
+            Self.average(into: destination, frames: count, channels: channelCount) { channel, index in
+                source.isInterleaved ? channels[0][index * stride + channel] : channels[channel][index]
             }
-            output.frameLength = frames
+        case .pcmFormatInt16:
+            guard let channels = buffer.int16ChannelData else { return nil }
+            let scale = 1 / Float(Int16.max)
+            Self.average(into: destination, frames: count, channels: channelCount) { channel, index in
+                Float(source.isInterleaved ? channels[0][index * stride + channel] : channels[channel][index]) * scale
+            }
+        case .pcmFormatInt32:
+            guard let channels = buffer.int32ChannelData else { return nil }
+            let scale = 1 / Float(Int32.max)
+            Self.average(into: destination, frames: count, channels: channelCount) { channel, index in
+                Float(source.isInterleaved ? channels[0][index * stride + channel] : channels[channel][index]) * scale
+            }
+        default:
+            // Float64 and friends: convert the sample format only (no
+            // downmix, see above), then average by hand.
+            guard let planar = Self.planarFloatFormat(like: source),
+                  let converted = AVAudioPCMBuffer(pcmFormat: planar, frameCapacity: frames) else { return nil }
+            if converter == nil || converterSource != source {
+                converter = AVAudioConverter(from: source, to: planar)
+                converterSource = source
+            }
+            guard let converter, (try? converter.convert(to: converted, from: buffer)) != nil,
+                  converted.frameLength > 0, let channels = converted.floatChannelData else { return nil }
+            Self.average(into: destination, frames: Int(converted.frameLength), channels: channelCount) { channel, index in
+                channels[channel][index]
+            }
+            output.frameLength = converted.frameLength
             return output
         }
+        output.frameLength = frames
+        return output
+    }
 
-        // Anything else (interleaved, Int16, Int32, Float64): AVAudioConverter.
-        if converter == nil || converterSource != source {
-            converter = AVAudioConverter(from: source, to: target)
-            converter?.downmix = true
-            converterSource = source
+    /// Averages the channels that carry signal; all-zero channels are skipped.
+    private static func average(
+        into destination: UnsafeMutablePointer<Float>, frames: Int, channels: Int,
+        sample: (_ channel: Int, _ index: Int) -> Float
+    ) {
+        var live: [Int] = []
+        for channel in 0..<channels {
+            var index = 0
+            while index < frames, sample(channel, index) == 0 { index += 1 }
+            if index < frames { live.append(channel) }
         }
-        guard let converter else { return nil }
-        do {
-            try converter.convert(to: output, from: buffer)
-        } catch {
-            return nil
+        guard !live.isEmpty else {
+            destination.update(repeating: 0, count: frames)
+            return
         }
-        return output.frameLength > 0 ? output : nil
+        // One channel when there is only one with signal, and for arrays of
+        // three or more (the MacBook microphone array): its channels are
+        // separate capsules, and channel 0 alone is what dictation proved.
+        if live.count == 1 || channels > 2 {
+            let channel = live[0]
+            for index in 0..<frames { destination[index] = sample(channel, index) }
+            return
+        }
+        let scale = 1 / Float(live.count)
+        for index in 0..<frames {
+            var value: Float = 0
+            for channel in live { value += sample(channel, index) }
+            destination[index] = value * scale
+        }
+    }
+
+    /// Float32, deinterleaved, same channel count and layout as `format`
+    /// (more than two channels need an explicit layout).
+    private static func planarFloatFormat(like format: AVAudioFormat) -> AVAudioFormat? {
+        if format.channelCount <= 2 {
+            return AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: format.sampleRate,
+                                 channels: format.channelCount, interleaved: false)
+        }
+        let layout = format.channelLayout
+            ?? AVAudioChannelLayout(layoutTag: kAudioChannelLayoutTag_Unknown | format.channelCount)
+        guard let layout else { return nil }
+        return AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: format.sampleRate,
+                             interleaved: false, channelLayout: layout)
     }
 }
 
@@ -282,6 +351,10 @@ final class MeetingTranscriber {
     nonisolated let input = MeetingTranscriberInput()
     /// "SpeechAnalyzer" or "SFSpeechRecognizer" once started.
     private(set) var backendName = ""
+    /// Recognizer results with text so far (volatile and final), for diagnostics.
+    private(set) var resultCount = 0
+    /// Final phrases emitted so far.
+    private(set) var finalCount = 0
 
     private let clock: MeetingClock
     private let onSegment: @MainActor (TranscriptSegment) -> Void
@@ -361,8 +434,10 @@ final class MeetingTranscriber {
             guard phrase.isFinal, let previous = lastText[phrase.id] else { return }
             text = previous
         }
+        resultCount += 1
         if phrase.isFinal {
             lastText[phrase.id] = nil
+            finalCount += 1
         } else {
             lastText[phrase.id] = text
         }
@@ -376,6 +451,16 @@ final class MeetingTranscriber {
             isFinal: phrase.isFinal
         )
         onSegment(segment)
+    }
+
+    /// Speech is reaching the transcriber but SpeechAnalyzer has produced
+    /// nothing: switch this stream to SFSpeechRecognizer (still on device).
+    /// Returns false when there is nothing to switch to.
+    @discardableResult
+    func fallBackToLegacy(reason: String) -> Bool {
+        guard !isEnding, let engine, engine.name == MeetingAnalyzerName.value else { return false }
+        engineFailed(engine, error: reason)
+        return true
     }
 
     /// An engine died mid-meeting: SpeechAnalyzer falls back to

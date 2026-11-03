@@ -104,6 +104,7 @@ final class MeetingAssistant: ObservableObject {
         static let recording = "meeting.recording"
         static let answer = "meeting.answer"
         static let notes = "meeting.notes"
+        static let systemAudio = "meeting.systemAudio"
         static let callPrompt = "meeting.callPrompt"
     }
 
@@ -185,12 +186,15 @@ final class MeetingAssistant: ObservableObject {
     // MARK: - Recording
 
     /// Starts recording a meeting. `title` defaults to the date and time.
-    func start(title: String?, calendarEventID: String?) {
+    /// `byUser` false (auto-start, the call prompt's own tap) plays no haptic.
+    func start(title: String?, calendarEventID: String?, byUser: Bool = true) {
         switch phase {
         case .recording, .summarizing: return
         case .idle, .failed: break
         }
         failureResetTask?.cancel()
+        // Your side of the call would be silent (System Status mic mute).
+        MicMuteController.shared.warnIfMuted(feature: "Meeting notes")
         // Recording now (from anywhere): the "Take notes?" offer is answered.
         if let call = callDetector.activeCall { declinedCallKeys.insert(call.key) }
         clearCallPrompt()
@@ -214,6 +218,7 @@ final class MeetingAssistant: ObservableObject {
         pendingQuestion = nil
         liveAnswer = nil
         phase = .recording
+        if byUser { SparkVHaptics.play(.start) }
         postRecordingActivity()
 
         recorder.onSegment = { [weak self] segment in
@@ -228,7 +233,8 @@ final class MeetingAssistant: ObservableObject {
                     await recorder.stop()
                     return
                 }
-                AppLog.log("Meetings: recording \"\(record.title)\"")
+                AppLog.log("Meetings: recording started")
+                if recorder.systemAudioProblem != nil { postSystemAudioNotice(recordID: record.id) }
                 // Load the answer model now so the first suggested answer
                 // doesn't pay the on-device model's cold start.
                 if suggestAnswers {
@@ -250,10 +256,34 @@ final class MeetingAssistant: ObservableObject {
         }
     }
 
+    /// Shown at most once per launch: other participants can't be captured
+    /// (Screen Recording), so only the user's side is transcribed. The
+    /// recording band keeps saying "Recording your mic only" after that.
+    private static var didShowSystemAudioNotice = false
+
+    private func postSystemAudioNotice(recordID: UUID) {
+        guard !Self.didShowSystemAudioNotice else { return }
+        Self.didShowSystemAudioNotice = true
+        Task { [weak self] in
+            // After the 3 s "let participants know" reminder.
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            guard let self, current?.id == recordID, phase == .recording,
+                  recorder.systemAudioProblem != nil else { return }
+            let relaunch = PermissionCenter.shared.screenRecordingNeedsRelaunch
+            activities.post(LiveActivity(
+                id: ActivityID.systemAudio, kind: .meeting, priority: 74, duration: 8, height: 48,
+                presentation: .expanded, symbol: "speaker.slash.fill", tint: SparkVTheme.warning
+            ) {
+                MeetingSystemAudioNoticeBand(needsRelaunch: relaunch)
+            })
+        }
+    }
+
     /// Stops recording, writes the minutes and opens them.
-    func stop() {
+    func stop(byUser: Bool = true) {
         guard phase == .recording, let started = current else { return }
         phase = .summarizing
+        if byUser { SparkVHaptics.play(.stop) }
         autosaveTask?.cancel()
         autosaveTask = nil
         // The meeting is over: a pending or shown suggested answer would only
@@ -287,7 +317,7 @@ final class MeetingAssistant: ObservableObject {
             }
 
             guard !record.segments.isEmpty else {
-                AppLog.log("Meetings: no speech captured in \"\(record.title)\"")
+                AppLog.log("Meetings: no speech captured")
                 finishSession()
                 activities.post(LiveActivity(
                     id: ActivityID.notes, kind: .meeting, priority: 75, duration: 5
@@ -310,7 +340,7 @@ final class MeetingAssistant: ObservableObject {
                 upsertLibrary(record)
                 await store.saveAndWait(record)
                 SpaceIngestCenter.meeting(record)
-                AppLog.log("Meetings: notes ready for \"\(record.title)\" (\(notes.generatedBy))")
+                AppLog.log("Meetings: notes ready (\(notes.generatedBy))")
                 finishSession()
                 let mine = notes.myTasks.count
                 activities.post(LiveActivity(
@@ -344,7 +374,8 @@ final class MeetingAssistant: ObservableObject {
     /// stops and writes notes on its own when the call ends.
     func startDetectedCall() {
         guard let call = promptedCall ?? callDetector.activeCall else { return }
-        startRecording(for: call)
+        // The prompt's pill already played its own haptic.
+        startRecording(for: call, byUser: false)
         if phase == .recording { openNotesWindow() }
     }
 
@@ -365,12 +396,12 @@ final class MeetingAssistant: ObservableObject {
         }
     }
 
-    func startRecording(for call: DetectedCall) {
+    func startRecording(for call: DetectedCall, byUser: Bool = true) {
         switch phase {
         case .recording, .summarizing: return
         case .idle, .failed: break
         }
-        start(title: call.title, calendarEventID: call.calendarEventID)
+        start(title: call.title, calendarEventID: call.calendarEventID, byUser: byUser)
         guard phase == .recording, let id = current?.id else { return }
         detectorRecording = (id, call.key)
         AppLog.log("Meetings: recording a detected \(call.serviceName) call")
@@ -389,7 +420,7 @@ final class MeetingAssistant: ObservableObject {
             // speech and Screen Recording were answered, it offers instead.
             if !autoStartDetectedCalls, callOfferOverride?(call) == true { return }
             if autoStartDetectedCalls, Self.canRecordWithoutPrompt {
-                startRecording(for: call)
+                startRecording(for: call, byUser: false)
             } else {
                 postCallPrompt(call, isNew: true)
             }
@@ -414,7 +445,7 @@ final class MeetingAssistant: ObservableObject {
             if promptedCall?.key == call.key { clearCallPrompt() }
             guard phase == .recording else { return }
             if let recording = detectorRecording, recording.callKey == call.key, current?.id == recording.recordID {
-                stop()
+                stop(byUser: false)
             } else {
                 activities.post(LiveActivity(
                     id: ActivityID.notes, kind: .meeting, priority: 75, duration: 5
@@ -567,7 +598,7 @@ final class MeetingAssistant: ObservableObject {
                 let finished = notes
                 update(meetingID) { $0.notes = finished }
                 if let updated = self.record(id: meetingID) { SpaceIngestCenter.meeting(updated) }
-                AppLog.log("Meetings: regenerated notes for \"\(record.title)\"")
+                AppLog.log("Meetings: notes regenerated")
             } catch {
                 AppLog.log("Meetings: regenerating notes failed: \(error.localizedDescription)")
                 notesWindow.flash("Couldn't regenerate notes: \(error.localizedDescription)")

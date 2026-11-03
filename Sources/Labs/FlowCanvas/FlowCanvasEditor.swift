@@ -235,7 +235,8 @@ final class FCEditor: ObservableObject {
         let padding: CGFloat = 80
         let available = CGSize(width: max(200, canvasSize.width - padding * 2), height: max(200, canvasSize.height - padding * 2 - 60))
         let scale = min(available.width / max(world.width, 1), available.height / max(world.height, 1)).fcClamped(FCLayout.minZoom, maxZoom)
-        withAnimation(.easeInOut(duration: 0.25)) {
+        // The camera moves on screen: strong ease-in-out. Reduce Motion jumps.
+        withAnimation(SparkVMotion.reduceMotion ? nil : SparkVMotion.easeInOut(0.25)) {
             zoom = scale
             offset = CGSize(width: canvasSize.width / 2 - world.midX * scale, height: canvasSize.height / 2 - world.midY * scale + 10)
         }

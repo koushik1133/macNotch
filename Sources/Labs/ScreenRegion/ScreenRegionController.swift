@@ -237,7 +237,9 @@ final class ScreenRegionController: ObservableObject {
             guard let self, !Task.isCancelled else { return }
             do {
                 let image = try await ScreenRegionCapture.capture(selection)
-                let url = try ScreenRegionFiles.writePNG(image)
+                // PNG-encoding a Retina full-screen grab took 100+ ms on main.
+                let url = try await Task.detached(priority: .userInitiated) { try ScreenRegionFiles.writePNG(image) }.value
+                guard !Task.isCancelled else { try? FileManager.default.removeItem(at: url); return }
                 let title: String?
                 var app = appName
                 switch selection {
@@ -474,6 +476,7 @@ struct ScreenToolTileMenu<Content: View>: View {
         .tint(SparkVTheme.textSecondary)
         .fixedSize()
         .padding(.trailing, 3)
+        .accessibilityLabel("More options")
     }
 }
 

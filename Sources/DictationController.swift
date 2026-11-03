@@ -419,6 +419,7 @@ final class DictationController: ObservableObject {
                     pendingTapTask?.cancel()
                     pendingTapTask = nil
                     isHandsFree = true
+                    SparkVHaptics.play(.snap)
                     AppLog.log("Dictation: hands-free (double tap)")
                 } else if isHandsFree {
                     AppLog.log("Dictation: stop (hotkey)")
@@ -455,6 +456,7 @@ final class DictationController: ObservableObject {
             pendingTapTask?.cancel()
             pendingTapTask = nil
             isHandsFree = true
+            SparkVHaptics.play(.snap)
             AppLog.log("Dictation: hands-free (hotkey+Space)")
 
         case .yieldedToControl:
@@ -493,6 +495,8 @@ final class DictationController: ObservableObject {
             return
         }
         resetTask?.cancel()
+        // A muted mic would record silence: say so (System Status mic mute).
+        MicMuteController.shared.warnIfMuted(feature: "Dictation")
         sessionID += 1
         let id = sessionID
         phase = .listening
@@ -503,13 +507,14 @@ final class DictationController: ObservableObject {
         monitor.setEscapeArmed(true)
         if formattingEnabled { formatter.prewarm() }
         AppLog.log("Dictation: listening (\(trigger)\(handsFree ? ", hands-free" : ""))")
+        SparkVHaptics.play(.start)
 
         durationTask?.cancel()
         durationTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(Self.maximumDuration * 1_000_000_000))
             guard let self, !Task.isCancelled, self.sessionID == id, self.phase == .listening else { return }
             AppLog.log("Dictation: maximum duration reached")
-            self.finish()
+            self.finish(byUser: false)
         }
 
         startRecorder(session: id)
@@ -559,8 +564,9 @@ final class DictationController: ObservableObject {
         return app.localizedName
     }
 
-    private func finish() {
+    private func finish(byUser: Bool = true) {
         guard phase == .listening else { return }
+        if byUser { SparkVHaptics.play(.stop) }
         pendingTapTask?.cancel()
         pendingTapTask = nil
         durationTask?.cancel()
@@ -587,7 +593,9 @@ final class DictationController: ObservableObject {
             guard self.sessionID == id else { return }
             AppLog.log("Dictation: transcript \(raw.count) chars")
             guard !raw.isEmpty else {
-                self.fail("No speech detected")
+                self.fail(recorder.heardDigitalSilence
+                          ? "Mic is silent: allow SparkV in Privacy › Microphone"
+                          : recorder.heardVoice ? "Couldn’t make out any words" : "No speech detected")
                 return
             }
 
@@ -627,6 +635,7 @@ final class DictationController: ObservableObject {
     }
 
     private func complete(_ text: String) {
+        SparkVHaptics.play(.success)
         endSession()
         phase = .done(text)
         scheduleReset(after: 1.5)
@@ -634,6 +643,7 @@ final class DictationController: ObservableObject {
 
     private func fail(_ message: String) {
         AppLog.log("Dictation: failed: \(message)")
+        SparkVHaptics.play(.failure)
         sessionID += 1
         if let recorder {
             self.recorder = nil
@@ -780,17 +790,66 @@ final class DictationRecorder {
     /// Stops the microphone and returns the final transcript.
     func stop() async -> String {
         await capture.stop()
-        return await backend.finish()
+        var text = await backend.finish()
+        let mic = AVCaptureDevice.authorizationStatus(for: .audio).rawValue
+        let speech = SFSpeechRecognizer.authorizationStatus().rawValue
+        let seconds = capture.capturedSeconds
+        let voiced = capture.voicedSeconds
+        AppLog.log(String(
+            format: "Dictation: heard %d buffers (%.1f s, %.1f s voiced), peak %d dB, %@ (mic auth %d, speech auth %d)",
+            capture.buffers, seconds, voiced, Int(capture.peakDecibels), backend.name, mic, speech
+        ))
+        // SpeechAnalyzer returned nothing for audio that had voice in it:
+        // run the same audio through SFSpeechRecognizer before giving up.
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           backend.name != LegacyBackend.name, voiced >= Self.minimumVoicedSeconds {
+            text = await Self.recognizeAgain(capture.keptAudio, seconds: min(seconds, AudioCapture.maximumKeptSeconds))
+        }
+        capture.discardKeptAudio()
+        return text
     }
+
+    /// Less than this much loud audio is treated as "nothing was said".
+    static let minimumVoicedSeconds: Double = 0.4
+
+    /// Second pass over recorded audio with SFSpeechRecognizer (on device).
+    static func recognizeAgain(_ audio: [AVAudioPCMBuffer], seconds: Double) async -> String {
+        guard !audio.isEmpty else { return "" }
+        do {
+            // Fed at once, so recognition runs faster than real time; the
+            // deadline grows with the recording.
+            let legacy = try LegacyBackend(onText: { _ in }, finishTimeout: min(30, max(4, seconds * 0.5)))
+            try await legacy.begin()
+            let sink = legacy.sink
+            for buffer in audio { sink(buffer) }
+            let text = await legacy.finish()
+            let words = text.split(whereSeparator: \.isWhitespace).count
+            AppLog.log("Dictation: SpeechAnalyzer heard nothing; SFSpeechRecognizer second pass found \(words) word(s)")
+            return text
+        } catch {
+            AppLog.log("Dictation: SFSpeechRecognizer second pass unavailable (\(error))")
+            return ""
+        }
+    }
+
+    /// Only zeros arrived: macOS gives an app silence (no error) when its
+    /// Microphone access is off, or another app holds the input exclusively.
+    var heardDigitalSilence: Bool { capture.buffers > 0 && capture.peakDecibels < -100 }
+
+    /// Something louder than room tone reached the mic (speech, most likely).
+    var heardVoice: Bool { capture.voicedSeconds >= Self.minimumVoicedSeconds }
 
     func cancel() async {
         await capture.stop()
+        capture.discardKeptAudio()
         await backend.cancel()
     }
 }
 
 @MainActor
 protocol TranscriptionBackend: AnyObject {
+    /// "SpeechAnalyzer" or "SFSpeechRecognizer", for the log.
+    var name: String { get }
     /// Receives microphone buffers on the audio thread.
     var sink: @Sendable (AVAudioPCMBuffer) -> Void { get }
     func begin() async throws
@@ -805,13 +864,91 @@ private func joinTranscript(_ head: String, _ tail: String) -> String {
     return head + " " + tail
 }
 
+// MARK: - Self-test
+
+/// Launch-argument diagnostic for the microphone + speech pipeline.
+@MainActor
+enum DictationSelfTest {
+    static func run() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            AppLog.log("Mic self-test: starting (5 s)")
+            do {
+                let recorder = try await DictationRecorder.start(onText: { _ in }, onLevel: { _ in })
+                try? await Task.sleep(for: .seconds(5))
+                let text = await recorder.stop().trimmingCharacters(in: .whitespacesAndNewlines)
+                let words = text.split(separator: " ").count
+                AppLog.log("Mic self-test: \(words) word(s) recognized\(recorder.heardDigitalSilence ? ", input was digital silence" : "")")
+            } catch {
+                AppLog.log("Mic self-test: failed to start: \(error)")
+            }
+            await recognizeFile()
+        }
+    }
+
+    /// `--speech-file <path>`: the same recognizer fed from a file, no mic,
+    /// so a silent result can be pinned on the input or on recognition.
+    private static func recognizeFile() async {
+        let args = CommandLine.arguments
+        guard let index = args.firstIndex(of: "--speech-file"), index + 1 < args.count else { return }
+        do {
+            let file = try AVAudioFile(forReading: URL(fileURLWithPath: args[index + 1]))
+            var backend: (any TranscriptionBackend)?
+            if #available(macOS 26.0, *) { backend = await AnalyzerBackend.make(hints: [], onText: { _ in }) }
+            let recognizer = try backend ?? LegacyBackend(onText: { _ in })
+            try await recognizer.begin()
+            let sink = recognizer.sink
+            let downmix = MonoDownmix(sampleRate: file.processingFormat.sampleRate)
+            while file.framePosition < file.length {
+                guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 4800) else { break }
+                try file.read(into: buffer, frameCount: 4800)
+                guard buffer.frameLength > 0 else { break }
+                sink(downmix.process(buffer))
+            }
+            let words = await recognizer.finish().split(separator: " ").count
+            AppLog.log("Speech self-test: \(words) word(s) from the file (\(backend == nil ? "SFSpeechRecognizer" : "SpeechAnalyzer"))")
+        } catch {
+            AppLog.log("Speech self-test: failed: \(error)")
+        }
+    }
+}
+
 // MARK: - Audio capture
 
 /// AVAudioEngine microphone tap. Engine work runs on a private serial queue
 /// (starting the input unit can take a moment), never on the main thread.
+/// Restarts itself when the input device or its format changes
+/// (AVAudioEngineConfigurationChange): AirPods switching to their headset
+/// profile when the mic opens stops the engine, which used to end the
+/// recording a second or two in, before the user had said anything.
 final class AudioCapture: @unchecked Sendable {
     private let queue = DispatchQueue(label: "SparkV.Dictation.Audio", qos: .userInitiated)
+    private let lock = NSLock()
     private var engine: AVAudioEngine?
+    private var observer: (any NSObjectProtocol)?
+    private var onBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)?
+    private var onLevel: (@Sendable (Float) -> Void)?
+    private var isRunning = false
+    private var restartAttempts = 0
+
+    // Stats and the kept audio: written on the audio thread, read on main (lock).
+    private var bufferCount = 0
+    private var peak: Float = 0
+    private var seconds: Double = 0
+    private var voiced: Double = 0
+    private var kept: [AVAudioPCMBuffer] = []
+    private var keptSeconds: Double = 0
+    /// Audio kept for a second recognition pass (SpeechAnalyzer heard nothing).
+    static let maximumKeptSeconds: Double = 120
+
+    var buffers: Int { lock.lock(); defer { lock.unlock() }; return bufferCount }
+    var peakDecibels: Float { lock.lock(); defer { lock.unlock() }; return 20 * log10(max(peak, 0.000_000_1)) }
+    /// Seconds of audio captured.
+    var capturedSeconds: Double { lock.lock(); defer { lock.unlock() }; return seconds }
+    /// Seconds of audio louder than room tone (roughly: speech).
+    var voicedSeconds: Double { lock.lock(); defer { lock.unlock() }; return voiced }
+    /// Mono buffers captured so far (first `maximumKeptSeconds`).
+    var keptAudio: [AVAudioPCMBuffer] { lock.lock(); defer { lock.unlock() }; return kept }
 
     func start(
         onBuffer: @escaping @Sendable (AVAudioPCMBuffer) -> Void,
@@ -820,9 +957,17 @@ final class AudioCapture: @unchecked Sendable {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             queue.async {
                 do {
-                    try self.startOnQueue(onBuffer: onBuffer, onLevel: onLevel)
+                    guard self.engine == nil else {
+                        continuation.resume()
+                        return
+                    }
+                    self.onBuffer = onBuffer
+                    self.onLevel = onLevel
+                    try self.startEngine()
+                    self.isRunning = true
                     continuation.resume()
                 } catch {
+                    self.teardown()
                     continuation.resume(throwing: error)
                 }
             }
@@ -832,38 +977,48 @@ final class AudioCapture: @unchecked Sendable {
     func stop() async {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             queue.async {
-                if let engine = self.engine {
-                    engine.stop()
-                    engine.inputNode.removeTap(onBus: 0)
-                    self.engine = nil
-                }
+                self.isRunning = false
+                self.teardown()
+                self.onBuffer = nil
+                self.onLevel = nil
                 continuation.resume()
             }
         }
     }
 
-    private func startOnQueue(
-        onBuffer: @escaping @Sendable (AVAudioPCMBuffer) -> Void,
-        onLevel: @escaping @Sendable (Float) -> Void
-    ) throws {
-        guard engine == nil else { return }
+    /// Drops the kept audio (after the transcript is settled).
+    func discardKeptAudio() {
+        lock.lock(); defer { lock.unlock() }
+        kept.removeAll()
+    }
+
+    /// Queue only.
+    private func startEngine() throws {
+        guard let onBuffer, let onLevel else { return }
         let engine = AVAudioEngine()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw DictationError.noMicrophone }
 
         let meter = LevelMeter(onLevel: onLevel)
-        let handle: @Sendable (AVAudioPCMBuffer) -> Void = { buffer in
-            meter.process(buffer)
-            onBuffer(buffer)
+        let downmix = MonoDownmix(sampleRate: format.sampleRate)
+        let handle: @Sendable (AVAudioPCMBuffer) -> Void = { [weak self] buffer in
+            // The built-in MacBook mic is a 3-channel array; AVAudioConverter
+            // turns that into pure silence, so hand on one channel instead.
+            let mono = downmix.process(buffer)
+            self?.record(mono)
+            meter.process(mono)
+            onBuffer(mono)
         }
+        // ~43 ms at 48 kHz: half the wake-ups of 1024 frames, still smooth live text.
         if #available(macOS 27.0, *) {
-            try input.installAudioTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            try input.installAudioTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
                 handle(AVAudioPCMBuffer(copying: buffer))
             }
         } else {
-            input.installTap(onBus: 0, bufferSize: 1024, format: format, block: Self.makeTapBlock(handle))
+            input.installTap(onBus: 0, bufferSize: 2048, format: format, block: Self.makeTapBlock(handle))
         }
+        AppLog.log("Dictation: microphone \(Int(format.sampleRate)) Hz, \(format.channelCount) ch")
         engine.prepare()
         do {
             try engine.start()
@@ -872,11 +1027,106 @@ final class AudioCapture: @unchecked Sendable {
             throw error
         }
         self.engine = engine
+        observer = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.queue.async { self.restart() }
+        }
+    }
+
+    /// Queue only. The input device or its format changed mid-recording.
+    private func restart() {
+        guard isRunning else { return }
+        AppLog.log("Dictation: audio configuration changed, restarting microphone")
+        teardown()
+        do {
+            try startEngine()
+            restartAttempts = 0
+        } catch {
+            restartAttempts += 1
+            AppLog.log("Dictation: microphone restart failed (\(error)), attempt \(restartAttempts)")
+            guard restartAttempts < 5 else { return }
+            queue.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.restart() }
+        }
+    }
+
+    /// Queue only.
+    private func teardown() {
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+            self.observer = nil
+        }
+        if let engine {
+            engine.stop()
+            engine.inputNode.removeTap(onBus: 0)
+            self.engine = nil
+        }
+    }
+
+    /// Audio thread: stats, plus a copy of the audio for a second pass.
+    private func record(_ mono: AVAudioPCMBuffer) {
+        let frames = Int(mono.frameLength)
+        let rate = mono.format.sampleRate
+        guard frames > 0, rate > 0 else { return }
+        var bufferPeak: Float = 0
+        var sum: Float = 0
+        if let samples = mono.floatChannelData?[0] {
+            for index in 0..<frames {
+                let value = samples[index]
+                bufferPeak = max(bufferPeak, abs(value))
+                sum += value * value
+            }
+        }
+        let duration = Double(frames) / rate
+        // -50 dB RMS: above a quiet room, below any speech close to the mic.
+        let isVoiced = (sum / Float(frames)).squareRoot() > 0.003
+        lock.lock(); defer { lock.unlock() }
+        bufferCount += 1
+        peak = max(peak, bufferPeak)
+        seconds += duration
+        if isVoiced { voiced += duration }
+        // A copy: before macOS 27 the tap's own buffer is reused after it returns.
+        if keptSeconds < Self.maximumKeptSeconds, let copy = Self.copy(mono) {
+            kept.append(copy)
+            keptSeconds += duration
+        }
+    }
+
+    private static func copy(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        guard let source = buffer.floatChannelData,
+              let copy = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength),
+              let destination = copy.floatChannelData else { return nil }
+        copy.frameLength = buffer.frameLength
+        let channels = buffer.format.isInterleaved ? 1 : Int(buffer.format.channelCount)
+        let samples = Int(buffer.frameLength) * (buffer.format.isInterleaved ? Int(buffer.format.channelCount) : 1)
+        for channel in 0..<channels {
+            destination[channel].update(from: source[channel], count: samples)
+        }
+        return copy
     }
 
     /// Built outside any actor: the block runs on the realtime audio thread.
     private static func makeTapBlock(_ handle: @escaping @Sendable (AVAudioPCMBuffer) -> Void) -> AVAudioNodeTapBlock {
         return { buffer, _ in handle(buffer) }
+    }
+}
+
+/// Mono Float32 for every input layout, mixed by hand (MeetingMonoMixer):
+/// AVAudioConverter turns the 3-channel MacBook mic into pure silence.
+/// Stereo is averaged; arrays of three or more use the first channel with
+/// signal, so an interface whose mic is on input 2 isn't heard as silence
+/// (taking channel 0 alone did that). Mono Float32 passes through.
+/// Audio thread only.
+final class MonoDownmix: @unchecked Sendable {
+    private let mixer = MeetingMonoMixer()
+
+    init(sampleRate: Double) {}
+
+    func process(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
+        let format = buffer.format
+        if format.channelCount == 1, format.commonFormat == .pcmFormatFloat32 { return buffer }
+        return mixer.mix(buffer) ?? buffer
     }
 }
 
@@ -921,7 +1171,9 @@ private final class LevelMeter: @unchecked Sendable {
 @available(macOS 26.0, *)
 @MainActor
 final class AnalyzerBackend: TranscriptionBackend {
+    let name = "SpeechAnalyzer"
     let sink: @Sendable (AVAudioPCMBuffer) -> Void
+    private let fed: AnalyzerSink
     private let analyzer: SpeechAnalyzer
     private let format: AVAudioFormat
     private let stream: AsyncStream<AnalyzerInput>
@@ -946,6 +1198,7 @@ final class AnalyzerBackend: TranscriptionBackend {
         self.stream = stream
         self.continuation = continuation
         let converter = AnalyzerSink(format: format, continuation: continuation)
+        fed = converter
         sink = { buffer in converter.append(buffer) }
     }
 
@@ -966,7 +1219,9 @@ final class AnalyzerBackend: TranscriptionBackend {
             if status == .supported || status == .downloading { installAssets(for: locale) }
             return nil
         }
+        reserveOnce(locale)
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
+            AppLog.log("Dictation: no audio format for the speech model")
             return nil
         }
         let analyzer = SpeechAnalyzer(
@@ -1018,7 +1273,10 @@ final class AnalyzerBackend: TranscriptionBackend {
     func finish() async -> String {
         continuation.finish()
         let analyzer = self.analyzer
-        let finalized = await AsyncTimeout.run(seconds: 3) {
+        // Long dictations (or a model still loading) need longer than 3 s to
+        // finalize; cancelling early dropped the words still in flight.
+        let deadline = 3 + min(7, fed.fedSeconds / 20)
+        let finalized = await AsyncTimeout.run(seconds: deadline) {
             do {
                 try await analyzer.finalizeAndFinishThroughEndOfInput()
                 return true
@@ -1026,7 +1284,10 @@ final class AnalyzerBackend: TranscriptionBackend {
                 return false
             }
         }
-        if finalized != true { await analyzer.cancelAndFinishNow() }
+        if finalized != true {
+            AppLog.log(String(format: "Dictation: SpeechAnalyzer did not finalize within %.0f s", deadline))
+            await analyzer.cancelAndFinishNow()
+        }
         if let resultsTask {
             _ = await AsyncTimeout.run(seconds: 1) {
                 await resultsTask.value
@@ -1041,6 +1302,23 @@ final class AnalyzerBackend: TranscriptionBackend {
         continuation.finish()
         resultsTask?.cancel()
         await analyzer.cancelAndFinishNow()
+    }
+
+    private static var reservedThisLaunch: Set<String> = []
+
+    /// An installed model another app put there can be removed when that app
+    /// lets go of it; reserving the locale keeps it for SparkV too.
+    private static func reserveOnce(_ locale: Locale) {
+        guard reservedThisLaunch.insert(locale.identifier).inserted else { return }
+        Task.detached(priority: .utility) {
+            let reserved = await AssetInventory.reservedLocales
+            guard !reserved.contains(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) else { return }
+            do {
+                _ = try await AssetInventory.reserve(locale: locale)
+            } catch {
+                AppLog.log("Dictation: could not reserve \(locale.identifier) (\(error))")
+            }
+        }
     }
 
     private static func installAssets(for locale: Locale) {
@@ -1071,6 +1349,14 @@ private final class AnalyzerSink: @unchecked Sendable {
     private let continuation: AsyncStream<AnalyzerInput>.Continuation
     private var converter: AVAudioConverter?
     private var sourceFormat: AVAudioFormat?
+    private let lock = NSLock()
+    private var fedFrames: Double = 0
+
+    /// Seconds of audio handed to the analyzer so far.
+    var fedSeconds: Double {
+        lock.lock(); defer { lock.unlock() }
+        return format.sampleRate > 0 ? fedFrames / format.sampleRate : 0
+    }
 
     init(format: AVAudioFormat, continuation: AsyncStream<AnalyzerInput>.Continuation) {
         self.format = format
@@ -1078,6 +1364,7 @@ private final class AnalyzerSink: @unchecked Sendable {
     }
 
     func append(_ buffer: AVAudioPCMBuffer) {
+        guard buffer.frameLength > 0, buffer.format.sampleRate > 0 else { return }
         if converter == nil || sourceFormat != buffer.format {
             converter = AVAudioConverter(from: buffer.format, to: format)
             sourceFormat = buffer.format
@@ -1098,6 +1385,9 @@ private final class AnalyzerSink: @unchecked Sendable {
             return buffer
         }
         guard status != .error, output.frameLength > 0 else { return }
+        lock.lock()
+        fedFrames += Double(output.frameLength)
+        lock.unlock()
         continuation.yield(AnalyzerInput(buffer: output))
     }
 }
@@ -1106,14 +1396,19 @@ private final class AnalyzerSink: @unchecked Sendable {
 
 @MainActor
 final class LegacyBackend: TranscriptionBackend {
+    static let name = "SFSpeechRecognizer"
+    var name: String { Self.name }
     let sink: @Sendable (AVAudioPCMBuffer) -> Void
+    private let finishTimeout: Double
     private let recognizer: SFSpeechRecognizer
     private let request: SFSpeechAudioBufferRecognitionRequest
     private let state = LegacyState()
     private let onText: @MainActor @Sendable (String) -> Void
     private var task: SFSpeechRecognitionTask?
 
-    init(hints: [String] = [], onText: @escaping @MainActor @Sendable (String) -> Void) throws {
+    init(
+        hints: [String] = [], onText: @escaping @MainActor @Sendable (String) -> Void, finishTimeout: Double = 2.5
+    ) throws {
         guard let recognizer = SFSpeechRecognizer() ?? SFSpeechRecognizer(locale: Locale(identifier: "en-US")),
               recognizer.isAvailable else {
             throw DictationError.recognizerUnavailable
@@ -1133,6 +1428,7 @@ final class LegacyBackend: TranscriptionBackend {
         self.recognizer = recognizer
         self.request = request
         self.onText = onText
+        self.finishTimeout = finishTimeout
         let box = RequestBox(request)
         sink = { buffer in box.request.append(buffer) }
     }
@@ -1144,7 +1440,7 @@ final class LegacyBackend: TranscriptionBackend {
     func finish() async -> String {
         request.endAudio()
         let state = self.state
-        let done = await AsyncTimeout.run(seconds: 2.5) {
+        let done = await AsyncTimeout.run(seconds: finishTimeout) {
             await state.waitUntilDone()
             return true
         }

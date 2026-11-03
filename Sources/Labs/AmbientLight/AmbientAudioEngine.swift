@@ -15,6 +15,13 @@ final class AmbientAudioEngine {
     private(set) var isReceivingDigitalSilence = false
     /// Called on the main queue when digital silence starts or stops.
     var onDigitalSilenceChange: ((Bool) -> Void)?
+    /// True while the analyzer hears sound (music from any app, whether or
+    /// not it reports Now Playing). Turns on after ~0.3 s of continuous
+    /// sound, off after the analyzer's silence hold (~1.2 s).
+    private(set) var isHearingAudio = false
+    /// Called on the main queue when `isHearingAudio` changes (transitions
+    /// only, never per hop).
+    var onAudibleChange: ((Bool) -> Void)?
     /// Called on the main queue when the output device changed and capture
     /// should be restarted.
     var onRouteChange: (() -> Void)?
@@ -22,6 +29,17 @@ final class AmbientAudioEngine {
     private var source: AmbientAudioSource?
     private var pump: AmbientAnalysisPump?
     private var generation = 0
+    /// When the running capture started (for the stalled-IO check).
+    private(set) var startedAt: Double = 0
+    /// A process-tap start timed out and is still inside Core Audio. New tap
+    /// starts fail fast (`halBusy`) until it returns, instead of queueing up
+    /// behind it.
+    private(set) var isHALWedged = false
+    /// Called on the main queue when an abandoned start finally returned
+    /// (Core Audio is responsive again).
+    var onHALRecovered: (() -> Void)?
+    /// A start that takes longer than this is abandoned.
+    nonisolated static let startTimeout: Double = 4
 
     enum Backend: String, Sendable {
         case processTap
@@ -43,7 +61,11 @@ final class AmbientAudioEngine {
         case .processTap:
             let tap = AmbientProcessTapSource(ring: ring)
             tap.onRouteChange = { [weak self] in
-                Task { @MainActor in self?.onRouteChange?() }
+                Task { @MainActor in
+                    // Not for a tap that is already winding down.
+                    guard let self, self.generation == myGeneration else { return }
+                    self.onRouteChange?()
+                }
             }
             newSource = tap
         case .screenCapture:
@@ -51,15 +73,18 @@ final class AmbientAudioEngine {
         }
         let sampleRate: Double
         do {
-            sampleRate = try await newSource.start()
+            sampleRate = try await startWithTimeout(newSource)
         } catch {
-            newSource.stop()
+            // Never a HAL call on the main thread: the source tears down on
+            // the HAL queue (behind its own start, which already cleaned up).
+            Self.tearDown(newSource)
             throw myGeneration == generation ? error : CancellationError()
         }
         guard myGeneration == generation else {
-            newSource.stop()
+            Self.tearDown(newSource)
             throw CancellationError()
         }
+        startedAt = CACurrentMediaTime()
         source = newSource
         sourceName = newSource.name
         let pump = AmbientAnalysisPump(ring: ring, mailbox: mailbox, sampleRate: sampleRate)
@@ -70,29 +95,128 @@ final class AmbientAudioEngine {
                 self.onDigitalSilenceChange?(silent)
             }
         }
+        pump.onAudibleChange = { [weak self] audible in
+            Task { @MainActor in
+                guard let self, self.generation == myGeneration, self.isHearingAudio != audible else { return }
+                self.isHearingAudio = audible
+                self.onAudibleChange?(audible)
+            }
+        }
         pump.start()
         self.pump = pump
         isRunning = true
         AppLog.log("AmbientLight: capture started (\(newSource.name), \(Int(sampleRate)) Hz)")
     }
 
+    /// Seconds since the analyzer last got audio (any, silence included)
+    /// while running; grows when the IO stopped (a dead tap after
+    /// coreaudiod restarted, a device that vanished). nil when not running.
+    var secondsSinceAudio: Double? {
+        guard isRunning else { return nil }
+        let now = CACurrentMediaTime()
+        let last = max(mailbox.load().time, startedAt)
+        return now - last
+    }
+
+    /// Runs `source.start()` off the main actor (the process tap on the
+    /// serial HAL queue) and gives up after `startTimeout`. An abandoned
+    /// start tears down whatever it created when it finally returns.
+    private func startWithTimeout(_ source: AmbientAudioSource) async throws -> Double {
+        let isTap = source is AmbientProcessTapSource
+        if isTap, isHALWedged { throw AmbientCaptureError.halBusy }
+        let race = AmbientStartRace()
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Double, Error>) in
+            let finish: @Sendable (Result<Double, Error>) -> Void = { [weak self] result in
+                if race.claim() {
+                    continuation.resume(with: result)
+                    return
+                }
+                // Late: the caller already got `timedOut`.
+                if case .success = result { Self.tearDown(source) }
+                AppLog.log("AmbientLight: abandoned capture start returned \(Self.describe(result)); cleaned up")
+                if isTap {
+                    Task { @MainActor in
+                        self?.isHALWedged = false
+                        self?.onHALRecovered?()
+                    }
+                }
+            }
+            if let tap = source as? AmbientProcessTapSource {
+                Self.halQueue.async {
+                    do { finish(.success(try tap.startBlocking())) } catch { finish(.failure(error)) }
+                }
+            } else {
+                Task.detached {
+                    do { finish(.success(try await source.start())) } catch { finish(.failure(error)) }
+                }
+            }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Self.startTimeout) { [weak self] in
+                guard race.claim() else { return }
+                continuation.resume(throwing: AmbientCaptureError.timedOut)
+                if isTap { Task { @MainActor in self?.isHALWedged = true } }
+            }
+        }
+    }
+
+    nonisolated private static func describe(_ result: Result<Double, Error>) -> String {
+        switch result {
+        case .success: "late"
+        case .failure(let error): "an error (\(error.localizedDescription))"
+        }
+    }
+
     func stop() {
         generation += 1
         pump?.stop()
         pump = nil
-        source?.stop()
-        if source != nil { AppLog.log("AmbientLight: capture stopped") }
+        if let source {
+            Self.tearDown(source)
+            AppLog.log("AmbientLight: capture stopped")
+        }
         source = nil
         sourceName = nil
         isRunning = false
         isReceivingDigitalSilence = false
+        isHearingAudio = false
         mailbox.store(.idle)
+    }
+}
+
+extension AmbientAudioEngine {
+    /// Serial: every process-tap HAL call (create, start, stop, destroy)
+    /// runs here in order, never on the main thread.
+    nonisolated static let halQueue = DispatchQueue(label: "SparkV.AmbientLight.hal", qos: .userInitiated)
+
+    /// Stops a source off the main thread: destroying the aggregate device
+    /// and the tap are synchronous HAL calls that can stall for a long time
+    /// while coreaudiod is busy (a device switch, AirPods connecting). Each
+    /// start uses its own ring and source, so a source still winding down
+    /// can't touch the next one.
+    nonisolated static func tearDown(_ source: AmbientAudioSource) {
+        halQueue.async { source.stop() }
+    }
+}
+
+/// First caller wins: the start's completion or its timeout.
+final class AmbientStartRace: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if claimed { return false }
+        claimed = true
+        return true
     }
 }
 
 /// The analysis loop on its own queue.
 final class AmbientAnalysisPump: @unchecked Sendable {
     var onDigitalSilenceChange: (@Sendable (Bool) -> Void)?
+    var onAudibleChange: (@Sendable (Bool) -> Void)?
+    /// Continuous sound needed before the input counts as audible.
+    static let audibleAfter: Double = 0.3
 
     private let ring: AmbientSampleRing
     private let mailbox: AmbientFeatureMailbox
@@ -103,6 +227,7 @@ final class AmbientAnalysisPump: @unchecked Sendable {
     private let hopSize: Int
     private let sampleRate: Double
     private var lastDigitalSilence = false
+    private var audible = false
 
     init(ring: AmbientSampleRing, mailbox: AmbientFeatureMailbox, sampleRate: Double) {
         self.ring = ring
@@ -150,6 +275,11 @@ final class AmbientAnalysisPump: @unchecked Sendable {
         if latest.isDigitalSilence != lastDigitalSilence {
             lastDigitalSilence = latest.isDigitalSilence
             onDigitalSilenceChange?(latest.isDigitalSilence)
+        }
+        let hearing = audible ? !latest.isSilent : analyzer.soundTime >= Self.audibleAfter
+        if hearing != audible {
+            audible = hearing
+            onAudibleChange?(hearing)
         }
     }
 }

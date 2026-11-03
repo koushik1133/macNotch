@@ -44,8 +44,9 @@ struct UniversalSearchDrawerView: View {
                                 .font(.system(size: 11))
                                 .foregroundStyle(UniversalSearchPalette.tertiary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .help("Clear")
+                        .accessibilityLabel("Clear")
                     }
                 }
                 .padding(.horizontal, 9)
@@ -73,6 +74,8 @@ struct UniversalSearchDrawerView: View {
                             .frame(height: Self.rowHeight)
                             .onTapGesture(count: 2) { controller.activate(r) }
                             .onTapGesture { controller.select(r.id) }
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { controller.select(r.id) }
                     }
                 }
                 .overlay(alignment: .topTrailing) {
@@ -87,6 +90,7 @@ struct UniversalSearchDrawerView: View {
                             .transition(.opacity)
                     }
                 }
+                .animation(SparkVMotion.easeOut(SparkVMotion.Duration.small), value: controller.toast)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -151,8 +155,9 @@ private struct UniversalSearchDrawerButton: View {
                 .overlay(Circle().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
         .accessibilityLabel(help)
     }

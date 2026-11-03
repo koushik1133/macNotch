@@ -154,7 +154,7 @@ final class ClipboardController: ObservableObject {
         // after an Accessibility grant (or goes away on a revoke).
         hotkeys.onRunningChange = { [weak self] _ in self?.objectWillChange.send() }
         syncHotkeys()
-        if installsStackHotkeys, stackChordEnabled || stackPanelShortcutEnabled { hotkeys.start() }
+        updateHotkeyInstallation()
     }
 
     func stop() {
@@ -184,6 +184,7 @@ final class ClipboardController: ObservableObject {
             hiddenReason = nil
         }
         syncHotkeys()
+        updateHotkeyInstallation()
     }
 
     func setPaused(_ paused: Bool) {
@@ -237,10 +238,12 @@ final class ClipboardController: ObservableObject {
         AppLog.log("Clipboard: ⌘⇧V stack shortcut \(value ? "on" : "off")")
     }
 
-    /// The tap only exists while one of the shortcuts is on.
+    /// The tap only exists while history is on and one of the shortcuts is
+    /// on: with history off it could never act, yet every keystroke on the
+    /// Mac would still pass through it.
     private func updateHotkeyInstallation() {
         guard started, installsStackHotkeys else { return }
-        if stackChordEnabled || stackPanelShortcutEnabled { hotkeys.start() } else { hotkeys.stop() }
+        if isEnabled, stackChordEnabled || stackPanelShortcutEnabled { hotkeys.start() } else { hotkeys.stop() }
     }
 
     /// Tells the tap what it may intercept: nothing while history is off.
@@ -285,7 +288,7 @@ final class ClipboardController: ObservableObject {
     /// missing or stale (an ad hoc rebuild). The tap starts by itself as soon
     /// as PermissionCenter sees the grant; until then the C menu says why.
     var stackShortcutsNeedAccessibility: Bool {
-        started && installsStackHotkeys && (stackChordEnabled || stackPanelShortcutEnabled) && !hotkeys.isRunning
+        started && isEnabled && installsStackHotkeys && (stackChordEnabled || stackPanelShortcutEnabled) && !hotkeys.isRunning
     }
 
     /// From the "Allow Accessibility" button: shows the system prompt the
@@ -611,7 +614,14 @@ final class ClipboardController: ObservableObject {
         pollTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 self?.poll()
-                try? await Task.sleep(for: ClipboardController.pollInterval, tolerance: .milliseconds(100))
+                // Nobody copies while the displays sleep; Low Power Mode or a
+                // warm Mac checks a third as often.
+                let energy = SparkVEnergy.shared
+                // Copies are detected by changeCount only, so a slower poll would
+                // drop quick successive copies: stay at 0.5 s while anyone can
+                // copy, and slow down only with the displays asleep.
+                let wait: Duration = energy.screensAsleep ? .seconds(5) : ClipboardController.pollInterval
+                try? await Task.sleep(for: wait, tolerance: energy.isConstrained ? .milliseconds(200) : .milliseconds(100))
             }
         }
     }

@@ -472,7 +472,7 @@ final class PermissionCenter: ObservableObject {
 
     /// Restarts SparkV so a fresh Screen Recording grant applies.
     func relaunch(from feature: String) {
-        AppLog.log("Permissions: relaunching for Screen Recording (\(feature))")
+        AppLog.log("Permissions: relaunching SparkV (\(feature))")
         system.relaunch()
     }
 
@@ -879,12 +879,21 @@ final class SystemPermissionSystem: PermissionSystem {
             _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         case .bluetooth:
             guard CBManager.authorization == .notDetermined, bluetoothRequester == nil else { return }
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                bluetoothRequester = PermissionBluetoothRequester { [weak self] in
-                    self?.bluetoothRequester = nil
-                    continuation.resume()
-                }
+            // The delegate isn't guaranteed to report the answer (its state
+            // can already be "unauthorized" while the alert is up), and the
+            // prompt queue stays closed until this returns: also watch the
+            // authorization itself, for at most two minutes.
+            let requester = PermissionBluetoothRequester {}
+            bluetoothRequester = requester
+            let shown = Date()
+            while CBManager.authorization == .notDetermined, !requester.decided, Date().timeIntervalSince(shown) < 120 {
+                try? await Task.sleep(for: .milliseconds(400))
             }
+            if CBManager.authorization == .notDetermined {
+                AppLog.log("Permissions: no answer to the Bluetooth prompt after \(Int(Date().timeIntervalSince(shown))) s")
+            }
+            requester.close()
+            bluetoothRequester = nil
         case .automation(let bundleID):
             _ = await Self.appleEventsPermission(bundleID: bundleID, askUser: true)
         case .downloadsFolder:
@@ -1034,9 +1043,12 @@ final class SystemPermissionSystem: PermissionSystem {
 }
 
 /// Creating a CBCentralManager is what makes macOS ask for Bluetooth.
+/// Its delegate queue is nil, so callbacks arrive on the main queue.
 private final class PermissionBluetoothRequester: NSObject, CBCentralManagerDelegate, @unchecked Sendable {
     private var manager: CBCentralManager?
     private let onDecision: @MainActor () -> Void
+    /// Main thread only.
+    private(set) var decided = false
 
     @MainActor
     init(onDecision: @escaping @MainActor () -> Void) {
@@ -1045,13 +1057,23 @@ private final class PermissionBluetoothRequester: NSObject, CBCentralManagerDele
         manager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: false])
     }
 
+    @MainActor
+    func close() {
+        manager?.delegate = nil
+        manager = nil
+    }
+
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard CBManager.authorization != .notDetermined else { return }
-        MainActor.assumeIsolated {
-            manager?.delegate = nil
-            manager = nil
-            onDecision()
+        let finish = { [self] in
+            MainActor.assumeIsolated {
+                guard !decided else { return }
+                decided = true
+                close()
+                onDecision()
+            }
         }
+        if Thread.isMainThread { finish() } else { DispatchQueue.main.async(execute: finish) }
     }
 }
 

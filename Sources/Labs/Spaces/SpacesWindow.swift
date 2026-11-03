@@ -1117,7 +1117,7 @@ private struct SpacesSidebar: View {
                     Label("Import Space…", systemImage: "square.and.arrow.down")
                         .font(.system(size: 11.5))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .foregroundStyle(SpacesPalette.secondaryText)
                 Spacer()
                 Button {
@@ -1126,7 +1126,7 @@ private struct SpacesSidebar: View {
                     Label("New Space", systemImage: "plus")
                         .font(.system(size: 11.5, weight: .medium))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .foregroundStyle(SparkVTheme.red)
             }
             .padding(.horizontal, 14)
@@ -1241,7 +1241,10 @@ private struct SpacesSidebarInboxRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { model.select(.inbox) }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.select(.inbox) }
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .onDrop(of: SpacesDropIngestor.acceptedTypes, delegate: SpacesSidebarDropDelegate(target: .inbox, model: model, allowsReorder: false))
     }
 }
@@ -1271,7 +1274,8 @@ private struct SpacesSidebarSpaceRow: View {
                             .frame(width: 14, height: 20)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
+                    .accessibilityLabel(model.expanded.contains(space.id) ? "Collapse \(space.name)" : "Expand \(space.name)")
                 } else {
                     Color.clear.frame(width: 14, height: 20)
                 }
@@ -1312,7 +1316,10 @@ private struct SpacesSidebarSpaceRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { model.select(.space(space.id)) }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.select(.space(space.id)) }
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .onDrag { SpacesDropIngestor.dragProvider(spaceID: space.id) }
         .onDrop(
             of: SpacesDropIngestor.acceptedTypes,
@@ -1432,10 +1439,13 @@ private struct SpacesItemColumn: View {
                     .overlay(Capsule().strokeBorder(SpacesPalette.stroke, lineWidth: 0.5))
                     .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
                     .padding(.bottom, 16)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    // Rises 6 pt from 96 % instead of sliding in from the window edge.
+                    .transition(SparkVMotion.reduceMotion ? .opacity : .opacity
+                        .combined(with: .scale(scale: SparkVMotion.enterScale, anchor: .bottom))
+                        .combined(with: .offset(y: 6)))
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: model.toast)
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: model.toast)
         .background(SpacesPalette.background)
         // Files dropped anywhere on the list go into the current selection.
         .onDrop(of: [.fileURL, .image, .url], isTargeted: nil) { providers in
@@ -1501,7 +1511,8 @@ private struct SpacesItemHeader: View {
                                 .font(.system(size: 11))
                                 .foregroundStyle(SpacesPalette.tertiaryText)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
+                        .accessibilityLabel("Clear search")
                     }
                 }
                 .padding(.horizontal, 9)
@@ -1529,7 +1540,7 @@ private struct SpacesItemHeader: View {
                         model.kindFilter = nil
                         model.sourceFilter = nil
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(SpacesPalette.accent)
                 }
@@ -1723,7 +1734,10 @@ private struct SpacesItemRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { model.selectedItemID = item.id }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { model.selectedItemID = item.id }
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .onDrag { SpacesDropIngestor.dragProvider(itemID: item.id) }
         .contextMenu {
             if item.url != nil {
@@ -1887,6 +1901,8 @@ private struct SpacesSuggestionCard: View {
                         .foregroundStyle(SpacesPalette.primaryText)
                         .lineLimit(2)
                         .onTapGesture { onTitleTap?() }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { onTitleTap?() }
                     SpacesConfidenceBadge(confidence: confidence)
                 }
                 if !detail.isEmpty {
@@ -2035,7 +2051,7 @@ private struct SpacesItemDetail: View {
                                 title: "Text",
                                 trailing: AnyView(
                                     Button("Copy") { SpacesUI.copy(item.text) }
-                                        .buttonStyle(.plain)
+                                        .buttonStyle(SparkVPressStyle())
                                         .font(.system(size: 10.5, weight: .medium))
                                         .foregroundStyle(SpacesPalette.accent)
                                 )
@@ -2054,7 +2070,7 @@ private struct SpacesItemDetail: View {
                     HStack {
                         Spacer()
                         Button("Delete Item…", role: .destructive) { model.confirmDelete(item) }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SparkVPressStyle())
                             .font(.system(size: 11.5))
                             .foregroundStyle(SparkVTheme.destructive)
                     }
@@ -2279,6 +2295,7 @@ private struct SpacesAgentPanel: View {
             .labelsHidden()
             .padding(.horizontal, 16)
             .padding(.bottom, 10)
+            .accessibilityLabel("Inspector")
 
             switch model.inspectorTab {
             case .agent:
@@ -2326,6 +2343,9 @@ private struct SpacesAgentPanel: View {
                                 Circle().strokeBorder(Color.white, lineWidth: draft.color.lowercased() == hex.lowercased() ? 1.5 : 0)
                             )
                             .onTapGesture { draft.color = hex }
+                            .accessibilityLabel("Color \(hex)")
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { draft.color = hex }
                     }
                 }
             }
@@ -2432,7 +2452,7 @@ private struct SpacesAgentRulesView: View {
                             ProgressView().controlSize(.mini)
                         } else {
                             Button("Refresh") { model.refreshMemory(of: space.id) }
-                                .buttonStyle(.plain)
+                                .buttonStyle(SparkVPressStyle())
                                 .font(.system(size: 10.5, weight: .medium))
                                 .foregroundStyle(SpacesPalette.accent)
                                 .help("Rewrite the agent's summary of this Space on this Mac")
@@ -2604,6 +2624,7 @@ private struct SpacesAgentRulesView: View {
             HStack(spacing: 10) {
                 Slider(value: $draft.threshold, in: 0.5...1.0, step: 0.05)
                     .controlSize(.small)
+                    .accessibilityLabel("Auto-file confidence")
                 Text("\(Int((draft.threshold * 100).rounded()))%")
                     .font(.system(size: 11.5, weight: .semibold).monospacedDigit())
                     .foregroundStyle(SpacesPalette.primaryText)
@@ -2842,7 +2863,7 @@ private struct SpacesAskView: View {
                                                 .padding(.vertical, 4)
                                                 .background(Capsule().fill(SpacesPalette.accent.opacity(0.1)))
                                         }
-                                        .buttonStyle(.plain)
+                                        .buttonStyle(SparkVPressStyle())
                                         .disabled(model.isAsking)
                                     }
                                 }
@@ -2858,10 +2879,12 @@ private struct SpacesAskView: View {
                     .padding(.bottom, 12)
                 }
                 .onChange(of: exchanges.last?.id) { _, id in
-                    if let id { withAnimation { proxy.scrollTo(id, anchor: .bottom) } }
+                    if let id { withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut())) { proxy.scrollTo(id, anchor: .bottom) } }
                 }
                 .onChange(of: exchanges.last?.answer) { _, _ in
-                    if let id = exchanges.last?.id { withAnimation { proxy.scrollTo(id, anchor: .bottom) } }
+                    // Streaming text: follow it directly; an animated scroll per
+                    // token would lag behind and fight the next one.
+                    if let id = exchanges.last?.id { proxy.scrollTo(id, anchor: .bottom) }
                 }
             }
 
@@ -2882,9 +2905,10 @@ private struct SpacesAskView: View {
                             .font(.system(size: 20))
                             .foregroundStyle(model.askDraft.trimmingCharacters(in: .whitespaces).isEmpty ? SpacesPalette.tertiaryText : SpacesPalette.accent)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .disabled(model.askDraft.trimmingCharacters(in: .whitespaces).isEmpty)
                     .keyboardShortcut(.return, modifiers: .command)
+                    .accessibilityLabel("Ask")
                 }
             }
             .padding(10)
@@ -2892,7 +2916,7 @@ private struct SpacesAskView: View {
             .padding(12)
             if !exchanges.isEmpty {
                 Button("Clear conversation") { model.clearConversation(for: spaceID) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .font(.system(size: 10.5))
                     .foregroundStyle(SpacesPalette.tertiaryText)
                     .padding(.bottom, 8)
@@ -2980,7 +3004,7 @@ private struct SpacesAskView: View {
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(SparkVTheme.surface))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Show this item")
         }
     }
@@ -3107,6 +3131,7 @@ private struct SpacesManualEntrySheet: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(width: 150)
+                        .accessibilityLabel("Kind")
                     }
                     field("Space") {
                         Picker("", selection: $entry.spaceID) {
@@ -3120,6 +3145,7 @@ private struct SpacesManualEntrySheet: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(width: 210)
+                        .accessibilityLabel("Space")
                     }
                 }
             }

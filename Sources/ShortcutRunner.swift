@@ -23,6 +23,7 @@ struct ShortcutRunner: Sendable {
 
     /// Runs `shortcuts run <name>` and returns its stdout. Throws
     /// `ShortcutError` on launch failure, timeout or a non-zero exit status.
+    /// The CLI takes a shortcut's identifier in place of its name too.
     func run(_ shortcutName: String) async throws -> String {
         try await execute(["run", shortcutName], timeout: timeout)
     }
@@ -30,6 +31,24 @@ struct ShortcutRunner: Sendable {
     /// Names of every shortcut in the user's library, in library order.
     func listShortcuts() async throws -> [String] {
         let output = try await execute(["list"], timeout: 15)
+        return output
+            .split(whereSeparator: \.isNewline)
+            .map(String.init)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    /// Every shortcut with its identifier (`shortcuts list --show-identifiers`),
+    /// which survives renames; one process, like `listShortcuts()`. A folder
+    /// name (or identifier) lists just that folder.
+    func listShortcutsWithIdentifiers(folder: String? = nil) async throws -> [ShortcutInfo] {
+        var arguments = ["list", "--show-identifiers"]
+        if let folder { arguments += ["--folder-name", folder] }
+        return ShortcutListParser.parse(try await execute(arguments, timeout: 15))
+    }
+
+    /// Folder names in the Shortcuts library.
+    func listFolders() async throws -> [String] {
+        let output = try await execute(["list", "--folders"], timeout: 15)
         return output
             .split(whereSeparator: \.isNewline)
             .map(String.init)

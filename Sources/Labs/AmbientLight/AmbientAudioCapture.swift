@@ -113,9 +113,15 @@ enum AmbientCaptureError: Error, LocalizedError {
     case coreAudio(String, OSStatus)
     case unsupportedFormat
     case noDisplay
+    /// Core Audio didn't finish the start within the timeout.
+    case timedOut
+    /// An earlier start is still stuck inside Core Audio.
+    case halBusy
 
     var errorDescription: String? {
         switch self {
+        case .timedOut: "Core Audio didn't respond in time"
+        case .halBusy: "Core Audio is still busy"
         case .coreAudio(let step, let status): "\(step) failed (\(status))"
         case .unsupportedFormat: "unsupported audio format"
         case .noDisplay: "no display to capture audio from"
@@ -143,6 +149,8 @@ final class AmbientProcessTapSource: AmbientAudioSource, @unchecked Sendable {
     /// owner restarts capture so the aggregate follows the new device).
     var onRouteChange: (@Sendable () -> Void)?
     private var routeListener: AudioObjectPropertyListenerBlock?
+    /// The output device the aggregate was built on.
+    private var outputUID: String?
 
     init(ring: AmbientSampleRing) {
         self.ring = ring
@@ -153,6 +161,31 @@ final class AmbientProcessTapSource: AmbientAudioSource, @unchecked Sendable {
     }
 
     func start() async throws -> Double {
+        try startBlocking()
+    }
+
+    /// Transient HAL errors seen in the log: the tap object is gone by the
+    /// time its format is read (560947818 = '!obj', after coreaudiod or a
+    /// device reset) or the aggregate can't be built yet. One quick retry
+    /// with a fresh tap fixes those; "Starting capture" (the permission
+    /// gate) is never retried.
+    nonisolated static func isTransient(_ error: Error) -> Bool {
+        guard case AmbientCaptureError.coreAudio(let step, _) = error else { return false }
+        return step != "Starting capture"
+    }
+
+    /// Synchronous: call only on `AmbientAudioEngine.halQueue`.
+    func startBlocking() throws -> Double {
+        do {
+            return try startOnce()
+        } catch where Self.isTransient(error) {
+            AppLog.log("AmbientLight: \(error.localizedDescription); retrying once with a new tap")
+            usleep(250_000)
+            return try startOnce()
+        }
+    }
+
+    private func startOnce() throws -> Double {
         stop()
         // Exclude SparkV itself (its own sounds would echo into the lights).
         var excluded: [AudioObjectID] = []
@@ -170,6 +203,7 @@ final class AmbientProcessTapSource: AmbientAudioSource, @unchecked Sendable {
 
         do {
             let outputUID = try Self.defaultOutputUID()
+            self.outputUID = outputUID
             let aggregate: [String: Any] = [
                 kAudioAggregateDeviceNameKey: "SparkV Ambient Light",
                 kAudioAggregateDeviceUIDKey: "com.sparkv.ambientlight." + UUID().uuidString,
@@ -260,8 +294,14 @@ final class AmbientProcessTapSource: AmbientAudioSource, @unchecked Sendable {
     }
 
     private func listenForRouteChanges() {
+        // The HAL also sends this notification when the default device is
+        // re-announced (aggregates and taps created by other apps, a device
+        // waking up) with no actual change. Restarting for those dropped
+        // audio and cost a tap rebuild, so only a real new device counts.
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-            self?.onRouteChange?()
+            guard let self else { return }
+            guard let current = try? Self.defaultOutputUID(), current != self.outputUID else { return }
+            self.onRouteChange?()
         }
         var address = Self.defaultOutputAddress
         if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, block) == noErr {
@@ -363,6 +403,127 @@ final class AmbientScreenCaptureSource: NSObject, AmbientAudioSource, SCStreamOu
 
     func stream(_ stream: SCStream, didStopWithError error: any Error) {
         AppLog.log("AmbientLight: screen capture audio stopped: \(error.localizedDescription)")
+    }
+}
+
+// MARK: - Output activity
+
+/// Whether any process is playing through the default output device
+/// (`kAudioDevicePropertyDeviceIsRunningSomewhere`). Property listeners only:
+/// no polling and no audio IO, so it can stay on while Ambient Light waits.
+/// It lets capture start for apps that don't report Now Playing (some
+/// browsers, games, calls). SparkV's own tap also makes the device run, so
+/// the owner only acts on it while capture is stopped.
+@MainActor
+final class AmbientOutputActivityMonitor {
+    /// Called on the main queue when the value changes.
+    var onChange: ((Bool) -> Void)?
+    /// Called on the main queue when coreaudiod restarted (every tap and
+    /// aggregate SparkV had is gone).
+    var onServiceRestart: (() -> Void)?
+    private(set) var isOutputRunning = false
+    private var restartListener: AudioObjectPropertyListenerBlock?
+    private var device = AudioObjectID(kAudioObjectUnknown)
+    private var deviceListener: AudioObjectPropertyListenerBlock?
+    private var defaultListener: AudioObjectPropertyListenerBlock?
+
+    private static let runningAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain)
+    private static let restartAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyServiceRestarted,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain)
+    private static let defaultAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain)
+
+    var isMonitoring: Bool { defaultListener != nil }
+
+    func start() {
+        guard defaultListener == nil else { return }
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            MainActor.assumeIsolated { self?.rebind() }
+        }
+        var address = Self.defaultAddress
+        if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, block) == noErr {
+            defaultListener = block
+        }
+        let restart: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                // The device listener died with the old daemon: rebind.
+                self.unbindDevice()
+                self.rebind()
+                self.onServiceRestart?()
+            }
+        }
+        var restartAddress = Self.restartAddress
+        if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &restartAddress, DispatchQueue.main, restart) == noErr {
+            restartListener = restart
+        }
+        rebind()
+    }
+
+    func stop() {
+        if let defaultListener {
+            var address = Self.defaultAddress
+            AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, defaultListener)
+            self.defaultListener = nil
+        }
+        if let restartListener {
+            var address = Self.restartAddress
+            AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main, restartListener)
+            self.restartListener = nil
+        }
+        unbindDevice()
+        isOutputRunning = false
+    }
+
+    private func rebind() {
+        var address = Self.defaultAddress
+        var current = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        let status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &current)
+        if status != noErr { current = AudioObjectID(kAudioObjectUnknown) }
+        if current != device {
+            unbindDevice()
+            device = current
+            if current != kAudioObjectUnknown {
+                let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+                    MainActor.assumeIsolated { self?.refresh() }
+                }
+                var running = Self.runningAddress
+                if AudioObjectAddPropertyListenerBlock(current, &running, DispatchQueue.main, block) == noErr {
+                    deviceListener = block
+                }
+            }
+        }
+        refresh()
+    }
+
+    private func unbindDevice() {
+        if let deviceListener, device != kAudioObjectUnknown {
+            var address = Self.runningAddress
+            AudioObjectRemovePropertyListenerBlock(device, &address, DispatchQueue.main, deviceListener)
+        }
+        deviceListener = nil
+        device = AudioObjectID(kAudioObjectUnknown)
+    }
+
+    private func refresh() {
+        var running = false
+        if device != kAudioObjectUnknown {
+            var address = Self.runningAddress
+            var value: UInt32 = 0
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            if AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr { running = value != 0 }
+        }
+        guard running != isOutputRunning else { return }
+        isOutputRunning = running
+        onChange?(running)
     }
 }
 

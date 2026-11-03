@@ -195,7 +195,8 @@ final class FocusEdgeGlowLayer {
             flash.values = [0, mood == .celebrate ? 0.75 : 0.55, 0]
             flash.keyTimes = [0, 0.2, 1]
             flash.duration = mood == .celebrate ? 1.5 : 1.1
-            flash.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeIn)]
+            // Decays like light: fast, then slow (never ease-in).
+            flash.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeOut)]
             wash.layer.add(flash, forKey: "flash")
 
             if options.shake {
@@ -554,7 +555,7 @@ final class FocusEdgeGlowController {
                                      options: options)
             longest = max(longest, d)
         }
-        if options.haptics && options.shake && !options.reduceMotion && ordersWindows { Self.hapticKick() }
+        if options.haptics && options.shake && !options.reduceMotion && ordersWindows { Self.hapticKick(mood) }
         let reduce = options.reduceMotion
         settleTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(longest + 0.1))
@@ -644,16 +645,10 @@ final class FocusEdgeGlowController {
         }
     }
 
-    /// Three quick taps: felt only while a finger rests on a Force Touch trackpad.
-    private static func hapticKick() {
-        let performer = NSHapticFeedbackManager.defaultPerformer
-        performer.perform(.levelChange, performanceTime: .now)
-        Task { @MainActor in
-            for delay in [0.12, 0.14] {
-                try? await Task.sleep(for: .seconds(delay))
-                performer.perform(.generic, performanceTime: .now)
-            }
-        }
+    /// Felt only while a finger rests on a Force Touch trackpad: a focus
+    /// round starting, or a break or the end asking for attention.
+    private static func hapticKick(_ mood: FocusGlowMood) {
+        SparkVHaptics.play(mood == .focus ? .start : .alert)
     }
 }
 

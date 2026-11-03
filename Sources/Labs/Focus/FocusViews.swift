@@ -89,11 +89,12 @@ struct LabsBHubTileBackground: View {
             shape
                 .fill(isActive ? tint.opacity(isHovered ? 0.30 : 0.24) : Color.white.opacity(isHovered ? 0.14 : 0.08))
                 .overlay(shape.strokeBorder(isActive ? tint.opacity(0.45) : Color.clear, lineWidth: 1))
-                .animation(.easeOut(duration: 0.12), value: isHovered)
+                .animation(SparkVMotion.hover(), value: isHovered)
         } else {
             shape
                 .fill(isActive || isHovered ? SparkVTheme.redSoft.opacity(isActive && isHovered ? 1.4 : 1) : SparkVTheme.surface)
                 .overlay(shape.strokeBorder(isActive ? SparkVTheme.red.opacity(0.45) : SparkVTheme.stroke, lineWidth: 1))
+                .animation(SparkVMotion.hover(), value: isHovered)
         }
     }
 
@@ -324,6 +325,7 @@ struct FocusHeaderButton: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .onHover { hover.isOn = $0 }
+            .animation(SparkVMotion.hover(), value: hover.isOn)
             .help("\(focus.phaseTitle): \(focus.remainingText) left")
         } else {
             Button { focus.startSession() } label: {
@@ -334,9 +336,11 @@ struct FocusHeaderButton: View {
                     .background(Capsule().fill(hover.isOn ? LabsBStyle.hoverFill : Color.clear))
                     .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .onHover { hover.isOn = $0 }
+            .animation(SparkVMotion.hover(), value: hover.isOn)
             .help("Focus: mute notifications and start a \(focus.settings.focusMinutes)-minute round")
+            .accessibilityLabel("Focus: mute notifications and start a \(focus.settings.focusMinutes)-minute round")
         }
     }
 }
@@ -410,10 +414,11 @@ struct FocusHubTile: View {
                 } label: {
                     tileFace
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
             }
         }
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(focus.isActive ? "\(focus.phaseTitle): \(focus.remainingText) left" : "Focus: mute notifications and start a Pomodoro")
     }
 
@@ -492,7 +497,7 @@ struct FocusTabView: View {
                             .overlay(Capsule().strokeBorder(selected ? LabsBStyle.selectedStroke : LabsBStyle.chipStroke, lineWidth: 1))
                             .contentShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SparkVPressStyle())
                     .help("\(preset.focus) min focus, \(preset.rest) min break")
                 }
                 Menu {
@@ -525,7 +530,7 @@ struct FocusTabView: View {
                         .shadow(color: SparkVTheme.isApple ? Color.clear : SparkVTheme.red.opacity(0.35), radius: 6, y: 1)
                         .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("Mute notifications and start a \(focus.settings.focusMinutes)-minute round")
                 settingsButton
             }
@@ -542,13 +547,14 @@ struct FocusTabView: View {
                 .overlay(Circle().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
                 .overlay(alignment: .topTrailing) {
                     if focus.doNotDisturbNotice != nil {
-                        Circle().fill(SparkVTheme.warning).frame(width: 7, height: 7)
+                        SparkVStatusDot(kind: .warning, color: SparkVTheme.warning, size: 7, label: "")
                     }
                 }
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(focus.doNotDisturbNotice ?? "Focus settings: durations, Do Not Disturb, distractions")
+        .accessibilityLabel(focus.doNotDisturbNotice ?? "Focus settings: durations, Do Not Disturb, distractions")
     }
 
     private var runningControls: some View {
@@ -574,7 +580,10 @@ struct FocusTabView: View {
                     .foregroundStyle(SparkVTheme.textTertiary)
             }
             HStack(spacing: 6) {
-                FocusRoundButton(systemImage: focus.isPaused ? "play.fill" : "pause.fill", help: focus.isPaused ? "Resume" : "Pause") { focus.togglePause() }
+                FocusRoundButton(systemImage: focus.isPaused ? "play.fill" : "pause.fill", help: focus.isPaused ? "Resume" : "Pause") {
+                    SparkVHaptics.play(focus.isPaused ? .start : .stop)
+                    focus.togglePause()
+                }
                 FocusRoundButton(systemImage: "goforward.5", help: "Add 5 minutes") { focus.addFiveMinutes() }
                 FocusRoundButton(systemImage: "forward.end.fill", help: focus.phase == .focus ? "Finish this round" : "Skip break") { focus.skipPhase() }
                 Button { focus.end() } label: {
@@ -587,7 +596,7 @@ struct FocusTabView: View {
                         .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
                         .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help("End focus and show the summary")
             }
         }
@@ -632,9 +641,11 @@ struct FocusRoundButton: View {
                 .overlay(Circle().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(help)
+        .accessibilityLabel(help)
     }
 }
 
@@ -655,6 +666,9 @@ struct FocusWeekBars: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .bottom)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Focus this week")
+        .accessibilityValue(days.map { FocusText.compact($0) }.joined(separator: ", "))
     }
 }
 
@@ -714,8 +728,9 @@ struct FocusSummaryCard: View {
                     .background(Circle().fill(SparkVTheme.surface))
                     .overlay(Circle().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .help("Close")
+            .accessibilityLabel("Close")
         }
     }
 
@@ -833,7 +848,7 @@ struct FocusSummaryCard: View {
                         .background(Capsule().fill(SparkVTheme.surface))
                         .overlay(Capsule().strokeBorder(SparkVTheme.stroke, lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 Button { onClose(); controller.startSession() } label: {
                     Label("Another Round", systemImage: "moon.fill")
                         .font(.system(size: 11.5, weight: .semibold))
@@ -841,7 +856,7 @@ struct FocusSummaryCard: View {
                         .padding(.horizontal, 12).frame(height: 28)
                         .background(Capsule().fill(FocusPalette.accent))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 Spacer()
                 VStack(alignment: .trailing, spacing: 1) {
                     Text("Today \(FocusText.compact(stats.todaySeconds))")

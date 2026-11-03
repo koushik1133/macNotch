@@ -53,6 +53,7 @@ enum AirDrop {
     private static func perform(_ objects: [Any]) {
         guard !objects.isEmpty else {
             AppLog.log("AirDrop: nothing to share")
+            NSSound.beep()
             return
         }
         guard let service = NSSharingService(named: .sendViaAirDrop) else {
@@ -125,8 +126,9 @@ enum AirDrop {
     }
 
     /// Resolves one dropped provider to something AirDrop can send: a file
-    /// URL (image data is written to a temporary file first), a web URL, or a
-    /// temporary .txt for plain text.
+    /// URL (image data and promised files, such as Mail attachments, are
+    /// written to a temporary file first), a web URL, or a temporary .txt
+    /// for plain text. The File Drop shelf uses the same resolver.
     static func resolve(_ provider: NSItemProvider) async -> URL? {
         if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
             return await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
@@ -163,6 +165,12 @@ enum AirDrop {
                 }
             }
         }
+        // A promise of a file that isn't an image (Mail, Affinity, WeChat…):
+        // the source app writes it, a staging copy is shared.
+        if case .promisedFile(let type) = ShelfDropResolver.route(types: provider.registeredTypeIdentifiers,
+                                                                  suggestedName: provider.suggestedName) {
+            return await ShelfDropResolver.loadPromisedFile(provider, type: type)
+        }
         if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
             return await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
                 _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.url.identifier) { @Sendable data, _ in
@@ -183,7 +191,8 @@ enum AirDrop {
         return nil
     }
 
-    fileprivate static let acceptedTypes: [UTType] = [.fileURL, .image, .url, .plainText]
+    /// `.data` lets promised files (no file URL) through.
+    fileprivate static let acceptedTypes: [UTType] = [.fileURL, .image, .url, .plainText, .data]
 }
 
 /// Logs AirDrop outcomes.
@@ -191,10 +200,15 @@ enum AirDrop {
 private final class AirDropServiceDelegate: NSObject, NSSharingServiceDelegate {
     func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
         AppLog.log("AirDrop: shared \(items.count) item(s)")
+        SparkVHaptics.play(.success)
     }
 
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: any Error) {
         AppLog.log("AirDrop: failed: \(error.localizedDescription)")
+        SparkVHaptics.play(.failure)
+        // Haptics alone are silent with a mouse or a trackpad without Force
+        // Touch. A cancel in the sheet is not a failure worth a sound.
+        if (error as NSError).code != NSUserCancelledError { NSSound.beep() }
     }
 }
 
@@ -259,12 +273,15 @@ struct AirDropTile: View {
                     style: StrokeStyle(lineWidth: active ? 1.5 : 1, dash: active ? [4, 3] : [])
                 )
         )
-        .scaleEffect(active ? 1.05 : 1)
-        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: active)
+        .scaleEffect(active && !SparkVMotion.reduceMotion ? 1.05 : 1)
+        .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: active)
         .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous))
         .onHover { isHovered.isOn = $0 }
         .onDrop(of: AirDrop.acceptedTypes, isTargeted: $isTargeted.isOn) { providers in
             handleDrop(providers)
+        }
+        .onReceive(isTargeted.$isOn.removeDuplicates()) { on in
+            if on { SparkVHaptics.play(.select) }
         }
         .help("Drop files, images or links to send them with AirDrop")
         .accessibilityElement(children: .combine)
@@ -274,6 +291,7 @@ struct AirDropTile: View {
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         guard !providers.isEmpty else { return false }
+        SparkVHaptics.play(.drop)
         isWorking.isOn = true
         let completion = onDropComplete
         let working = isWorking

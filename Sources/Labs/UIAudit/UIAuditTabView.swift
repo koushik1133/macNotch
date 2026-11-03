@@ -127,7 +127,7 @@ struct UIAuditTabView: View {
             .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(audit.isRunning ? SparkVTheme.stroke : Color.clear))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .disabled(audit.phase == .stopping || (!audit.isRunning && audit.normalizedURL == nil))
         .help(audit.isRunning ? "Stop the audit (a partial report is written)" : "Audit this site in a visible browser window. \(audit.submissionPolicyText).")
     }
@@ -166,8 +166,9 @@ struct UIAuditTabView: View {
                 .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
     }
 
     private func textButton(_ title: String, action: @escaping () -> Void) -> some View {
@@ -181,6 +182,6 @@ struct UIAuditTabView: View {
                 .overlay(Capsule().strokeBorder(SparkVTheme.stroke))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }

@@ -81,7 +81,7 @@ final class AmbientOutlineGlow {
 
         if let old, let response = springResponse, old != newPath {
             for (layer, key) in [(halo, "path"), (core, "path"), (waveMask, "path"), (halo, "shadowPath")] {
-                let spring = CASpringAnimation(perceptualDuration: response, bounce: 0.15)
+                let spring = CASpringAnimation(perceptualDuration: response, bounce: IslandInteractionStore.current.motion.coreAnimationBounce)
                 spring.keyPath = key
                 spring.fromValue = key == "shadowPath"
                     ? old.copy(strokingWithWidth: halo.lineWidth, lineCap: .round, lineJoin: .round, miterLimit: 4)

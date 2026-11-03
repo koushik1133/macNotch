@@ -62,6 +62,9 @@ struct FanRPMBar: View {
             }
         }
         .frame(height: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Fan speed")
+        .accessibilityValue("\(Int(fan.actual ?? 0)) RPM\(fan.maximum.map { " of \(Int($0))" } ?? "")\(manual ? ", manual" : "")")
     }
 }
 
@@ -229,8 +232,26 @@ struct FanSmallButtonStyle: ButtonStyle {
             )
             .overlay(Capsule().strokeBorder(filled ? Color.clear : SparkVTheme.stroke))
             .contentShape(Capsule())
+            .animation(SparkVMotion.hover(), value: selected)
+            .modifier(FanPressFeedback(isPressed: configuration.isPressed))
     }
 }
+
+/// Emil press feedback for the fan buttons: 0.97 in 100 ms, release in
+/// 160 ms (strong ease-out). Reduce Motion: color change only.
+struct FanPressFeedback: ViewModifier {
+    let isPressed: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !SparkVMotion.reduceMotion ? SparkVMotion.pressedScale : 1)
+            .animation(
+                SparkVMotion.easeOut(isPressed ? SparkVMotion.Duration.press : SparkVMotion.Duration.release),
+                value: isPressed
+            )
+    }
+}
+
 
 // MARK: - Drawer page (508 x 114)
 
@@ -288,6 +309,7 @@ struct FanTabView: View {
             }
             .buttonStyle(FanSmallButtonStyle())
             .help("Open Fan Control")
+            .accessibilityLabel("Open Fan Control")
         }
         .frame(height: 20)
     }
@@ -463,8 +485,9 @@ struct FanHubTile: View {
             }
             .contentShape(shape)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .help(manual ? "Fans: \(controller.manualFanCount) under manual control" : "Fan Control: speeds, temperatures, presets")
         .contextMenu { FanMenuItems(controller: controller) }
     }

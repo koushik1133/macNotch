@@ -337,7 +337,7 @@ struct PromptRefinerPanelView: View {
                 .background(Capsule().fill(SparkVTheme.background.opacity(0.92)))
                 .overlay(Capsule().strokeBorder(SparkVTheme.stroke))
                 .padding(.bottom, 58)
-                .transition(.opacity)
+                .transition(.labsToastRise)
                 .allowsHitTesting(false)
         }
     }
@@ -497,6 +497,7 @@ private struct PRHistoryRow: View {
     @ObservedObject var controller: PromptRefinerController
     let record: PromptRefinementRecord
     @StateObject private var isHovered = ViewFlag()
+    @ObservedObject private var assistive = SparkVAssistive.shared
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -522,7 +523,7 @@ private struct PRHistoryRow: View {
                 PRButton(title: "Delete", systemImage: "trash", isPrimary: false, isDestructive: true) {
                     controller.deleteHistory(id: record.id)
                 }
-            } else if isHovered.isOn {
+            } else if isHovered.isOn || assistive.revealsHoverControls {
                 TrayAICircleButton(systemImage: "doc.on.doc", help: "Copy") { controller.copy(record) }
                 TrayAICircleButton(systemImage: "trash", help: "Delete…") { controller.requestDelete(id: record.id) }
             }
@@ -531,7 +532,18 @@ private struct PRHistoryRow: View {
         .labsCard(SparkVTheme.cornerSmall, fill: isHovered.isOn ? SparkVTheme.surfaceHover : Color.white.opacity(0.04))
         .contentShape(Rectangle())
         .onHover { isHovered.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: isHovered.isOn)
         .onTapGesture { controller.restore(record) }
+        .contextMenu {
+            Button("Open") { controller.restore(record) }
+            Button("Copy") { controller.copy(record) }
+            Divider()
+            Button("Delete…", role: .destructive) { controller.requestDelete(id: record.id) }
+        }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { controller.restore(record) }
+        .accessibilityAction(named: "Copy") { controller.copy(record) }
+        .accessibilityAction(named: "Delete") { controller.requestDelete(id: record.id) }
         .help("Open this refinement")
     }
 }
@@ -628,7 +640,7 @@ struct PRButton: View {
             .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 
@@ -646,8 +658,9 @@ struct PRMicButton: View {
                 .overlay(Circle().strokeBorder(isOn ? SparkVTheme.recording.opacity(0.5) : SparkVTheme.stroke))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(isOn ? "Stop dictating" : "Dictate")
+        .accessibilityLabel(isOn ? "Stop dictating" : "Dictate")
     }
 }
 
@@ -668,8 +681,11 @@ private struct PRChip: View {
             .background(Capsule().fill(isOn ? SparkVTheme.accent : SparkVTheme.surface))
             .overlay(Capsule().strokeBorder(isOn ? Color.clear : SparkVTheme.stroke))
             .contentShape(Capsule())
+            // Toggle chip: interruptible snappy spring (checkmark + fill).
+            .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: isOn)
         }
-        .buttonStyle(.plain)
+
+        .buttonStyle(SparkVPressStyle())
     }
 }
 

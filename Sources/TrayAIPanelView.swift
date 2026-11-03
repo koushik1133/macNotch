@@ -89,7 +89,7 @@ final class TrayAIPanelModel: ObservableObject {
         showsSettings = false
         phase = .running(action)
         let targets = items
-        AppLog.log("Tray AI: \(action.id) on \(targets.count) item(s)")
+        AppLog.log("Tray AI: \(action.logName) on \(targets.count) item(s)")
         runTask = Task { [weak self] in
             do {
                 let result = try await TrayAIEngine.shared.run(action, on: targets)
@@ -99,7 +99,7 @@ final class TrayAIPanelModel: ObservableObject {
                 return
             } catch {
                 guard !Task.isCancelled else { return }
-                AppLog.log("Tray AI: \(action.id) failed: \(error.localizedDescription)")
+                AppLog.log("Tray AI: \(action.logName) failed: \(error.localizedDescription)")
                 self?.phase = .failed(action, error.localizedDescription)
             }
         }
@@ -108,7 +108,7 @@ final class TrayAIPanelModel: ObservableObject {
     private func finished(_ action: TrayAIAction, _ result: TrayAIResult) {
         phase = .done(action, result)
         lastResult = (action, result)
-        AppLog.log("Tray AI: \(action.id) done (\(result.producedBy))")
+        AppLog.log("Tray AI: \(action.logName) done (\(result.producedBy))")
         switch action {
         case .extractText:
             if !result.text.isEmpty {
@@ -195,11 +195,12 @@ final class TrayAIPanelModel: ObservableObject {
 
     func flash(_ text: String) {
         toastTask?.cancel()
-        withAnimation(.easeOut(duration: 0.15)) { toast = text }
+        withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { toast = text }
         toastTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.6))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeIn(duration: 0.2)) { self?.toast = nil }
+            // Exits use ease-out too: ease-in would hold the toast, then snap.
+            withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { self?.toast = nil }
         }
     }
 
@@ -553,7 +554,7 @@ struct TrayAIFilmstrip: View {
                         )
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .help(TrayAIItemPreview.title(for: item))
             }
         }
@@ -628,7 +629,7 @@ struct TrayAIActionsCard: View {
                 systemImage: model.showsSettings ? "gearshape.fill" : "gearshape",
                 help: "Tray AI settings"
             ) {
-                withAnimation(.easeInOut(duration: 0.18)) { model.showsSettings.toggle() }
+                withAnimation(TrayAIMotion.swap) { model.showsSettings.toggle() }
             }
             Button {
                 model.saveToTray()
@@ -641,7 +642,7 @@ struct TrayAIActionsCard: View {
                     .background(Capsule().fill(model.saveableText == nil ? SparkVTheme.surface : SparkVTheme.red))
                     .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .disabled(model.saveableText == nil)
             .opacity(model.saveableText == nil ? 0.5 : 1)
             .help("Save the latest result to the Tray")
@@ -678,31 +679,55 @@ struct TrayAIActionsCard: View {
                 .background(Capsule().fill(SparkVTheme.background.opacity(0.95)))
                 .overlay(Capsule().strokeBorder(SparkVTheme.choose(apple: Color.white.opacity(0.12), sparkv: SparkVTheme.stroke)))
                 .padding(.bottom, 62)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .transition(TrayAIMotion.toast)
                 .allowsHitTesting(false)
         }
     }
 }
 
+/// Tray AI's own motion, built on the shared tokens.
+private enum TrayAIMotion {
+    /// Settings <-> actions swap: a crossfade, so strong ease-out.
+    static var swap: Animation { SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)) }
+    /// The bottom toast rises 6 pt from 96 % instead of sliding its whole
+    /// (padded) height in from the edge. Reduce Motion: fade only.
+    static var toast: AnyTransition {
+        if SparkVMotion.reduceMotion { return .opacity }
+        return .opacity
+            .combined(with: .scale(scale: SparkVMotion.enterScale, anchor: .bottom))
+            .combined(with: .offset(y: 6))
+    }
+}
+
 struct TrayAIActionList: View {
     @ObservedObject var model: TrayAIPanelModel
+    /// Off until the list is on screen, so the rows can arrive in turn.
+    @StateObject private var appeared = ViewFlag()
 
     var body: some View {
         ScrollView {
             VStack(spacing: 7) {
-                ForEach(model.suggestedActions) { action in
-                    if case .translate = action {
-                        HStack(spacing: 6) {
-                            TrayAIActionButton(action: action) { model.run(action) }
-                            languageMenu
-                        }
-                    } else {
-                        TrayAIActionButton(action: action) { model.run(action) }
-                    }
+                ForEach(Array(model.suggestedActions.enumerated()), id: \.element.id) { index, action in
+                    row(for: action)
+                        .sparkVStaggeredEntrance(appeared.isOn, index: index)
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
+        }
+        .onAppear { appeared.isOn = true }
+        .onDisappear { appeared.isOn = false }
+    }
+
+    @ViewBuilder
+    private func row(for action: TrayAIAction) -> some View {
+        if case .translate = action {
+            HStack(spacing: 6) {
+                TrayAIActionButton(action: action) { model.run(action) }
+                languageMenu
+            }
+        } else {
+            TrayAIActionButton(action: action) { model.run(action) }
         }
     }
 
@@ -765,8 +790,9 @@ struct TrayAIActionButton: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { isHovered.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: isHovered.isOn)
     }
 }
 
@@ -789,7 +815,7 @@ struct TrayAIRunningView: View {
                     .foregroundStyle(.secondary)
             }
             Button("Cancel") { model.backToActions() }
-                .buttonStyle(.plain)
+                .buttonStyle(SparkVPressStyle())
                 .font(.system(size: 12, weight: .medium))
                 .padding(.horizontal, 14)
                 .frame(height: 26)
@@ -954,7 +980,7 @@ struct TrayAIFailureView: View {
                     TrayAIPillButton(title: "Retry", systemImage: "arrow.clockwise") { model.retry() }
                     if !model.allowGroq {
                         TrayAIPillButton(title: "Settings", systemImage: "gearshape") {
-                            withAnimation(.easeInOut(duration: 0.18)) { model.showsSettings = true }
+                            withAnimation(TrayAIMotion.swap) { model.showsSettings = true }
                         }
                     }
                 }
@@ -1009,6 +1035,7 @@ struct TrayAISettingsView: View {
                     .labelsHidden()
                     .fixedSize()
                     .controlSize(.small)
+                    .accessibilityLabel("Translate to")
                 }
                 .padding(12)
                 .background(
@@ -1018,7 +1045,7 @@ struct TrayAISettingsView: View {
                 HStack {
                     Spacer()
                     TrayAIPillButton(title: "Done", systemImage: "checkmark") {
-                        withAnimation(.easeInOut(duration: 0.18)) { model.showsSettings = false }
+                        withAnimation(TrayAIMotion.swap) { model.showsSettings = false }
                     }
                 }
             }
@@ -1047,9 +1074,10 @@ struct TrayAIMessageField: View {
                     .background(Circle().fill(canSend ? SparkVTheme.red : SparkVTheme.surface))
                     .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .disabled(!canSend)
             .help("Send")
+            .accessibilityLabel("Send")
         }
         .padding(.leading, 14)
         .padding(.trailing, 5)
@@ -1082,8 +1110,9 @@ struct TrayAICircleButton: View {
                 .background(Circle().fill(Color.primary.opacity(isHovered.isOn ? 0.16 : 0.09)))
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { isHovered.isOn = $0 }
+        .animation(SparkVMotion.hover(), value: isHovered.isOn)
         .help(help)
         .accessibilityLabel(help)
     }
@@ -1105,7 +1134,7 @@ struct TrayAIPillButton: View {
                 .background(Capsule().fill(Color.primary.opacity(0.09)))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 
@@ -1126,7 +1155,7 @@ struct TrayAIBackButton: View {
             .background(Capsule().fill(Color.primary.opacity(0.07)))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
     }
 }
 

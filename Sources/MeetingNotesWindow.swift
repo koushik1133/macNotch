@@ -356,7 +356,7 @@ private struct MeetingRow: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
                 if isLive {
-                    Circle().fill(SparkVTheme.recording).frame(width: 7, height: 7)
+                    SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 7, label: "Live")
                 }
                 Text(record.title)
                     .font(.system(size: 13, weight: .medium))
@@ -429,6 +429,7 @@ private struct MeetingDetail: View {
             .frame(maxWidth: 360)
             .padding(.horizontal, 24)
             .padding(.bottom, 10)
+            .accessibilityLabel("Section")
 
             Divider()
 
@@ -447,10 +448,11 @@ private struct MeetingDetail: View {
                     .background(Capsule().fill(SparkVTheme.background.opacity(0.95)))
                     .overlay(Capsule().stroke(MeetingPalette.cardStroke))
                     .padding(.bottom, 18)
-                    .transition(.opacity)
+                    .transition(.labsToastRise)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: model.toast)
+        // Toast enters and leaves: strong ease-out (was ease-in-out 0.2 s).
+        .animation(SparkVMotion.respecting(SparkVMotion.easeOut()), value: model.toast)
     }
 
     private func tabTitle(_ tab: MeetingNotesWindowModel.DetailTab) -> String {
@@ -488,8 +490,9 @@ private struct MeetingDetail: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SparkVPressStyle())
                         .help("Rename")
+                        .accessibilityLabel("Rename")
                     }
                 }
                 metadata
@@ -513,7 +516,7 @@ private struct MeetingDetail: View {
             if isLive && assistant.phase == .recording {
                 TimelineView(.periodic(from: record.startedAt, by: 1)) { context in
                     HStack(spacing: 4) {
-                        Circle().fill(SparkVTheme.recording).frame(width: 6, height: 6)
+                        SparkVStatusDot(kind: .recording, color: SparkVTheme.recording, size: 6, label: "")
                         Text("Recording " + MeetingFormat.clock(context.date.timeIntervalSince(record.startedAt)))
                             .monospacedDigit()
                     }
@@ -568,7 +571,7 @@ private struct MeetingDetail: View {
                 .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.stroke))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
         .accessibilityLabel(help)
     }
@@ -817,6 +820,7 @@ private struct MeetingTaskRow: View {
             Toggle("", isOn: Binding(get: { task.isDone }, set: { onToggle($0) }))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
+                .accessibilityLabel(task.task)
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.task)
                     .font(.system(size: 13))
@@ -870,9 +874,17 @@ private struct MeetingTranscriptTab: View {
                 .onAppear { proxy.scrollTo(MeetingTranscriptTab.bottomID, anchor: .bottom) }
                 .onChange(of: record.segments.last?.text) { _, _ in
                     guard isLive else { return }
-                    withAnimation(.easeOut(duration: 0.15)) {
+                    // Follows a live transcript that updates every few
+                    // seconds: a short strong ease-out keeps up without
+                    // lagging; Reduce Motion jumps.
+                    if SparkVMotion.reduceMotion {
                         proxy.scrollTo(MeetingTranscriptTab.bottomID, anchor: .bottom)
+                    } else {
+                        withAnimation(SparkVMotion.easeOut(SparkVMotion.Duration.hover)) {
+                            proxy.scrollTo(MeetingTranscriptTab.bottomID, anchor: .bottom)
+                        }
                     }
+
                 }
             }
         }
@@ -974,6 +986,7 @@ private struct MeetingAnswersTab: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Copy answer")
+                                .accessibilityLabel("Copy answer")
                             }
                         }
                         .padding(14)

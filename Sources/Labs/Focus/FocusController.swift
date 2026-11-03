@@ -454,6 +454,7 @@ final class FocusController: ObservableObject {
         store.saveActive(nil)
         store.add(record)
         lastSummary = record
+        postedBandModel = nil
         activities.dismiss(id: Self.activityID)
         postSummaryBand(record, kick: effects)
         if effects {
@@ -641,8 +642,13 @@ final class FocusController: ObservableObject {
 
     // MARK: Band
 
+    /// Last model posted: a paused session (time and ring frozen) re-posted
+    /// the same band every second, waking the island for nothing.
+    private var postedBandModel: FocusBandView.Model?
+
     private func updateBand() {
         guard let a = active else {
+            postedBandModel = nil
             activities.dismiss(id: Self.activityID)
             return
         }
@@ -656,6 +662,8 @@ final class FocusController: ObservableObject {
             doNotDisturb: a.didEnableDoNotDisturb,
             kickedAt: kickDate(bandKickAt)
         )
+        guard model != postedBandModel else { return }
+        postedBandModel = model
         activities.post(LiveActivity(
             id: Self.activityID, kind: .timer, priority: Self.activityPriority,
             duration: nil, opensTab: bandOpensTab,
@@ -684,7 +692,8 @@ final class FocusController: ObservableObject {
         let kick = kickDate(Date())
         activities.post(LiveActivity(id: Self.doneActivityID, kind: .timer, priority: 86, duration: 5, opensTab: bandOpensTab) {
             FocusDoneBandView(message: message, accent: accent, kickedAt: kick)
-        })
+        }
+        .announcing(message, as: .timer, important: true))
     }
 
     private func postSummaryBand(_ record: FocusSessionRecord, kick: Bool) {

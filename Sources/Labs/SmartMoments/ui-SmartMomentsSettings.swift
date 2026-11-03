@@ -128,6 +128,7 @@ struct SmartMomentsSettingsView: View {
                 .toggleStyle(.switch)
                 .tint(SparkVTheme.accent)
                 .help(settings.isEnabled ? "Turn every Smart Moment off" : "Turn Smart Moments on")
+                .accessibilityLabel("Smart Moments")
         }
     }
 
@@ -220,7 +221,7 @@ struct SmartMomentSettingsRow: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
                 Button {
-                    withAnimation(.easeOut(duration: 0.16)) { expansion.toggle(moment) }
+                    withAnimation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small))) { expansion.toggle(moment) }
                 } label: {
                     HStack(spacing: 12) {
                         SmartMomentGlyph(moment: moment, size: 28, isDimmed: !s.isEnabled)
@@ -256,6 +257,7 @@ struct SmartMomentSettingsRow: View {
                     .controlSize(.small)
                     .tint(SparkVTheme.accent)
                     .help(s.isEnabled ? "Turn \(moment.title) off" : "Turn \(moment.title) on")
+                    .accessibilityLabel(moment.title)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -270,6 +272,7 @@ struct SmartMomentSettingsRow: View {
             }
         }
         .background(hover.isOn && !isExpanded ? SparkVTheme.hoverFill.opacity(0.5) : Color.clear)
+        .animation(SparkVMotion.hover(), value: hover.isOn)
         .onHover { hover.isOn = $0 }
     }
 
@@ -284,12 +287,16 @@ struct SmartMomentSettingsRow: View {
 /// Ask first | Do automatically, as a compact two-segment control.
 struct SmartMomentModePicker: View {
     @Binding var selection: MomentMode
+    @Namespace private var thumb
 
     var body: some View {
         HStack(spacing: 2) {
             segment(.ask, "Ask first")
             segment(.automatic, "Automatic")
         }
+        // The selected thumb slides between segments: settings segmented
+        // controls use the interruptible snappy spring.
+        .animation(SparkVMotion.respecting(SparkVMotion.snappy), value: selection)
         .padding(2)
         .background(Capsule(style: .continuous).fill(Color.black.opacity(0.25)))
         .overlay(Capsule(style: .continuous).strokeBorder(SparkVTheme.stroke))
@@ -308,8 +315,15 @@ struct SmartMomentModePicker: View {
                 .foregroundStyle(on ? SparkVTheme.choose(apple: SparkVTheme.text, sparkv: SparkVTheme.accent) : SparkVTheme.textSecondary)
                 .padding(.horizontal, 9)
                 .frame(height: 20)
-                .background(Capsule(style: .continuous).fill(on ? SparkVTheme.choose(apple: Color.white.opacity(0.16), sparkv: SparkVTheme.accentSoft) : Color.clear))
+                .background {
+                    if on {
+                        Capsule(style: .continuous)
+                            .fill(SparkVTheme.choose(apple: Color.white.opacity(0.16), sparkv: SparkVTheme.accentSoft))
+                            .matchedGeometryEffect(id: "thumb", in: thumb)
+                    }
+                }
                 .contentShape(Capsule(style: .continuous))
+
         }
         .buttonStyle(.plain)
         .help(mode == .ask ? "Show a band and wait for your tap" : "Do Not Disturb, pausing music and the like run on their own, with Undo. Recording and captions still ask.")
@@ -438,6 +452,7 @@ struct SmartMomentDetail: View {
                     }
                     .labelsHidden()
                     .fixedSize()
+                    .accessibilityLabel("From")
                 }
                 modePicker("Night mode", selection: tunable(\.nightModeID), builtIn: "Built-in wind-down")
             }
@@ -493,6 +508,7 @@ struct SmartMomentDetail: View {
             }
             .labelsHidden()
             .fixedSize()
+            .accessibilityLabel(label)
         }
     }
 

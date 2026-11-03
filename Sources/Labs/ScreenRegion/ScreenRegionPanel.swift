@@ -74,10 +74,8 @@ final class ScreenRegionPanelController {
         NSApp.activate()
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.14
-            panel.animator().alphaValue = 1
-        }
+        // Follows a hotkey + drag: a quick ease-out fade, no movement.
+        LiveBandMotion.fadeIn(panel, duration: 0.14)
         installKeyMonitor()
     }
 
@@ -195,6 +193,9 @@ struct ScreenRegionResultsView: View {
                 .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous).strokeBorder(SparkVTheme.stroke))
                 .help("The captured selection. Click to copy the image")
                 .onTapGesture { session.copyImage() }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { session.copyImage() }
+                .accessibilityHint("Copies the image")
             VStack(alignment: .leading, spacing: 2) {
                 Text("Ask about screen").font(SparkVTheme.headline(14)).tracking(-0.2)
                 Text(session.subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
@@ -239,9 +240,10 @@ struct ScreenRegionResultsView: View {
                 Image(systemName: session.isRunning ? "stop.circle.fill" : "arrow.up.circle.fill")
                     .font(.system(size: 18))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SparkVPressStyle())
             .foregroundStyle(session.question.isEmpty && !session.isRunning ? SparkVTheme.textTertiary : SparkVTheme.accent)
             .help(session.isRunning ? "Stop" : "Ask")
+            .accessibilityLabel(session.isRunning ? "Stop" : "Ask")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
@@ -335,6 +337,7 @@ struct ScreenRegionChip: View {
     let isActive: Bool
     let action: () -> Void
     @StateObject private var hover = ViewFlag()
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
@@ -353,8 +356,11 @@ struct ScreenRegionChip: View {
                 Capsule().fill(isActive ? SparkVTheme.accentSoft : (hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface))
             )
             .overlay(Capsule().strokeBorder(isActive ? SparkVTheme.accent.opacity(0.5) : hover.isOn ? SparkVTheme.choose(apple: Color.white.opacity(0.18), sparkv: SparkVTheme.brandRed.opacity(0.5)) : SparkVTheme.stroke))
+            .animation(SparkVMotion.hover(), value: hover.isOn)
+            // The press style doesn't dim when disabled the way `.plain` did.
+            .opacity(isEnabled ? 1 : 0.5)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
     }
 }
@@ -373,9 +379,11 @@ struct ScreenRegionIconButton: View {
                 .foregroundStyle(hover.isOn ? SparkVTheme.text : SparkVTheme.textSecondary)
                 .background(Circle().fill(hover.isOn ? SparkVTheme.surfaceHover : SparkVTheme.surface))
                 .overlay(Circle().strokeBorder(SparkVTheme.stroke))
+                .animation(SparkVMotion.hover(), value: hover.isOn)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SparkVPressStyle())
         .help(help)
+        .accessibilityLabel(help)
         .onHover { hover.isOn = $0 }
     }
 }
