@@ -48,6 +48,9 @@ final class AmbientLightController: NSObject, ObservableObject {
     private var link: CADisplayLink?
     /// Last beat that tapped the trackpad (Music Haptics).
     private var lastFeltBeat: UInt64 = 0
+    private var lastTapTime: Double = 0
+    /// Running average of the bass on beats: a tap needs a kick above it.
+    private var beatBassAverage: Float = 0.4
     private var cancellables: Set<AnyCancellable> = []
     private var mediaCancellables: Set<AnyCancellable> = []
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
@@ -743,14 +746,30 @@ final class AmbientLightController: NSObject, ObservableObject {
         }
     }
 
-    /// Music Haptics (optional): one tap per detected beat, firmer on bass
-    /// hits. Reuses the analyzer's beat counter, so it costs nothing extra.
+    /// Music Haptics, after Apple's guidance (HIG › Playing haptics; Music
+    /// Haptics on iPhone): sparing, tied to the rhythm you hear, stronger
+    /// for stronger hits, never a buzz. Only real kicks tap: a beat whose
+    /// bass stands out from the song's own average. Fast songs are felt
+    /// on every other beat; downbeats get the firm tap. Nothing plays when
+    /// no hand is on the Mac (an unfelt tap is wasted power), in Low Power
+    /// Mode or when the Mac is hot.
     private func feelBeat(_ features: AmbientAudioFeatures) {
         guard features.beatCount != lastFeltBeat else { return }
         let isNewBeat = lastFeltBeat != 0
         lastFeltBeat = features.beatCount
-        guard isNewBeat, !features.isSilent, CACurrentMediaTime() - features.lastBeatTime < 0.25 else { return }
-        SparkVHaptics.play(features.bass > 0.6 ? .boundary : .detent)
+        let now = CACurrentMediaTime()
+        guard isNewBeat, !features.isSilent, now - features.lastBeatTime < 0.12 else { return }
+        let bass = features.bass
+        defer { beatBassAverage += (bass - beatBassAverage) * 0.15 }
+        guard !lowPower, !thermalHot,
+              CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0) ?? .mouseMoved) < 20,
+              bass > 0.3, bass > beatBassAverage * 1.15 else { return }
+        let period = features.bpm > 40 && features.tempoConfidence > 0.4 ? 60 / Double(features.bpm) : 0.5
+        let gap = period < 0.4 ? period * 1.9 : period * 0.9
+        guard now - lastTapTime >= max(0.28, gap) else { return }
+        lastTapTime = now
+        let downbeat = features.tempoConfidence > 0.6 && features.beatCount % 4 == 0
+        SparkVHaptics.play(downbeat || bass > beatBassAverage * 1.6 ? .boundary : .detent)
     }
 
     /// A synthetic 120 BPM groove for the Settings preview.
