@@ -91,6 +91,18 @@ final class AmbientSpectralAnalyzer {
     private var onsetHistoryIndex = 0
     private var onsetHistoryFilled = 0
     private var lowFluxScale: Float = 1e-3
+    // Kick detector for Music Haptics: kick-band flux only, its own
+    // adaptive threshold (last ~1 s) and peak picking, so every kick
+    // counts even when the full-band beat tracker merges or skips one.
+    private var kickHistory = [Float](repeating: 0, count: 90)
+    private var kickHistoryIndex = 0
+    private var kickPrevious: Float = 0
+    private var kickPreviousPrevious: Float = 0
+    private var kickPreviousThreshold: Float = 1
+    private var lastKickTime: Double = 0
+    private(set) var kickCount: UInt64 = 0
+    private(set) var kickStrength: Float = 0
+    private(set) var kickTime: Double = 0
     private var fullFluxScale: Float = 1e-3
     private var previousOnset: Float = 0
     private var previousPreviousOnset: Float = 0
@@ -266,6 +278,7 @@ final class AmbientSpectralAnalyzer {
         lowFluxScale = max(lowFluxScale * 0.9985, lowFlux, 1e-4)
         fullFluxScale = max(fullFluxScale * 0.9985, fullFlux, 1e-4)
         var onset = gate * (0.65 * lowFlux / lowFluxScale + 0.35 * fullFlux / fullFluxScale)
+        detectKick(gate * lowFlux / lowFluxScale, at: time)
         if !onset.isFinite { onset = 0 }
 
         // Adaptive threshold over the last second.
@@ -324,6 +337,30 @@ final class AmbientSpectralAnalyzer {
         features.isDigitalSilence = zeroTime >= tuning.digitalSilenceHold
         features.time = time
         return features
+    }
+
+    private func detectKick(_ value: Float, at time: Double) {
+        var sum: Float = 0, squares: Float = 0
+        for v in kickHistory { sum += v; squares += v * v }
+        let n = Float(kickHistory.count)
+        let mean = sum / n
+        let deviation = max(0, squares / n - mean * mean).squareRoot()
+        let threshold = max(0.2, mean + 1.1 * deviation)
+        kickHistory[kickHistoryIndex] = value
+        kickHistoryIndex = (kickHistoryIndex + 1) % kickHistory.count
+        // One hop of delay: the previous hop is a kick when it peaked above
+        // its threshold.
+        let peakTime = time - Double(hopSize) / sampleRate
+        if kickPrevious > kickPreviousThreshold, kickPrevious >= value, kickPrevious > kickPreviousPrevious,
+           peakTime - lastKickTime >= 0.15 {
+            lastKickTime = peakTime
+            kickTime = peakTime
+            kickStrength = min(1, (kickPrevious - kickPreviousThreshold) / max(kickPreviousThreshold, 0.2))
+            kickCount &+= 1
+        }
+        kickPreviousPrevious = kickPrevious
+        kickPrevious = value
+        kickPreviousThreshold = threshold
     }
 
     // MARK: Steps

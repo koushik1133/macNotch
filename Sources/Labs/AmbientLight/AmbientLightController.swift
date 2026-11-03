@@ -1,4 +1,5 @@
 import AppKit
+import CoreAudio
 import Combine
 import QuartzCore
 
@@ -47,11 +48,6 @@ final class AmbientLightController: NSObject, ObservableObject {
     private let notchViews = NSHashTable<AmbientNotchGlowView>.weakObjects()
     private var link: CADisplayLink?
     /// Last beat that tapped the trackpad (Music Haptics).
-    private var lastFeltBeat: UInt64 = 0
-    private var lastTapTime: Double = 0
-    private var lastFeltBass: Float = 0
-    /// Running average of the bass on beats: a tap needs a kick above it.
-    private var beatBassAverage: Float = 0.4
     private var cancellables: Set<AnyCancellable> = []
     private var mediaCancellables: Set<AnyCancellable> = []
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
@@ -112,6 +108,14 @@ final class AmbientLightController: NSObject, ObservableObject {
         engine.onDigitalSilenceChange = { [weak self] silent in self?.digitalSilenceChanged(silent) }
         engine.onRouteChange = { [weak self] in self?.restartCapture() }
         engine.onAudibleChange = { [weak self] _ in self?.evaluate(userInitiated: false) }
+        engine.onKick = { [weak self] strength, captured in
+            // Felt when it is heard: the tap waits out the output device's
+            // delay (large on AirPods and other Bluetooth speakers).
+            let delay = max(0, captured + AmbientOutputLatency.current - CACurrentMediaTime())
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                MainActor.assumeIsolated { self?.feelKick(strength) }
+            }
+        }
         outputActivity.onChange = { [weak self] running in self?.outputActivityChanged(running) }
         outputActivity.onServiceRestart = { [weak self] in self?.audioServiceRestarted() }
         engine.onHALRecovered = { [weak self] in self?.halRecovered() }
@@ -661,6 +665,7 @@ final class AmbientLightController: NSObject, ObservableObject {
     private func stopLink() {
         link?.invalidate()
         link = nil
+        hapticsLive = false
         edges.setShown(false)
     }
 
@@ -727,7 +732,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         }
         edges.setShown(settings.scope == .notchAndEdges && frame.presence > 0.001)
         edges.render(frame, palette: palette)
-        if live, settings.beatHaptics { feelBeat(features) }
+        hapticsLive = live
 
         if choreographer.isDark, !live {
             logIdle()
@@ -747,24 +752,16 @@ final class AmbientLightController: NSObject, ObservableObject {
         }
     }
 
-    /// Music Haptics, after Apple's guidance (HIG › Playing haptics; Music
-    /// Haptics on iPhone): sparing, tied to the rhythm you hear, stronger
-    /// for stronger hits, never a buzz. Only kicks that stand out from the
-    /// song's own bass tap, at most about four a second, and the hardest
+    /// Music Haptics: one tap per kick drum, from a kick-only detector
+    /// running at the analyzer's ~90 Hz hop rate (not the light's frame
+    /// rate), timed to when the kick comes out of the speakers. Harder kicks
     /// get the firm tap. Paused only when the Mac is hot.
-    private func feelBeat(_ features: AmbientAudioFeatures) {
-        // Driven by the same bass envelope that pulses the light, on each
-        // frame: a kick is a sharp rise in bass, so the tap lands with the
-        // flash you see (the beat tracker runs a little behind the music).
-        let bass = features.bass
-        let rise = bass - lastFeltBass
-        lastFeltBass = bass
-        guard !thermalHot, !features.isSilent else { return }
-        let now = CACurrentMediaTime()
-        defer { beatBassAverage += (bass - beatBassAverage) * 0.02 }
-        guard rise > 0.12, bass > 0.3, bass > beatBassAverage * 1.1, now - lastTapTime >= 0.22 else { return }
-        lastTapTime = now
-        SparkVHaptics.play(bass > 0.75 || rise > 0.35 ? .boundary : .detent)
+    private var hapticsLive = false
+
+    private func feelKick(_ strength: Float) {
+        guard hapticsLive, settings.beatHaptics, !thermalHot, SparkVHaptics.isEnabled else { return }
+        let pattern: NSHapticFeedbackManager.FeedbackPattern = strength > 0.45 ? .levelChange : .generic
+        NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     }
 
     /// A synthetic 120 BPM groove for the Settings preview.
@@ -894,5 +891,56 @@ final class AmbientLightStats: ObservableObject {
         if abs(self.frameMicros - frameMicros) > 2 { self.frameMicros = frameMicros.rounded() }
         if abs(self.fps - fps) > 1.5 { self.fps = fps.rounded() }
         if roundedBPM != self.bpm { self.bpm = roundedBPM }
+    }
+}
+
+/// How long audio takes from the system mix to the speakers or headphones:
+/// device + stream latency, safety offset and buffer, read once per output
+/// change (cached; Bluetooth reports 100-250 ms).
+enum AmbientOutputLatency {
+    nonisolated(unsafe) private static var cached: (device: AudioObjectID, seconds: Double)?
+
+    static var current: Double {
+        let device = defaultOutput()
+        if let cached, cached.device == device { return cached.seconds }
+        let seconds = measure(device)
+        cached = (device, seconds)
+        return seconds
+    }
+
+    private static func defaultOutput() -> AudioObjectID {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var device = AudioObjectID(0)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
+        return device
+    }
+
+    private static func measure(_ device: AudioObjectID) -> Double {
+        func value(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector) -> UInt32 {
+            var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeOutput,
+                                                     mElement: kAudioObjectPropertyElementMain)
+            var result: UInt32 = 0
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            return AudioObjectGetPropertyData(object, &address, 0, nil, &size, &result) == noErr ? result : 0
+        }
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyNominalSampleRate,
+                                                 mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var rate: Float64 = 0
+        var size = UInt32(MemoryLayout<Float64>.size)
+        guard device != 0, AudioObjectGetPropertyData(device, &address, 0, nil, &size, &rate) == noErr, rate > 0 else { return 0 }
+        var frames = value(device, kAudioDevicePropertyLatency) + value(device, kAudioDevicePropertySafetyOffset)
+            + value(device, kAudioDevicePropertyBufferFrameSize)
+        var streamsAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioObjectPropertyScopeOutput,
+                                                        mElement: kAudioObjectPropertyElementMain)
+        var streamsSize: UInt32 = 0
+        if AudioObjectGetPropertyDataSize(device, &streamsAddress, 0, nil, &streamsSize) == noErr, streamsSize > 0 {
+            var streams = [AudioStreamID](repeating: 0, count: Int(streamsSize) / MemoryLayout<AudioStreamID>.size)
+            if AudioObjectGetPropertyData(device, &streamsAddress, 0, nil, &streamsSize, &streams) == noErr, let first = streams.first {
+                frames += value(first, kAudioStreamPropertyLatency)
+            }
+        }
+        return min(0.4, Double(frames) / rate)
     }
 }
