@@ -73,7 +73,8 @@ final class QuickCaptureController: ObservableObject {
             .sink { [weak self] _, _ in self?.updateHotkey() }
             .store(in: &cancellables)
         updateHotkey()
-        prewarmVisionIfNeeded()
+        // No Vision prewarm at launch: it kept the text models (and a stuck
+        // recognizer thread) resident for hours. Models load on first use.
     }
 
     /// Vision's accurate text recognizer loads its models on first use in a

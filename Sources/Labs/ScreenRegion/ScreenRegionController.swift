@@ -104,13 +104,9 @@ final class ScreenRegionController: ObservableObject {
         started = true
         ScreenRegionFiles.sweep()
         refreshPermission()
+        // OCR models load on first Copy Text / Extract Text, not at launch
+        // (they held Neural Engine memory all day for a rare action).
         warmUpTask?.cancel()
-        warmUpTask = Task {
-            // Off the launch path: OCR for Copy Text / Extract text.
-            try? await Task.sleep(for: .seconds(20))
-            guard !Task.isCancelled else { return }
-            ScreenTextRecognizer.warmUp()
-        }
         AppLog.log("Screen Region: started (Screen Recording \(hasScreenRecording ? "granted" : "off"))")
     }
 

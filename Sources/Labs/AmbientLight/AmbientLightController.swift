@@ -669,11 +669,12 @@ final class AmbientLightController: NSObject, ObservableObject {
             // A steady glow only needs frames for its fade in / out.
             link.preferredFrameRateRange = CAFrameRateRange(minimum: 20, maximum: 30, preferred: 30)
         } else if settings.mode == .ambient {
-            // A slow breath needs no more than 60.
-            link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+            // A slow breath needs no more than 30.
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 24, maximum: 30, preferred: 30)
         } else {
-            // 60 is smooth for light; 120 on ProMotion doubled the GPU cost.
-            link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+            // 40 (a ProMotion divisor) is smooth for a soft glow; 60 cost a
+            // third more GPU time for no visible difference.
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 40, preferred: 40)
         }
     }
 
