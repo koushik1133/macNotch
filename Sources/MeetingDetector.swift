@@ -1136,14 +1136,39 @@ final class LiveMeetingSignalProbe: MeetingSignalProbe, @unchecked Sendable {
 
     // MARK: Change notifications
 
+    @MainActor private var observedInput: AudioObjectID?
+    @MainActor private var changePending = false
+    @MainActor private var pendingDeviceSwitch = false
+
     @MainActor
     func startObserving(_ changed: @escaping @MainActor @Sendable () -> Void) {
         stopObserving()
         onChange = changed
         addListener(Self.system, kAudioHardwarePropertyProcessObjectList)
         addListener(Self.system, kAudioHardwarePropertyDefaultInputDevice)
-        if let device = Self.defaultInputDevice() {
-            addListener(device, kAudioDevicePropertyDeviceIsRunningSomewhere)
+        observedInput = Self.defaultInputDevice()
+        if let observedInput {
+            addListener(observedInput, kAudioDevicePropertyDeviceIsRunningSomewhere)
+        }
+    }
+
+    /// Bursts of device notices are common during calls: at most one pass
+    /// per 250 ms, and listeners are only re-installed when the default
+    /// input really changed (re-installing on each notice pegged a core).
+    @MainActor
+    private func noteChange(deviceSwitch: Bool) {
+        pendingDeviceSwitch = pendingDeviceSwitch || deviceSwitch
+        guard !changePending else { return }
+        changePending = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard let self else { return }
+            self.changePending = false
+            let check = self.pendingDeviceSwitch
+            self.pendingDeviceSwitch = false
+            guard let onChange = self.onChange else { return }
+            if check, Self.defaultInputDevice() != self.observedInput { self.startObserving(onChange) }
+            onChange()
         }
     }
 
@@ -1163,9 +1188,7 @@ final class LiveMeetingSignalProbe: MeetingSignalProbe, @unchecked Sendable {
         let isDeviceSwitch = selector == kAudioHardwarePropertyDefaultInputDevice
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             Task { @MainActor [weak self] in
-                guard let self, let onChange = self.onChange else { return }
-                if isDeviceSwitch { self.startObserving(onChange) }
-                onChange()
+                self?.noteChange(deviceSwitch: isDeviceSwitch)
             }
         }
         guard AudioObjectAddPropertyListenerBlock(object, &address, queue, block) == noErr else { return }
