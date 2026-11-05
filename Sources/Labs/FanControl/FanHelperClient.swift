@@ -34,6 +34,12 @@ struct FanHelperClientError: Error, Equatable, Sendable {
     let message: String
 }
 
+/// Hands a result back to a waiting thread; `done` orders the access.
+private final class FanHelperResultBox: @unchecked Sendable {
+    let done = DispatchSemaphore(value: 0)
+    var result: Result<FanHelperResponse, FanHelperClientError>?
+}
+
 /// One persistent connection to the helper's Unix socket. Its lifetime is
 /// what the helper watches: when SparkV quits or crashes the socket closes
 /// and the helper returns every fan to Auto. Blocking I/O with 2 s
@@ -47,6 +53,7 @@ final class FanHelperClient: @unchecked Sendable {
     private var buffer = Data()
     /// The socket must belong to this user (root; tests use their own uid).
     private let requiredOwner: uid_t
+    private static let waitLimit: TimeInterval = 2.5
 
     init(socketPath: String = FanHelperConstants.socketPath, plistPath: String = FanHelperConstants.launchdPlist,
          requiredOwner: uid_t = 0) {
@@ -63,13 +70,24 @@ final class FanHelperClient: @unchecked Sendable {
         queue.async { [self] in completion(sendNow(command)) }
     }
 
-    /// Blocks the caller until answered or timed out (quit and sleep paths).
+    /// Blocks the caller until answered, at most `waitLimit` (quit and sleep
+    /// paths, on the main thread). A retry after a dead socket could take 6 s
+    /// on `queue`. Past the limit the command still goes out, and if the app
+    /// quits first the closing socket returns the fans to Auto.
     func sendAndWait(_ command: FanCommand) -> Result<FanHelperResponse, FanHelperClientError> {
-        queue.sync { sendNow(command) }
+        let box = FanHelperResultBox()
+        queue.async { [self] in
+            box.result = sendNow(command)
+            box.done.signal()
+        }
+        guard box.done.wait(timeout: .now() + Self.waitLimit) == .success else {
+            return .failure(.init(state: .failed("timed out"), message: "timeout"))
+        }
+        return box.result ?? .failure(.init(state: .failed("timed out"), message: "timeout"))
     }
 
     func disconnect() {
-        queue.sync { closeSocket() }
+        queue.async { [self] in closeSocket() }
     }
 
     // MARK: Private (on `queue`)

@@ -195,6 +195,8 @@ struct NotchThemeBackdrop: View {
     let bodySize: CGSize
     let topRadius: CGFloat
     let bottomRadius: CGFloat
+    /// Keep Open: the drawer can stay up for hours, so the theme holds still.
+    var isPinned = false
 
     @ObservedObject private var settings = NotchThemeSettings.shared
     @ObservedObject private var hover = NotchThemeHoverState.shared
@@ -222,7 +224,7 @@ struct NotchThemeBackdrop: View {
                     bottomRadius: bottomRadius,
                     pointer: pointer,
                     // A hot Mac or sleeping displays: the still look.
-                    reduceMotion: reduceMotion || energy.pausesDecoration,
+                    reduceMotion: reduceMotion || energy.pausesDecoration || isPinned,
                     reduceTransparency: reduceTransparency,
                     lowPower: energy.isConstrained
                 ),

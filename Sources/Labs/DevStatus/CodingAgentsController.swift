@@ -98,6 +98,7 @@ final class CodingAgentsController: ObservableObject {
 
     static let defaultPorts: [UInt16] = Array(47821...47830)
     private static let prefix = "SparkV.agents."
+    private static let scriptQueue = ModeAppleScriptQueue()
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -620,9 +621,8 @@ final class CodingAgentsController: ObservableObject {
         // own prompt); otherwise activating the app is enough.
         Task { @MainActor in
             guard await PermissionCenter.shared.ensure(.automation(bundleID: bundle), from: "Coding Agents: jump to tab") else { return }
-            var error: NSDictionary?
-            NSAppleScript(source: script)?.executeAndReturnError(&error)
-            if error != nil { AppLog.log("Agents: couldn't select the terminal tab") }
+            // Off the main actor: a busy terminal app would hold the UI.
+            do { _ = try await Self.scriptQueue.run(script) } catch { AppLog.log("Agents: couldn't select the terminal tab") }
         }
     }
 

@@ -188,7 +188,7 @@ final class ScreenshotClipboardController: ObservableObject {
                 // Only screenshots taken just now: an old "Screenshot …" file
                 // moved or copied into the folder must not replace the clipboard.
                 guard Self.isFresh(url) else { return }
-                self?.copy(url)
+                await self?.copy(url)
             }
         }
     }
@@ -196,8 +196,13 @@ final class ScreenshotClipboardController: ObservableObject {
     /// Puts the image on the pasteboard: PNG right away (the file's own bytes
     /// when it is a PNG), TIFF on demand for older apps.
     @discardableResult
-    func copy(_ url: URL) -> Bool {
-        guard let png = Self.pngData(for: url) else {
+    func copy(_ url: URL) async -> Bool {
+        // Off the main actor: a HEIC screenshot is decoded and re-encoded here.
+        let wantsThumbnail = showsBand
+        let loaded = await Task.detached(priority: .userInitiated) {
+            (png: Self.pngData(for: url), thumbnail: wantsThumbnail ? TrayAIOCR.loadImage(at: url, maxPixel: 96) : nil)
+        }.value
+        guard let png = loaded.png else {
             AppLog.log("Screenshot clipboard: couldn't read \(url.lastPathComponent)")
             return false
         }
@@ -211,7 +216,7 @@ final class ScreenshotClipboardController: ObservableObject {
         self.provider = provider
         copiedCount += 1
         lastCopied = url
-        if showsBand { postBand(for: url) }
+        if showsBand { postBand(thumbnail: loaded.thumbnail) }
         return true
     }
 
@@ -238,8 +243,8 @@ final class ScreenshotClipboardController: ObservableObject {
         return out as Data
     }
 
-    private func postBand(for url: URL) {
-        let thumbnail = TrayAIOCR.loadImage(at: url, maxPixel: 96).map { NSImage(cgImage: $0, size: .zero) }
+    private func postBand(thumbnail image: CGImage?) {
+        let thumbnail = image.map { NSImage(cgImage: $0, size: .zero) }
         activities.post(LiveActivity(id: Self.activityID, kind: .notification, priority: 46, duration: 2.5) {
             ScreenshotClipboardBandView(thumbnail: thumbnail)
         })

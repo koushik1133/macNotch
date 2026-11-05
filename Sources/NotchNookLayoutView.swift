@@ -186,7 +186,8 @@ struct NotchNookLayoutView: View {
                 isExpanded: state.isExpanded,
                 bodySize: CGSize(width: size.width, height: size.height + fill),
                 topRadius: radii.top,
-                bottomRadius: radii.bottom
+                bottomRadius: radii.bottom,
+                isPinned: state.isPinned
             )
         }
         // Ambient Light: music-synced glow around the island (nothing while off).

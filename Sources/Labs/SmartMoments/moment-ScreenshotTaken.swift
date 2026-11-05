@@ -43,7 +43,7 @@ struct ScreenshotTakenMomentDeps {
     var ignoreNextCopy: @MainActor () -> Void
     var pasteboard: NSPasteboard
     /// PNG bytes of the image (ScreenshotClipboardController.pngData).
-    var pngData: @MainActor (URL) -> Data?
+    var pngData: @MainActor (URL) async -> Data?
     var fileExists: @MainActor (URL) -> Bool
     /// Opens the image in Preview for Markup; false = it couldn't.
     var openForMarkup: @MainActor (URL) -> Bool
@@ -74,7 +74,9 @@ struct ScreenshotTakenMomentDeps {
                 clipboard.ignoreNextCopy()
             },
             pasteboard: .general,
-            pngData: { ScreenshotClipboardController.pngData(for: $0) },
+            pngData: { url in
+                await Task.detached(priority: .userInitiated) { ScreenshotClipboardController.pngData(for: url) }.value
+            },
             fileExists: { FileManager.default.fileExists(atPath: $0.path) },
             openForMarkup: { url in
                 let workspace = NSWorkspace.shared
@@ -159,7 +161,7 @@ enum ScreenshotTakenMoment {
 
         // Copy -------------------------------------------------------------------
         chain(.copyImage, in: &h, isAvailable: { _ in !deps.screenshotClipboardIsOn() }) { url, context in
-            guard deps.fileExists(url), let png = deps.pngData(url) else { return .skipped("Screenshot is gone") }
+            guard deps.fileExists(url), let png = await deps.pngData(url) else { return .skipped("Screenshot is gone") }
             let board = deps.pasteboard
             let before = snapshot(board, limit: deps.pasteboardSnapshotLimit)
             let item = NSPasteboardItem()

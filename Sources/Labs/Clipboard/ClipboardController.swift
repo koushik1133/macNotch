@@ -85,6 +85,10 @@ final class ClipboardController: ObservableObject {
     private var pollTask: Task<Void, Never>?
     /// Serialises ingest, copy-back and saving.
     private var chain: Task<Void, Never>?
+    /// The pasteboard read in progress. Off the main actor (an image comes
+    /// from the app that copied it and can take seconds), one at a time so
+    /// copies stay in order.
+    private var readTask: Task<Void, Never>?
     private var lastChangeCount = -1
     /// Change count at which `history.latest` was recorded or written back.
     /// When the pasteboard's count differs, the clipboard holds something the
@@ -654,7 +658,25 @@ final class ClipboardController: ObservableObject {
         }
 
         let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        switch ClipboardReader.read(pasteboard, policy: policy, frontmostBundleID: frontmost) {
+        nonisolated(unsafe) let board = pasteboard
+        let policy = policy
+        let previous = readTask
+        readTask = Task { @MainActor [weak self] in
+            await previous?.value
+            let result = await Task.detached(priority: .userInitiated) {
+                ClipboardReader.read(board, policy: policy, frontmostBundleID: frontmost)
+            }.value
+            self?.finishRead(result)
+        }
+    }
+
+    private func finishRead(_ result: ClipboardReader.Result) {
+        guard isEnabled else { return }
+        if isPaused {
+            hasUnrecordedCopy = true
+            return
+        }
+        switch result {
         case .skipped(let reason):
             // Our own write-back is already the newest item.
             if reason != .ownWrite { hasUnrecordedCopy = true }
@@ -716,6 +738,7 @@ final class ClipboardController: ObservableObject {
             return false
         }
         let payload = await store.payload(for: item)
+        await readTask?.value
         if item.kind == .image, payload.data.isEmpty {
             postNotice(symbol: "photo", title: "Image no longer stored", detail: item.displayTitle)
             return false

@@ -386,6 +386,9 @@ final class PrivacyHardwareProbe: @unchecked Sendable {
     /// AirPods), and re-installing on each one fed itself in a loop.
     private var listenedInputs: Set<AudioObjectID> = []
     private var deviceRecheckPending = false
+    /// The same for the process list: every app opening audio posts a
+    /// notice, and each one means a HAL read and listener bookkeeping.
+    private var processRecheckPending = false
     private var cameraListeners: [(object: CMIOObjectID, address: CMIOObjectPropertyAddress, block: CMIOObjectPropertyListenerBlock)] = []
     /// pid → (executable path, owner bundle ID).
     private var owners: [Int32: (path: String, owner: String?)] = [:]
@@ -444,8 +447,15 @@ final class PrivacyHardwareProbe: @unchecked Sendable {
 
     private func installAudioListeners() {
         addAudioListener(Self.system, kAudioHardwarePropertyProcessObjectList) { [weak self] in
-            self?.refreshProcessListeners()
-            self?.changed()
+            guard let self, !self.processRecheckPending else { return }
+            self.processRecheckPending = true
+            self.queue.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+                guard let self else { return }
+                self.processRecheckPending = false
+                guard self.watchesMicrophone else { return }
+                self.refreshProcessListeners()
+                self.changed()
+            }
         }
         addAudioListener(Self.system, kAudioHardwarePropertyDevices) { [weak self] in
             // A headset or webcam mic came or went: listen to its device too

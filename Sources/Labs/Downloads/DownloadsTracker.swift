@@ -92,6 +92,16 @@ final class DownloadsTracker {
     /// Something is being tracked, so `tick` should keep running.
     var needsTicks: Bool { !entries.isEmpty }
 
+    /// Wait before the next tick: longer once every download has stalled (a
+    /// partial left by a quit browser can sit here for days). File events and
+    /// browser progress still update an entry at once.
+    func tickInterval(now: Date = Date()) -> Duration {
+        let stalled = entries.values.allSatisfy {
+            $0.partialPath != nil && $0.missingSince == nil && now.timeIntervalSince($0.lastGrowthAt) > timing.paused
+        }
+        return stalled ? .seconds(5) : .seconds(1)
+    }
+
     var activeItems: [DownloadItem] {
         entries.values.filter(\.announced).map(\.item).sorted { $0.startedAt < $1.startedAt }
     }
