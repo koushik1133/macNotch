@@ -441,8 +441,8 @@ final class NotchWindowController: NSWindowController {
                 DispatchQueue.main.async { MainActor.assumeIsolated { _ = self?.handleActivityBandPointer(moved: false) } }
             }
         // A volume or brightness bar lifts the island above full-screen apps.
-        feedbackLevelObserver = activities.$current
-            .map { $0?.kind.isLiveFeedback == true }
+        feedbackLevelObserver = activities.$current.combineLatest(activities.$compact)
+            .map { $0?.kind.isLiveFeedback == true || $1?.kind.isLiveFeedback == true }
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] _ in
@@ -988,7 +988,7 @@ final class NotchWindowController: NSWindowController {
             quiet: !placement.quietReasons.isEmpty,
             revealed: isMain && isRevealed,
             isInteracting: isMain && state.isExpanded && isInteractionInProgress,
-            hudShowing: activities.current?.kind.isLiveFeedback == true,
+            hudShowing: isShowingLiveFeedback,
             showsHUDWhileHidden: s.showsHUDWhileHidden,
             systemHUDReplaced: hud.isEnabled && hud.replacesSystemHUD,
             voiceShowing: dictation.phase != .idle || clicky.phase != .idle,
@@ -1046,6 +1046,12 @@ final class NotchWindowController: NSWindowController {
         }
     }
 
+    /// A volume or brightness HUD on the island: in the band, or in the
+    /// wings beside the notch (the inline style).
+    private var isShowingLiveFeedback: Bool {
+        activities.current?.kind.isLiveFeedback == true || activities.compact?.kind.isLiveFeedback == true
+    }
+
     /// Full screen with the island showing: one level below the menu bar
     /// macOS slides down, so the island never covers it; open, it is back
     /// above everything.
@@ -1059,7 +1065,7 @@ final class NotchWindowController: NSWindowController {
         // Just under the menu bar macOS slides down (`.floating` sat under some
         // full-screen apps, hiding the island and its volume bar there); a
         // volume or brightness bar goes above everything.
-        let feedback = activities.current?.kind.isLiveFeedback == true
+        let feedback = isShowingLiveFeedback
         let level: NSWindow.Level = lowered && !feedback ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
         if panel.level != level { panel.level = level }
         // The teleprompter and the large mirror sit one level below the
@@ -2695,6 +2701,7 @@ final class NotchWindowController: NSWindowController {
 
     /// The room beside the housing changed: the wings lay out again.
     private func wingRoomChanged() {
+        hud.islandRoomChanged()
         hotZoneCache = nil
         state.wingClearanceRevision &+= 1
         for mirror in mirrors.values { mirror.state.wingClearanceRevision &+= 1 }

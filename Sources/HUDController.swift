@@ -360,9 +360,29 @@ final class HUDController: ObservableObject {
                 }
             }
         }
+        if Self.wingsTooTight(style) { allowsCompact = false }
         presented[id] = Presentation(content: content, kind: kind, duration: duration, style: style, screen: screen, allowsCompact: allowsCompact)
         if let shown = presented[id] { show(shown, id: id) }
         if Date() < announceUntil { announce(content) }
+    }
+
+    /// An app's menus or status items can leave no room beside the notch, and
+    /// the wings are capped to it: the level would be invisible, so the HUD
+    /// goes to the band under the notch.
+    private static func wingsTooTight(_ style: HUDStyle) -> Bool {
+        guard style == .inline || style == .ring else { return false }
+        let room = IslandInteractionStore.wingClearance
+        return room.leading < 34 || room.trailing < HUDIslandGeometry.wingBarWidth + 16
+    }
+
+    /// The room was re-measured (it can lag an app switch): a HUD showing in
+    /// wings that no longer fit moves to the band.
+    func islandRoomChanged() {
+        for (id, var shown) in presented where shown.allowsCompact && Self.wingsTooTight(shown.style) {
+            shown.allowsCompact = false
+            presented[id] = shown
+            show(shown, id: id)
+        }
     }
 
     /// Draws a presentation as is (also when holding it or moving its level).
