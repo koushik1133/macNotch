@@ -303,7 +303,7 @@ final class ConnectivityMonitor: ObservableObject {
     private func announce(_ event: ConnectivityEvent) {
         guard isStarted, isEnabled else { return }
         if SystemStatusCenter.shared.isScreenSharing() {
-            AppLog.log("Connectivity: \(event) (quiet while sharing the screen)")
+            AppLog.log("Connectivity: a status band stayed quiet while sharing the screen")
             return
         }
         let band: (symbol: String, tint: Color, title: String, detail: String?, id: String, priority: Int, duration: TimeInterval)
@@ -329,7 +329,7 @@ final class ConnectivityMonitor: ObservableObject {
         case .driveRemovedUnsafely(let name):
             band = ("externaldrive.badge.xmark", SparkVTheme.warning, "\(name) removed", "Eject drives before unplugging", Self.driveActivityID, 55, 4)
         }
-        AppLog.log("Connectivity: \(band.title)\(band.detail.map { " · \($0)" } ?? "")")
+        AppLog.log(band.id == Self.driveActivityID ? "Connectivity: a drive was removed" : "Connectivity: \(band.title)\(band.detail.map { " · \($0)" } ?? "")")
         SystemStatusCenter.shared.post(LiveActivity(id: band.id, kind: .notification, priority: band.priority, duration: band.duration,
                                                     symbol: band.symbol, tint: band.tint) {
             StatusBand(symbol: band.symbol, tint: band.tint, title: band.title, detail: band.detail)

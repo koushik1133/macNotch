@@ -411,7 +411,11 @@ final class TrayStore: ObservableObject {
     private func hasOwnedCopy(of source: URL) -> Bool {
         let base = Self.storageName(from: source.deletingPathExtension().lastPathComponent, fileExtension: source.pathExtension)
         let size = (try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -1
-        if pendingCopies.contains(where: { $0.deletingPathExtension().lastPathComponent.hasPrefix(base) }) { return true }
+        // "Report" or "Report 2", never "Report Final" (a different file).
+        let isCopyOfBase = { (name: String) in
+            name == base || (name.hasPrefix(base + " ") && Int(name.dropFirst(base.count + 1)) != nil)
+        }
+        if pendingCopies.contains(where: { $0.pathExtension == source.pathExtension && isCopyOfBase($0.deletingPathExtension().lastPathComponent) }) { return true }
         return items.contains { item in
             guard isOwned(item), let url = item.url, url.pathExtension == source.pathExtension,
                   url.deletingPathExtension().lastPathComponent.hasPrefix(base) else { return false }
@@ -425,7 +429,7 @@ final class TrayStore: ObservableObject {
         let destination = uniqueStorageURL(name: Self.storageName(from: source.deletingPathExtension().lastPathComponent,
                                                                   fileExtension: ext), fileExtension: ext)
         pendingCopies.insert(destination)
-        AppLog.log("Tray: copying \(source.lastPathComponent) in")
+        AppLog.log("Tray: copying a large file in")
         Task.detached(priority: .userInitiated) { [weak self] in
             let ok: Bool
             do {
@@ -433,7 +437,7 @@ final class TrayStore: ObservableObject {
                 ok = true
             } catch {
                 ok = false
-                AppLog.log("Tray: could not copy \(source.lastPathComponent) in: \(error.localizedDescription)")
+                AppLog.log("Tray: could not copy a file in (\((error as NSError).domain) \((error as NSError).code))")
             }
             await self?.finishBackgroundCopy(destination, ok: ok, kind: kind)
         }
@@ -458,7 +462,7 @@ final class TrayStore: ObservableObject {
             try FileManager.default.copyItem(at: source, to: destination)
             return destination
         } catch {
-            AppLog.log("Tray: could not copy \(source.lastPathComponent) in: \(error.localizedDescription)")
+            AppLog.log("Tray: could not copy a file in (\((error as NSError).domain) \((error as NSError).code))")
             return nil
         }
     }
@@ -949,7 +953,7 @@ extension TrayStore {
     func dragPayloads(for items: [TrayItem]) -> [TrayDragPayload] {
         items.compactMap { item in
             if item.kind != .text, let url = item.url, !FileManager.default.fileExists(atPath: url.path) {
-                AppLog.log("Tray: skipping drag of missing file \(url.lastPathComponent)")
+                AppLog.log("Tray: skipping drag of a missing file")
                 return nil
             }
             return dragPayload(for: item)

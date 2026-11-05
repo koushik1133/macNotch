@@ -295,10 +295,10 @@ final class JobAgentController: ObservableObject {
         guard let (job, verdict) = firstVerdict else { return }
         switch verdict {
         case .different(let reason):
-            fail("Not marked: \(reason)")
+            fail("Not marked: \(reason)", logAs: "Not marked: a different job")
         case .uncertain(let reason):
             pendingConfirmation = PendingConfirmation(jobID: job.id, message: reason, evidence: detection.evidence.joined(separator: ", "))
-            fail("Confirmation found, but can't tell which job. Open Job Agent to mark \(job.title) applied.")
+            fail("Confirmation found, but can't tell which job. Open Job Agent to mark \(job.title) applied.", logAs: "Confirmation found, but can't tell which job")
         case .same:
             break
         }
@@ -525,9 +525,11 @@ final class JobAgentController: ObservableObject {
         })
     }
 
-    private func fail(_ message: String, post: Bool = true) {
+    /// `logAs` replaces a message that quotes a job or a page (the log never
+    /// holds user content).
+    private func fail(_ message: String, post: Bool = true, logAs: String? = nil) {
         phase = .failed(message)
-        AppLog.log("Job Agent: \(message)")
+        AppLog.log("Job Agent: \(logAs ?? message)")
         guard post else { return }
         activities.post(LiveActivity(id: Self.activityID, kind: .notification, priority: 75, duration: 6,
                                      height: NotchMetrics.activityAnswerBandHeight) {

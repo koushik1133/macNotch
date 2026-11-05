@@ -88,7 +88,7 @@ extension SpaceStore {
             try? fm.removeItem(at: staging)
             throw error
         }
-        AppLog.log("Spaces: exported \(root.name) (\(subfolders.count) folder(s), \(exported.count) item(s)) → \(url.lastPathComponent)")
+        AppLog.log("Spaces: exported a Space (\(subfolders.count) folder(s), \(exported.count) item(s))")
     }
 
     /// Re-creates a `.sparkvspace` package under the current persona with new
@@ -190,7 +190,7 @@ extension SpaceStore {
         }
 
         commitImport(spaces: newSpaces, items: newItems, memories: newMemories)
-        AppLog.log("Spaces: imported \(newRoot.name) (\(newSpaces.count - 1) folder(s), \(newItems.count) item(s))")
+        AppLog.log("Spaces: imported a Space (\(newSpaces.count - 1) folder(s), \(newItems.count) item(s))")
         return newRoot
     }
 

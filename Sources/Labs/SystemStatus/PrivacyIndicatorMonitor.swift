@@ -321,7 +321,9 @@ enum PrivacyAppNamer {
             if let front = frontmost(), front.bundleID == "com.apple.Safari" { return front }
             return PrivacyApp(name: webPageName, bundleID: nil, pid: process.pid)
         }
-        let candidates = [process.ownerBundleID, process.bundleID, aliases[process.bundleID ?? ""], aliases[process.executable]].compactMap { $0 }
+        // The alias goes before the process's own id: avconferenced is itself
+        // a running application, so its own id would name the daemon.
+        let candidates = [process.ownerBundleID, aliases[process.bundleID ?? ""], aliases[process.executable], process.bundleID].compactMap { $0 }
         for bundleID in candidates {
             if let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first, let name = running.localizedName {
                 return PrivacyApp(name: name, bundleID: bundleID, pid: running.processIdentifier)

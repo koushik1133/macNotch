@@ -203,7 +203,7 @@ final class ScreenshotClipboardController: ObservableObject {
             (png: Self.pngData(for: url), thumbnail: wantsThumbnail ? TrayAIOCR.loadImage(at: url, maxPixel: 96) : nil)
         }.value
         guard let png = loaded.png else {
-            AppLog.log("Screenshot clipboard: couldn't read \(url.lastPathComponent)")
+            AppLog.log("Screenshot clipboard: couldn't read the screenshot")
             return false
         }
         let item = NSPasteboardItem()
