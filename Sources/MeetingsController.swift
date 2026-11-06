@@ -1255,9 +1255,11 @@ final class MeetingsController: ObservableObject {
                 calendarColor: calendarColor,
                 provider: provider,
                 appIcon: icon,
-                startText: startText
+                startText: startText,
+                onJoin: provider == nil ? nil : { [weak self] in self?.join(meeting) }
             )
         }
+        .interactive(provider != nil)
         .compact {
             MeetingProviderBadge(provider: provider, appIcon: icon, calendarColor: calendarColor, size: 16)
         } trailing: {
@@ -1470,6 +1472,7 @@ struct MeetingPeekBand: View {
     let provider: MeetingLink.Provider?
     let appIcon: NSImage?
     let startText: String
+    var onJoin: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -1496,7 +1499,12 @@ struct MeetingPeekBand: View {
             .font(.system(size: 12, weight: .medium))
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if provider != nil {
+            if let onJoin {
+                Button(action: onJoin) { MeetingJoinPill(isNow: isNow) }
+                    .buttonStyle(.plain)
+                    .help("Join \(title)")
+                    .accessibilityLabel("Join \(title)")
+            } else if provider != nil {
                 MeetingJoinPill(isNow: isNow)
             } else {
                 Text(startText)

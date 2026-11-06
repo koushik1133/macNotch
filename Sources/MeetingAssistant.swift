@@ -275,7 +275,8 @@ final class MeetingAssistant: ObservableObject {
                 presentation: .expanded, symbol: "speaker.slash.fill", tint: SparkVTheme.warning
             ) {
                 MeetingSystemAudioNoticeBand(needsRelaunch: relaunch)
-            })
+            }
+            .interactive())
         }
     }
 
@@ -769,7 +770,8 @@ final class MeetingAssistant: ObservableObject {
             id: ActivityID.recording, kind: .meeting, priority: Self.recordingPriority, duration: nil
         ) {
             MeetingRecordingBand(recorder: recorder, startedAt: started)
-        })
+        }
+        .interactive())
     }
 
     private func postSummarizingActivity() {

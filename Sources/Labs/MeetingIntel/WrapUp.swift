@@ -906,6 +906,7 @@ final class MeetingWrapUpController: ObservableObject, MeetingWrappingUp {
             ) { [weak self] in
                 MeetingWrapUpPeek(model: model) { self?.openWindow(meetingID: id) }
             }
+            .interactive()
         )
     }
 
