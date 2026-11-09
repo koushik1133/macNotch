@@ -197,6 +197,10 @@ struct NotchNookLayoutView: View {
         }
         // Uneven wings shift the body so the housing stays over the camera.
         .offset(x: closed?.xOffset ?? 0)
+        // Opening: the drawer grows straight out of the camera housing. The
+        // uneven-wing shift snaps to center at once instead of sliding the
+        // growing drawer sideways (it only springs while closed).
+        .animation(state.isExpanded ? nil : NotchMetrics.hoverAnimation, value: closed?.xOffset ?? 0)
         .padding(.top, gap - fill)
         .animation(NotchMetrics.hoverAnimation, value: closed)
         .animation(NotchMetrics.hoverAnimation, value: state.tab)
