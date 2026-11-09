@@ -563,6 +563,9 @@ final class NotchWindowController: NSWindowController {
         CodingAgentsController.shared.onOpenDrawer = openDev
         CodingAgentsController.shared.start()
         DevCIController.shared.connect(activities: activities, opensTab: .devStatus)
+        DevTopController.shared.connect(activities: activities, opensTab: .devStatus)
+        DevPins.shared.activities = activities
+        DevPins.shared.opensTab = .devStatus
         DevCIController.shared.start()
         ScriptWidgetsController.shared.connect(activities: activities, opensTab: .devStatus)
         ScriptWidgetsController.shared.start()

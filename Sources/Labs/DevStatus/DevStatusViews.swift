@@ -8,7 +8,7 @@ import SwiftUI
 @MainActor
 final class DevStatusNavigator: ObservableObject {
     enum Section: String, CaseIterable, Hashable {
-        case agents, servers, ci, scripts
+        case agents, servers, ci, scripts, git, docker, top, tools
 
         var title: String {
             switch self {
@@ -16,6 +16,10 @@ final class DevStatusNavigator: ObservableObject {
             case .servers: "Servers"
             case .ci: "CI"
             case .scripts: "Scripts"
+            case .git: "Git"
+            case .docker: "Docker"
+            case .top: "Top"
+            case .tools: "Tools"
             }
         }
     }
@@ -57,7 +61,7 @@ struct DevStatusDrawerView: View {
             HStack(spacing: 8) {
                 ExtrasSegmented(options: DevStatusNavigator.Section.allCases.map { ($0, title(for: $0)) },
                                 selection: $nav.section, label: "Developer page", compact: true)
-                    .frame(width: 330)
+                    .frame(maxWidth: 440)
                 Spacer(minLength: 4)
                 trailingActions
             }
@@ -79,6 +83,10 @@ struct DevStatusDrawerView: View {
         case .servers: DevServersPage()
         case .ci: DevCIPage()
         case .scripts: ScriptWidgetsPage()
+        case .git: DevGitPage()
+        case .docker: DevDockerPage()
+        case .top: DevTopPage()
+        case .tools: DevToolsPage()
         }
     }
 
@@ -93,6 +101,7 @@ struct DevStatusDrawerView: View {
             let failed = ci.allRuns.contains { $0.outcome == .failure }
             return failed ? "CI · ✕" : "CI"
         case .scripts: return scripts.configs.isEmpty ? "Scripts" : "Scripts · \(scripts.configs.count)"
+        default: return section.title
         }
     }
 
@@ -109,6 +118,14 @@ struct DevStatusDrawerView: View {
                 ExtrasIconButton(systemImage: "arrow.clockwise", label: "Check now") { ci.refreshNow() }
             case .scripts:
                 ExtrasIconButton(systemImage: "plus", label: "New Script…") { ScriptEditorWindowController.shared.show(nil) }
+            case .git:
+                ExtrasIconButton(systemImage: "arrow.clockwise", label: "Refresh") { DevGitController.shared.refresh() }
+            case .docker:
+                ExtrasIconButton(systemImage: "arrow.clockwise", label: "Refresh") { DevDockerController.shared.refresh() }
+            case .top:
+                ExtrasIconButton(systemImage: "arrow.clockwise", label: "Refresh") { DevTopController.shared.refresh() }
+            case .tools:
+                EmptyView()
             }
             ExtrasIconButton(systemImage: "gearshape", label: "Developer settings") { ExtrasSettingsOpener.open() }
         }
@@ -248,6 +265,8 @@ struct DevCIPage: View {
                                 .padding(.horizontal, 8)
                                 .frame(height: 30)
                             }
+                            if let deploy = controller.deploys[repo] { DevDeployRow(deploy: deploy) }
+                            ForEach(controller.pulls[repo] ?? []) { pull in DevPullRow(pull: pull) }
                         }
                     }
                     .padding(6)
@@ -443,4 +462,66 @@ struct DevStatusSettingsSection: View {
 final class DevCIDraft: ObservableObject {
     @Published var repo = ""
     @Published var token = ""
+}
+
+// MARK: - Pull requests and deployments
+
+struct DevPullRow: View {
+    let pull: CIPull
+
+    var body: some View {
+        Button { if let url = pull.url { NSWorkspace.shared.open(url) } } label: {
+            HStack(spacing: 6) {
+                Image(systemName: pull.isDraft ? "circle.dashed" : "arrow.triangle.pull")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(pull.isDraft ? SparkVTheme.textTertiary : SparkVTheme.success)
+                Text("#\(pull.number) \(pull.title)")
+                    .font(.system(size: 10.5)).foregroundStyle(SparkVTheme.text).lineLimit(1)
+                Spacer(minLength: 4)
+                if !pull.reviewers.isEmpty {
+                    ExtrasPill(text: "Review: " + pull.reviewers.prefix(2).joined(separator: ", "), tint: SparkVTheme.warning)
+                }
+                Text(pull.author).font(.system(size: 9.5)).foregroundStyle(SparkVTheme.textTertiary).lineLimit(1)
+            }
+            .padding(.leading, 18).padding(.trailing, 8).frame(height: 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Pull request \(pull.number), \(pull.title), by \(pull.author)")
+    }
+}
+
+struct DevDeployRow: View {
+    let deploy: CIDeploy
+
+    var body: some View {
+        Button { if let url = deploy.url { NSWorkspace.shared.open(url) } } label: {
+            HStack(spacing: 6) {
+                Image(systemName: symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(tint)
+                Text("\(deploy.environment): \(deploy.state.replacingOccurrences(of: "_", with: " "))")
+                    .font(.system(size: 10.5)).foregroundStyle(SparkVTheme.text).lineLimit(1)
+                Spacer(minLength: 4)
+                if deploy.url != nil { Image(systemName: "arrow.up.right").font(.system(size: 9)).foregroundStyle(SparkVTheme.textTertiary) }
+            }
+            .padding(.leading, 18).padding(.trailing, 8).frame(height: 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Deployment to \(deploy.environment), \(deploy.state)")
+    }
+
+    private var symbol: String {
+        switch deploy.state {
+        case "success": "checkmark.icloud.fill"
+        case "failure", "error": "xmark.icloud.fill"
+        default: "icloud.and.arrow.up"
+        }
+    }
+    private var tint: Color {
+        switch deploy.state {
+        case "success": SparkVTheme.success
+        case "failure", "error": SparkVTheme.destructive
+        default: SparkVTheme.warning
+        }
+    }
 }
