@@ -216,6 +216,10 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// Seconds a probe may run before it must have heard something.
     private static let probeWindow: Double = 6
     private static let probeCooldown: Double = 20
+    /// Probes in a row that heard nothing: the wait doubles (20, 40, 80,
+    /// 160 s) so a silent app holding the speakers costs almost nothing.
+    private var fruitlessProbes = 0
+    private var probeCooldownNow: Double { Self.probeCooldown * pow(2, Double(max(0, fruitlessProbes - 1))) }
     /// Capture keeps running this long after music stops (Now Playing
     /// paused / nil and nothing heard). Gaps between YouTube videos or
     /// tracks, ads and short pauses used to stop and restart the tap every
@@ -252,7 +256,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         guard running, settings.isActive, !suspended, !isPlaying,
               !engine.isRunning, startTask == nil, !engineStarting else { return }
         let now = CACurrentMediaTime()
-        guard now - lastFruitlessProbe >= Self.probeCooldown else { return }
+        guard now - lastFruitlessProbe >= probeCooldownNow else { return }
         beginProbe(now: now)
     }
 
@@ -263,7 +267,12 @@ final class AmbientLightController: NSObject, ObservableObject {
             try? await Task.sleep(for: .seconds(Self.probeWindow + 0.1))
             guard let self, !Task.isCancelled else { return }
             self.probeTask = nil
-            if !self.engine.isHearingAudio, !self.isPlaying { self.lastFruitlessProbe = CACurrentMediaTime() }
+            if !self.engine.isHearingAudio, !self.isPlaying {
+                self.lastFruitlessProbe = CACurrentMediaTime()
+                self.fruitlessProbes = min(self.fruitlessProbes + 1, 4)
+            } else {
+                self.fruitlessProbes = 0
+            }
             self.evaluate(userInitiated: false)
         }
         evaluate(userInitiated: false)
@@ -470,7 +479,11 @@ final class AmbientLightController: NSObject, ObservableObject {
     private var watchdogShouldWatch: Bool {
         guard settings.isActive, !suspended else { return false }
         if isPlaying { return true }
-        return outputActivity.isOutputRunning && CACurrentMediaTime() - lastLiveAt < 60
+        // Any app playing (Chrome videos often never report Now Playing):
+        // the device may already have been running when the light was
+        // turned on or after a pause, so no "started" event comes. Probes
+        // back off (`probeCooldownNow`) when it is only a silent app.
+        return outputActivity.isOutputRunning
     }
 
     /// Event-driven: armed from `evaluate` / output activity, one sleeping
@@ -518,8 +531,8 @@ final class AmbientLightController: NSObject, ObservableObject {
         if isPlaying {
             watchdogLog("Now Playing says playing for \(Int(Self.watchdogInterval)) s but capture isn't running; starting it")
             evaluate(userInitiated: false)
-        } else if now - lastFruitlessProbe >= Self.probeCooldown {
-            watchdogLog("output running after recent music but capture isn't; probing")
+        } else if outputActivity.isOutputRunning, now - lastFruitlessProbe >= probeCooldownNow {
+            watchdogLog("output running but capture isn't; probing")
             beginProbe(now: now)
         }
     }
@@ -698,6 +711,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         let musicLive = isMusicLive
         if musicLive {
             lastLiveAt = now
+            fruitlessProbes = 0
             if !loggedLive {
                 loggedLive = true
                 let why = isPlaying ? (engine.isHearingAudio ? "Now Playing + audio" : "Now Playing") : "audio heard, no Now Playing"
@@ -731,6 +745,11 @@ final class AmbientLightController: NSObject, ObservableObject {
             }
         }
         edges.setShown(settings.scope == .notchAndEdges && frame.presence > 0.001)
+        if edges.isShown, let view = notchViews.allObjects.first(where: { $0.islandScreenRect != nil }) {
+            edges.setIsland(view.islandScreenRect, radius: view.outlineRadius)
+        } else {
+            edges.setIsland(nil, radius: 0)
+        }
         edges.render(frame, palette: palette)
         hapticsLive = live
 
