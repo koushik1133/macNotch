@@ -121,7 +121,12 @@ final class ClipboardStackModel: ObservableObject {
         scrollAccumulator = 0
     }
 
-    func select(_ index: Int) {
+    /// The last selection came from the pointer (hover or click), so the
+    /// list shouldn't scroll to it.
+    var lastSelectFromPointer = false
+
+    func select(_ index: Int, fromPointer: Bool = false) {
+        lastSelectFromPointer = fromPointer
         let count = visibleItems.count
         guard count > 0 else { selection = 0; return }
         selection = min(max(0, index), count - 1)

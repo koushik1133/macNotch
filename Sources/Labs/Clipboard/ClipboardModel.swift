@@ -291,7 +291,7 @@ struct ClipboardHistory: Sendable, Equatable {
     mutating func insert(_ item: ClipboardItem) -> [ClipboardItem] {
         var item = item
         var removed: [ClipboardItem] = []
-        if let index = items.firstIndex(where: { $0.fingerprint == item.fingerprint && $0.id != item.id }) {
+        if let index = items.firstIndex(where: { $0.id != item.id && ($0.fingerprint == item.fingerprint || Self.sameText($0, item)) }) {
             let old = items.remove(at: index)
             item.isPinned = item.isPinned || old.isPinned
             item.firstCopiedAt = min(old.firstCopiedAt, item.firstCopiedAt)
@@ -302,6 +302,16 @@ struct ClipboardHistory: Sendable, Equatable {
         items.insert(item, at: 0)
         removed += trim()
         return removed
+    }
+
+    /// Plain and formatted copies of the same words count as one item
+    /// (Safari and Mail put slightly different HTML on each copy).
+    static func sameText(_ a: ClipboardItem, _ b: ClipboardItem) -> Bool {
+        let textKinds: [ClipboardItem.Kind] = [.text, .richText]
+        guard textKinds.contains(a.kind), textKinds.contains(b.kind),
+              let x = a.text?.trimmingCharacters(in: .whitespacesAndNewlines), !x.isEmpty,
+              let y = b.text?.trimmingCharacters(in: .whitespacesAndNewlines) else { return false }
+        return x == y
     }
 
     /// Moves an existing item to the top (copied again from the history).
