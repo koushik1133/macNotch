@@ -33,7 +33,7 @@ final class AmbientEdgePanel: NSPanel {
         // isFloatingPanel resets `level`, so it comes first.
         isFloatingPanel = true
         level = Self.targetLevel
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle, .fullScreenDisallowsTiling]
         ignoresMouseEvents = true
         isOpaque = false
         backgroundColor = .clear
@@ -164,7 +164,9 @@ final class AmbientScreenEdgeGlow {
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.activeSpaceDidChangeNotification, NSWorkspace.didActivateApplicationNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.refreshSuppression() }
+                // A new desktop or full-screen app: put the edges back in front
+                // there (isVisible stays true for a window left on another space).
+                MainActor.assumeIsolated { self?.refreshSuppression(reorder: true) }
             })
         }
         observers.append(NotificationCenter.default.addObserver(
@@ -260,7 +262,7 @@ final class AmbientScreenEdgeGlow {
         refreshSuppression()
     }
 
-    func refreshSuppression() {
+    func refreshSuppression(reorder: Bool = false) {
         guard isShown else { return }
         reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         screenShared = AmbientDisplaySuppression.isScreenShared()
@@ -270,7 +272,7 @@ final class AmbientScreenEdgeGlow {
         let hideAll = screenShared || !externalReasons.isEmpty
         for (id, panel) in panels {
             let visible = !hideAll && !suppressed.contains(id)
-            if visible, !panel.isVisible || panel.level != AmbientEdgePanel.targetLevel {
+            if visible, reorder || !panel.isVisible || !panel.isOnActiveSpace || panel.level != AmbientEdgePanel.targetLevel {
                 panel.invalidateContent()
                 panel.present()
             } else if !visible, panel.isVisible {
