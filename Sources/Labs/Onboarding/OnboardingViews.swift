@@ -130,7 +130,7 @@ struct OnboardingRootView: View {
         VStack(spacing: 0) {
             OnboardingHeader(step: controller.step, steps: controller.isFullTour
                              ? OnboardingController.Step.allCases
-                             : [.welcome, .terms, .permissions])
+                             : [.welcome, .terms, .aboutYou, .permissions])
                 .padding(.top, 30)
                 .padding(.horizontal, 28)
             ZStack {
@@ -140,6 +140,9 @@ struct OnboardingRootView: View {
                         .transition(pageTransition)
                 case .terms:
                     OnboardingTermsPage(controller: controller)
+                        .transition(pageTransition)
+                case .aboutYou:
+                    OnboardingAboutYouPage(controller: controller)
                         .transition(pageTransition)
                 case .tryIt:
                     OnboardingTryItPage(controller: controller)
@@ -256,6 +259,17 @@ private struct OnboardingFooter: View {
                 Button("Agree and Continue") { controller.acceptTerms() }
                     .buttonStyle(OnboardingPrimaryButtonStyle(isEnabled: controller.agreesToTerms))
                     .disabled(!controller.agreesToTerms)
+                    .keyboardShortcut(.defaultAction)
+            case .aboutYou:
+                Button("Back") { controller.back() }
+                    .buttonStyle(OnboardingSecondaryButtonStyle())
+                Label("Stays on this Mac. Change it any time in this tour.", systemImage: "lock.fill")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(SparkVTheme.textSecondary)
+                    .padding(.leading, 4)
+                Spacer()
+                Button("Continue") { controller.next() }
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             case .tryIt:
                 Button("Back") { controller.back() }
@@ -453,6 +467,66 @@ private struct OnboardingTermsPage: View {
     }
 }
 
+// MARK: - About you
+
+private struct OnboardingAboutYouPage: View {
+    @ObservedObject var controller: OnboardingController
+
+    private let uses: [(symbol: String, text: String)] = [
+        ("person.2.fill", "Meeting notes: your tasks are listed under your name, and the transcript shows your lines as yours."),
+        ("questionmark.bubble.fill", "Live captions: when someone says your name (\u{201C}Sam, can you…?\u{201D}) SparkV flags the question for you."),
+        ("envelope.fill", "Reply drafts: signs with your name and recognizes your own messages in a thread."),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            LabsBEyebrow("Step 3 / You")
+                .padding(.bottom, 8)
+            Text("What should SparkV call you?")
+                .font(.system(size: 26, weight: .bold))
+                .tracking(-0.8)
+            Text("Use the name people say to you in meetings. It never leaves this Mac and is never sent anywhere.")
+                .font(.system(size: 12.5))
+                .foregroundStyle(SparkVTheme.textSecondary)
+                .padding(.top, 4)
+            TextField("Your name", text: $controller.profileName)
+                .textFieldStyle(.plain)
+                .font(.system(size: 17, weight: .medium))
+                .padding(.horizontal, 14)
+                .frame(height: 44)
+                .background(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).fill(OnboardingStyle.card))
+                .overlay(RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous).strokeBorder(OnboardingStyle.cardBorder))
+                .padding(.top, 20)
+                .accessibilityLabel("Your name")
+            Text("Why SparkV asks")
+                .font(.system(size: 13.5, weight: .semibold))
+                .padding(.top, 22)
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(uses, id: \.text) { use in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Image(systemName: use.symbol)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(OnboardingStyle.accent)
+                            .frame(width: 18)
+                        Text(use.text)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(SparkVTheme.text.opacity(0.86))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(.top, 10)
+            Text("Leave it as it is to use your Mac account's name.")
+                .font(.system(size: 11.5))
+                .foregroundStyle(SparkVTheme.textTertiary)
+                .padding(.top, 14)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 44)
+        .padding(.top, 22)
+    }
+}
+
 // MARK: - Permissions
 
 private struct OnboardingPermissionsPage: View {
@@ -462,7 +536,7 @@ private struct OnboardingPermissionsPage: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    LabsBEyebrow(controller.isFullTour ? "Step 4 / Permissions" : "Step 3 / Permissions")
+                    LabsBEyebrow(controller.isFullTour ? "Step 5 / Permissions" : "Step 4 / Permissions")
                         .padding(.bottom, 4)
                     Text("Permissions")
                         .font(.system(size: 26, weight: .bold))
@@ -833,7 +907,7 @@ private struct OnboardingTryItPage: View {
         let notch = controller.hasNotchedDisplay
         VStack(spacing: 0) {
             Spacer(minLength: 8)
-            LabsBEyebrow("Step 3 / Try It")
+            LabsBEyebrow("Step 4 / Try It")
                 .padding(.bottom, 10)
             Text(controller.islandTried ? "That’s the drawer" : "Try your notch")
                 .font(.system(size: 30, weight: .bold))
@@ -1056,7 +1130,7 @@ private struct OnboardingFinishPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer(minLength: 12)
-            LabsBEyebrow("Step 5 / Finish")
+            LabsBEyebrow("Step 6 / Finish")
                 .padding(.bottom, 8)
             Text("You’re all set")
                 .font(.system(size: 26, weight: .bold))

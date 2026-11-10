@@ -132,9 +132,7 @@ final class MeetingAssistant: ObservableObject {
     /// The user's first name ("Koushik"), used to find their tasks and the
     /// questions aimed at them.
     nonisolated static var userName: String {
-        let full = NSFullUserName().trimmingCharacters(in: .whitespacesAndNewlines)
-        let first = full.split(separator: " ").first.map(String.init) ?? ""
-        return first.isEmpty ? NSUserName() : first
+        SparkVProfile.firstName
     }
 
     var isRecording: Bool { phase == .recording }

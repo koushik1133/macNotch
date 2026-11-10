@@ -326,7 +326,7 @@ final class ReplyDrafterSettings: ObservableObject {
     /// The name to sign with and to recognize the user's own messages by.
     var effectiveUserName: String {
         let trimmed = userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? NSFullUserName() : trimmed
+        return trimmed.isEmpty ? SparkVProfile.fullName : trimmed
     }
 
     var tonePresetTitle: String {

@@ -550,7 +550,7 @@ enum MeetingAIText {
     /// The user's first name ("Koushik" from "Koushik Goud Shaganti"); falls
     /// back to the macOS account's full name, then "Me".
     static func firstName(_ userName: String) -> String {
-        for candidate in [userName, NSFullUserName()] {
+        for candidate in [userName, SparkVProfile.fullName] {
             if let first = candidate.split(whereSeparator: { $0 == " " || $0 == "\t" }).first, !first.isEmpty {
                 return String(first)
             }

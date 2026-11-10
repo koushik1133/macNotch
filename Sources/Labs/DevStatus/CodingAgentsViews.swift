@@ -442,6 +442,7 @@ struct CodingAgentsSettingsSection: View {
                     ExtrasDivider()
                     ExtrasToggleRow(title: "Show Agents Beside the Notch", detail: "Counts of working and waiting sessions in the wings.", isOn: $controller.showsWings)
                     ExtrasToggleRow(title: "Band When an Agent Finishes", isOn: $controller.showsFinishedBand)
+                    ExtrasToggleRow(title: "Only Tell Me When All Agents Are Done", detail: "With several agents running, one alert when the last one finishes. Off: an alert for each agent.", isOn: $controller.finishedOnlyWhenAllDone)
                     ExtrasToggleRow(title: "Sounds", detail: "Glass when an agent needs you, Ping when one finishes.", isOn: $controller.playsSounds)
                 }
             }

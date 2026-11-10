@@ -26,18 +26,23 @@ final class OnboardingController: ObservableObject {
     static let permissionsDidChange = Notification.Name("SparkV.onboarding.permissionsDidChange")
 
     enum Step: Int, CaseIterable, Identifiable {
-        case welcome, terms, tryIt, permissions, finish
+        case welcome, terms, aboutYou, tryIt, permissions, finish
         var id: Int { rawValue }
         var title: String {
             switch self {
             case .welcome: "Welcome"
             case .terms: "Terms"
+            case .aboutYou: "You"
             case .tryIt: "Try It"
             case .permissions: "Permissions"
             case .finish: "Finish"
             }
         }
     }
+
+    /// The name typed on the "You" step (prefilled with the saved name or
+    /// the Mac account's name).
+    @Published var profileName: String = SparkVProfile.fullName
 
     @Published var step: Step = .welcome {
         didSet { if step != oldValue { stepDidChange(from: oldValue) } }
@@ -186,6 +191,9 @@ final class OnboardingController: ObservableObject {
         switch step {
         case .welcome: step = .terms
         case .terms: acceptTerms()
+        case .aboutYou:
+            SparkVProfile.savedName = profileName
+            step = isFullTour ? .tryIt : .permissions
         case .tryIt: step = .permissions
         case .permissions:
             if isFullTour { step = .finish } else { finish() }
@@ -201,7 +209,7 @@ final class OnboardingController: ObservableObject {
     func back() {
         guard var previous = Step(rawValue: step.rawValue - 1) else { return }
         // Opened at Permissions or Terms, the tour has no Try It step.
-        if previous == .tryIt, !isFullTour { previous = .terms }
+        if previous == .tryIt, !isFullTour { previous = .aboutYou }
         step = previous
     }
 
@@ -211,7 +219,7 @@ final class OnboardingController: ObservableObject {
             store.acceptTerms()
             AppLog.log("Onboarding: accepted terms v\(OnboardingTerms.version)")
         }
-        step = isFullTour ? .tryIt : .permissions
+        step = .aboutYou
         Task { await refresh() }
     }
 
