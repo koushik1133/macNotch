@@ -1069,7 +1069,12 @@ final class NotchWindowController: NSWindowController {
         // slides in with (the notch has no menu bar under it); on a display
         // without a notch it would cover the middle of that menu bar.
         let revealAbove = isRevealed && (geometry?.hasNotch ?? false)
-        let lowered = placement.isFullScreen(placement.islandDisplayID) && !state.isExpanded && !visibility.isHidden && !revealAbove
+        // On a notched display the island always stays at the status-bar
+        // level: the menu bar never draws behind the hardware notch, and a
+        // wrong full-screen guess (a zoomed window, Safari's toolbar) used
+        // to leave the island under the menu bar.
+        let notched = geometry?.hasNotch ?? false
+        let lowered = !notched && placement.isFullScreen(placement.islandDisplayID) && !state.isExpanded && !visibility.isHidden && !revealAbove
         // Just under the menu bar macOS slides down (`.floating` sat under some
         // full-screen apps, hiding the island and its volume bar there); a
         // volume or brightness bar goes above everything.
