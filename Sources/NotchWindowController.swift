@@ -1025,6 +1025,11 @@ final class NotchWindowController: NSWindowController {
         if !decision.isHidden { cancelTopEdgeReveal() }
         setPanelShown(decision.isOnScreen, animated: animated)
         updateLevel()
+        // Entering full screen: the app's toolbar window appears after the
+        // animation; check for it once more.
+        if placement.isFullScreen(placement.islandDisplayID) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.updateLevel() }
+        }
         updateMirrorVisibility()
     }
 
@@ -1069,11 +1074,33 @@ final class NotchWindowController: NSWindowController {
         // full-screen apps, hiding the island and its volume bar there); a
         // volume or brightness bar goes above everything.
         let feedback = isShowingLiveFeedback
-        let level: NSWindow.Level = lowered && !feedback ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
+        // Safari (and other apps) draw their full-screen toolbar in a separate
+        // window above that lowered level, hiding the island under it.
+        let covered = lowered && Self.frontAppCoversNotch(notchRect)
+        let level: NSWindow.Level = lowered && !feedback && !covered ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
         if panel.level != level { panel.level = level }
         // The teleprompter and the large mirror sit one level below the
         // island (in full screen too) and fade out while the drawer is open.
         ExtrasIslandCover.islandChanged(expanded: state.isExpanded, level: level)
+    }
+
+    /// The frontmost app has a raised window (a full-screen toolbar) over the
+    /// notch. Window bounds and owners only, no titles: no permission needed.
+    private static func frontAppCoversNotch(_ notch: NSRect) -> Bool {
+        guard notch.width > 0, let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+              let primary = NSScreen.screens.first,
+              let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+        else { return false }
+        // Cocoa (bottom-left) to CG (top-left) coordinates.
+        let target = CGRect(x: notch.minX, y: primary.frame.maxY - notch.maxY, width: notch.width, height: notch.height)
+        for window in list {
+            guard (window[kCGWindowOwnerPID as String] as? pid_t) == pid,
+                  let layer = window[kCGWindowLayer as String] as? Int, layer > 0,
+                  let dict = window[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: dict) else { continue }
+            if bounds.intersects(target) { return true }
+        }
+        return false
     }
 
     /// ⌃⌥H (opt-in): hides the island, or brings back one that is hidden
@@ -1533,6 +1560,14 @@ final class NotchWindowController: NSWindowController {
             observe(name, on: workspace) {
                 $0.forceCollapse()
                 $0.placement.pauseWatching()
+            }
+        }
+        // Another app in front: its full-screen toolbar may cover the island
+        // (checked again once its full-screen animation settles).
+        observe(NSWorkspace.didActivateApplicationNotification, on: workspace) { controller in
+            controller.updateLevel()
+            for delay in [0.5, 1.5] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak controller] in controller?.updateLevel() }
             }
         }
         // Fast user switching: nothing shows for the other user.
