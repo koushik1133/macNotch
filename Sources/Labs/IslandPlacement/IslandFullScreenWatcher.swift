@@ -145,6 +145,13 @@ final class IslandFullScreenWatcher {
         let wallpapers = IslandFullScreenDetector.wallpaperDisplays(windows: windows, displays: displays)
         let found = IslandFullScreenDetector.fullScreenDisplays(windows: windows, displays: displays, ownPID: own) { [weak self] candidate in
             let ax = axAllowed ? self?.axFullScreen(candidate.window) : nil
+            // Accessibility's answer is on its way: keep the current state
+            // instead of guessing. The guess and the answer often disagree
+            // (a zoomed window with the Dock hidden), which flipped full
+            // screen on and off many times a minute.
+            if ax == nil, let self, self.axPending.contains(candidate.window.number) {
+                return self.fullScreenDisplays.contains(candidate.displayID)
+            }
             return IslandFullScreenDetector.confirmBelowNotch(ax: ax, dockHides: dockHides,
                                                               wallpaperDisplays: wallpapers, displayID: candidate.displayID)
         }
