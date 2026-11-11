@@ -36,6 +36,9 @@ final class IslandFullScreenWatcher {
     private var running = false
     /// The slow check stopped because nobody is using the Mac.
     private var parked = false
+    /// Screens asleep or another user active (pause()).
+    private var paused = false
+    private var parkTimer: Timer?
     /// AXFullScreen answers per window, until its bounds change.
     private var axCache: [Int: (bounds: CGRect, fullScreen: Bool?)] = [:]
     /// Windows whose AXFullScreen is being read in the background.
@@ -72,7 +75,7 @@ final class IslandFullScreenWatcher {
     /// The pointer moved (NotchWindowController's monitors): a parked
     /// check resumes at once.
     func noteActivity() {
-        guard parked, running else { return }
+        guard parked, running, !paused else { return }
         parked = false
         check()
     }
@@ -80,6 +83,9 @@ final class IslandFullScreenWatcher {
     func stop() {
         running = false
         parked = false
+        paused = false
+        parkTimer?.invalidate()
+        parkTimer = nil
         observers.forEach { $0.0.removeObserver($0.1) }
         observers.removeAll()
         pollTimer?.invalidate()
@@ -92,6 +98,9 @@ final class IslandFullScreenWatcher {
 
     /// Screens asleep or another user active: no checks at all.
     func pause() {
+        paused = true
+        parkTimer?.invalidate()
+        parkTimer = nil
         pollTimer?.invalidate()
         pollTimer = nil
         followUps.forEach { $0.cancel() }
@@ -99,6 +108,7 @@ final class IslandFullScreenWatcher {
     }
 
     func resume() {
+        paused = false
         guard running else { return }
         evaluate(followUp: true)
     }
@@ -113,7 +123,7 @@ final class IslandFullScreenWatcher {
     /// Checks now and, after an event, twice more while the full-screen
     /// animation settles.
     func evaluate(followUp: Bool) {
-        guard running else { return }
+        guard running, !paused else { return }
         check()
         guard followUp else { return }
         followUps.forEach { $0.cancel() }
@@ -132,7 +142,7 @@ final class IslandFullScreenWatcher {
         let ticket = generation
         Task { [weak self] in
             let windows = await Task.detached(priority: .utility) { Self.sampleWindows() }.value
-            guard let self, self.running, ticket == self.generation else { return }
+            guard let self, self.running, !self.paused, ticket == self.generation else { return }
             self.decide(windows)
         }
     }
@@ -173,9 +183,30 @@ final class IslandFullScreenWatcher {
         let idle = CGEventType(rawValue: ~0).map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) } ?? 0
         parked = likely && idle > Self.idleParkAfter
         setPolling(likely && !parked)
+        setParkWatch(parked)
         // Forget windows that are gone.
         let live = Set(windows.map(\.number))
         axCache = axCache.filter { live.contains($0.key) }
+    }
+
+    /// While parked, a slow, cheap look at the idle time: a key press or a
+    /// click (not only pointer movement) wakes the check.
+    private func setParkWatch(_ on: Bool) {
+        if on, parkTimer == nil {
+            let timer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, self.parked else { return }
+                    let idle = CGEventType(rawValue: ~0).map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) } ?? 0
+                    if idle < 5 { self.noteActivity() }
+                }
+            }
+            timer.tolerance = 2
+            RunLoop.main.add(timer, forMode: .common)
+            parkTimer = timer
+        } else if !on, let timer = parkTimer {
+            timer.invalidate()
+            parkTimer = nil
+        }
     }
 
     private func setPolling(_ on: Bool) {

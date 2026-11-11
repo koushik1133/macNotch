@@ -118,6 +118,7 @@ final class ClipboardStackModel: ObservableObject {
         isPreviewing = false
         armedDeleteID = nil
         pointerMoved = false
+        lastSelectFromPointer = false
         scrollAccumulator = 0
     }
 
@@ -127,6 +128,9 @@ final class ClipboardStackModel: ObservableObject {
 
     func select(_ index: Int, fromPointer: Bool = false) {
         lastSelectFromPointer = fromPointer
+        // Keyboard moves scroll rows under a still pointer: hover mustn't
+        // take the selection back until the pointer really moves.
+        if !fromPointer { pointerMoved = false }
         let count = visibleItems.count
         guard count > 0 else { selection = 0; return }
         selection = min(max(0, index), count - 1)

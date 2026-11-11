@@ -114,6 +114,11 @@ enum ClipboardReader {
             }
         }
 
+        // Changed while reading (a password manager may have put concealed
+        // data there since the marker check): drop this read; the next
+        // poll checks the new contents' markers first.
+        guard pasteboard.changeCount == changeCount else { return .skipped(.empty) }
+        if case .skip(let reason) = policy.preflight(types: Self.types(of: pasteboard), sourceBundleID: source) { return .skipped(reason) }
         if case .skip(let reason) = policy.enforceLimits(&capture) { return .skipped(reason) }
         return .capture(capture)
     }

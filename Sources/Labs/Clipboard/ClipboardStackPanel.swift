@@ -132,6 +132,8 @@ final class ClipboardStackPanelController {
         guard !isOpen, !opening else { return }
         opening = true
         let ownPID = ProcessInfo.processInfo.processIdentifier
+        // Never paste into an app from an earlier opening.
+        targetApp = nil
         if let front = NSWorkspace.shared.frontmostApplication, front.processIdentifier != ownPID {
             targetApp = front
         }

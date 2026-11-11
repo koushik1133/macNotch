@@ -38,7 +38,7 @@ enum CIParsing {
                 branch: run["head_branch"] as? String,
                 event: run["event"] as? String,
                 outcome: outcome(status: status, conclusion: conclusion),
-                url: (run["html_url"] as? String).flatMap(URL.init(string:)),
+                url: DevCIController.webURL(run["html_url"] as? String),
                 updatedAt: JSONLTail.date(run["updated_at"]),
                 number: (run["run_number"] as? NSNumber)?.intValue
             )
@@ -65,7 +65,7 @@ enum CIParsing {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let jobs = object["jobs"] as? [[String: Any]] else { return nil }
         let failed = jobs.first { ($0["conclusion"] as? String) == "failure" } ?? jobs.first
-        return (failed?["html_url"] as? String).flatMap(URL.init(string:))
+        return DevCIController.webURL(failed?["html_url"] as? String)
     }
 
     /// "owner/repo" from what the user typed (a URL or the short form).
@@ -104,14 +104,30 @@ enum CIParsing {
 /// The optional GitHub token (a fine-grained, read-only "Actions" token) in
 /// the login keychain. Never written to UserDefaults or the log.
 enum DevCIKeychain {
-    private static let service = "SparkV.devStatus.github"
+    /// Under the com.sparkv. prefix so Reset and Uninstall remove it.
+    private static let service = "com.sparkv.devstatus.github"
+    private static let legacyService = "SparkV.devStatus.github"
     private static let account = "token"
 
-    private static var query: [String: Any] {
+    private static var query: [String: Any] { query(service) }
+
+    private static func query(_ service: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account]
     }
 
+    /// Moves a token saved under the old service name (once).
+    private static func migrateLegacy() {
+        var q = query(legacyService)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess, let data = result as? Data else { return }
+        let token = String(decoding: data, as: UTF8.self)
+        if save(token) { SecItemDelete(query(legacyService) as CFDictionary) }
+    }
+
     static func hasToken() -> Bool {
+        migrateLegacy()
         var q = query
         q[kSecReturnAttributes as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -120,6 +136,7 @@ enum DevCIKeychain {
     }
 
     static func load() -> String? {
+        migrateLegacy()
         var q = query
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -142,6 +159,7 @@ enum DevCIKeychain {
 
     static func delete() {
         SecItemDelete(query as CFDictionary)
+        SecItemDelete(query(legacyService) as CFDictionary)
     }
 }
 
@@ -343,16 +361,39 @@ final class DevCIController: ObservableObject {
 
     // MARK: Pull requests and deployments
 
+    /// When pull requests and deployments were last asked for, per repo,
+    /// and a rate-limit pause for them.
+    private var extrasPolledAt: [String: Date] = [:]
+    private var extrasPausedUntil: Date?
+
     private func getJSON(_ path: String, token: String?) async -> Any? {
         guard let url = URL(string: "https://api.github.com/" + path) else { return nil }
         var request = URLRequest(url: url)
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        guard let (data, response) = try? await session.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        guard let (data, response) = try? await session.data(for: request), let http = response as? HTTPURLResponse else { return nil }
+        if http.statusCode == 403 || http.statusCode == 429 {
+            let reset = http.value(forHTTPHeaderField: "X-RateLimit-Reset").flatMap(Double.init).map { Date(timeIntervalSince1970: $0) }
+            extrasPausedUntil = reset ?? Date().addingTimeInterval(15 * 60)
+            return nil
+        }
+        guard http.statusCode == 200 else { return nil }
         return try? JSONSerialization.jsonObject(with: data)
     }
 
+    /// Only http(s) links from the API are opened (a deployment status can
+    /// carry any URL).
+    nonisolated static func webURL(_ string: String?) -> URL? {
+        guard let string, let url = URL(string: string), let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else { return nil }
+        return url
+    }
+
     private func pollExtras(_ repo: String, token: String?) async {
+        // At most every 5 minutes (every 15 without a token: GitHub allows
+        // 60 unauthenticated requests an hour), never while rate-limited.
+        if let paused = extrasPausedUntil, paused > Date() { return }
+        let spacing: TimeInterval = token == nil ? 15 * 60 : 5 * 60
+        if let last = extrasPolledAt[repo], Date().timeIntervalSince(last) < spacing { return }
+        extrasPolledAt[repo] = Date()
         if let list = await getJSON("repos/\(repo)/pulls?state=open&per_page=5", token: token) as? [[String: Any]], repos.contains(repo) {
             pulls[repo] = list.compactMap { CIPull(json: $0, repo: repo) }
         }
@@ -363,7 +404,7 @@ final class DevCIController: ObservableObject {
         let deploy = CIDeploy(repo: repo, id: id,
                               environment: first["environment"] as? String ?? "deploy",
                               state: latest?["state"] as? String ?? "pending",
-                              url: (latest?["environment_url"] as? String ?? latest?["target_url"] as? String).flatMap(URL.init(string:)))
+                              url: Self.webURL(latest?["environment_url"] as? String ?? latest?["target_url"] as? String))
         let previous = deploys[repo]
         guard repos.contains(repo) else { return }
         deploys[repo] = deploy
@@ -429,7 +470,7 @@ struct CIPull: Identifiable, Equatable, Sendable {
         author = (json["user"] as? [String: Any])?["login"] as? String ?? ""
         isDraft = json["draft"] as? Bool ?? false
         reviewers = (json["requested_reviewers"] as? [[String: Any]] ?? []).compactMap { $0["login"] as? String }
-        url = (json["html_url"] as? String).flatMap(URL.init(string:))
+        url = DevCIController.webURL(json["html_url"] as? String)
     }
 }
 

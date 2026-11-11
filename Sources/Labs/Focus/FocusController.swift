@@ -208,7 +208,10 @@ final class FocusController: ObservableObject {
         if isActive { end() } else { startSession() }
     }
 
-    func startSession(using override: FocusSettings? = nil) {
+    /// `runsShortcuts` false (a sparkv:// link started it): Do Not Disturb
+    /// is not turned on, since that runs a Shortcut and a link must never
+    /// start one.
+    func startSession(using override: FocusSettings? = nil, runsShortcuts: Bool = true) {
         guard active == nil else { return }
         if let override { settings = override.sanitized }
         let s = settings.sanitized
@@ -239,7 +242,7 @@ final class FocusController: ObservableObject {
         restartTicker()
         persistActive()
         playEdgeGlow(.focus)
-        if s.usesDoNotDisturb { enableDoNotDisturb(sessionID: session.id) }
+        if s.usesDoNotDisturb, runsShortcuts { enableDoNotDisturb(sessionID: session.id) }
     }
 
     /// Ends the session now and shows the summary.

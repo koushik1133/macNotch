@@ -225,7 +225,7 @@ struct MeetingSummarizer: Sendable {
             engine = Self.onDeviceLabel
         }
         guard let object = MeetingAIJSON.object(from: reply) else {
-            AppLog.log("Meetings AI: unreadable notes JSON: \(reply.prefix(200))")
+            AppLog.log("Meetings AI: unreadable notes JSON (\(reply.count) chars)")
             throw MeetingAIError.badResponse
         }
         let sourceText = (chunk.context + chunk.lines + [userNotes]).joined(separator: "\n")

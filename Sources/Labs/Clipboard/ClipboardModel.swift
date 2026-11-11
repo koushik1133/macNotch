@@ -291,7 +291,10 @@ struct ClipboardHistory: Sendable, Equatable {
     mutating func insert(_ item: ClipboardItem) -> [ClipboardItem] {
         var item = item
         var removed: [ClipboardItem] = []
-        if let index = items.firstIndex(where: { $0.id != item.id && ($0.fingerprint == item.fingerprint || Self.sameText($0, item)) }) {
+        // A pinned formatted item is never replaced by plain text with the
+        // same words (its formatting would be deleted).
+        if let index = items.firstIndex(where: { $0.id != item.id && ($0.fingerprint == item.fingerprint
+            || (Self.sameText($0, item) && !($0.isPinned && $0.kind == .richText && item.kind != .richText))) }) {
             let old = items.remove(at: index)
             item.isPinned = item.isPinned || old.isPinned
             item.firstCopiedAt = min(old.firstCopiedAt, item.firstCopiedAt)

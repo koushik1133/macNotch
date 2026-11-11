@@ -462,7 +462,7 @@ final class CodingAgentsController: ObservableObject {
             states[session.id] = session.state
             guard let before = previousStates[session.id], before != session.state else { continue }
             if session.state == .finished, before == .working {
-                finishedBatch.append(session)
+                if !finishedBatch.contains(where: { $0.id == session.id }) { finishedBatch.append(session) }
                 if !finishedOnlyWhenAllDone {
                     if playsSounds { NSSound(named: "Ping")?.play() }
                     if showsFinishedBand { postFinished(session) }

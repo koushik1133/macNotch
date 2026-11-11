@@ -508,9 +508,10 @@ final class AmbientLightController: NSObject, ObservableObject {
         guard watchdogShouldWatch else { return }
         let now = CACurrentMediaTime()
         if engine.isRunning {
-            // A tap whose IO stopped (device gone, daemon reset) delivers
-            // nothing at all, not even silence.
-            if backend == .processTap, isPlaying,
+            // A capture whose IO stopped (a tap's device gone, a daemon
+            // reset, a ScreenCaptureKit stream that died) delivers nothing
+            // at all, not even silence. Both backends.
+            if isPlaying,
                now - engine.startedAt > Self.watchdogInterval,
                let age = engine.secondsSinceAudio, age > Self.watchdogInterval {
                 watchdogLog("capture running but no audio for \(Int(age)) s; restarting")

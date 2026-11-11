@@ -1324,7 +1324,11 @@ final class NotchWindowController: NSWindowController {
             } else if !shown, mirror.panel.isVisible {
                 LiveBandMotion.fadeOut(mirror.panel)
             }
-            let level: NSWindow.Level = placement.isFullScreen(id) && !decision.isHidden ? .floating : .statusBar
+            // Same rule as the main island: notched displays stay at the
+            // status-bar level; others sit just under the menu bar macOS
+            // slides down (`.floating` sat under some full-screen apps).
+            let lowered = !mirror.hasNotch && placement.isFullScreen(id) && !decision.isHidden && !isShowingLiveFeedback
+            let level: NSWindow.Level = lowered ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
             if mirror.panel.level != level { mirror.panel.level = level }
         }
     }
@@ -1418,7 +1422,7 @@ final class NotchWindowController: NSWindowController {
                 guard let self, !self.focus.isActive else { return }
                 var settings = self.focus.settings
                 if let minutes { settings.focusMinutes = minutes }
-                self.focus.startSession(using: settings)
+                self.focus.startSession(using: settings, runsShortcuts: false)
             },
             endFocus: { [weak self] in self?.focus.end() },
             openMeeting: { [weak self] id in self?.meetingAssistant.openNotesWindow(meetingID: id) },

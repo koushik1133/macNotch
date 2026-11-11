@@ -128,8 +128,13 @@ final class DevGitController: ObservableObject {
 
     func endViewing() { timer?.invalidate(); timer = nil }
 
+    private var inFlight = false
+
     func refresh() {
+        guard !inFlight else { return }
+        inFlight = true
         Task {
+            defer { inFlight = false }
             let roots = await Self.findRoots()
             var found: [DevRepo] = []
             for root in roots.prefix(8) {
@@ -157,7 +162,11 @@ final class DevGitController: ObservableObject {
     }
 
     private nonisolated static func status(_ path: String) async -> DevRepo? {
-        guard let out = await DevShell.run("/usr/bin/git", ["-C", path, "status", "--porcelain=v1", "-b"]) else { return nil }
+        guard let out = await DevShell.run("/usr/bin/git", [
+            // A repo's own config can name commands git runs during status
+            // (fsmonitor, hooks): never run them for this read-only glance.
+            "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.untrackedCache=false",
+            "-C", path, "status", "--porcelain=v1", "-b"]) else { return nil }
         var lines = out.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
         guard !lines.isEmpty, lines[0].hasPrefix("## ") else { return nil }
         let head = String(lines.removeFirst().dropFirst(3))
@@ -252,13 +261,18 @@ final class DevDockerController: ObservableObject {
 
     func endViewing() { timer?.invalidate(); timer = nil }
 
+    private var inFlight = false
+
     func refresh() {
+        guard !inFlight else { return }
         guard let docker = Self.docker else {
             problem = "Docker isn't installed"
             scanned = true
             return
         }
+        inFlight = true
         Task {
+            defer { inFlight = false }
             guard let list = await DevShell.run(docker, ["ps", "-a", "--format", "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.State}}\t{{.Status}}"]) else {
                 problem = "Docker isn't running"
                 containers = []
@@ -664,8 +678,9 @@ private struct DevRegexTool: View {
             }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(summary).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(isError ? SparkVTheme.destructive : SparkVTheme.textSecondary)
-                    ForEach(Array(matches.enumerated()), id: \.offset) { index, groups in
+                    let found = matches
+                    Text(summary(found)).font(.system(size: 10.5, weight: .semibold)).foregroundStyle(isError ? SparkVTheme.destructive : SparkVTheme.textSecondary)
+                    ForEach(Array(found.enumerated()), id: \.offset) { index, groups in
                         Text("\(index + 1). " + groups.enumerated().map { $0.offset == 0 ? "“\($0.element)”" : "$\($0.offset)=\($0.element)" }.joined(separator: "  "))
                             .font(.system(size: 10.5, design: .monospaced)).foregroundStyle(SparkVTheme.text).lineLimit(1)
                     }
@@ -681,8 +696,10 @@ private struct DevRegexTool: View {
 
     private var matches: [[String]] {
         guard let regex else { return [] }
-        let ns = sample as NSString
-        return regex.matches(in: sample, range: NSRange(location: 0, length: ns.length)).prefix(20).map { match in
+        // Capped so a backtracking-heavy pattern can't hang the app.
+        let text = String(sample.prefix(2_000))
+        let ns = text as NSString
+        return regex.matches(in: text, range: NSRange(location: 0, length: ns.length)).prefix(20).map { match in
             (0..<match.numberOfRanges).map { i in
                 let r = match.range(at: i)
                 return r.location == NSNotFound ? "–" : ns.substring(with: r)
@@ -690,10 +707,10 @@ private struct DevRegexTool: View {
         }
     }
 
-    private var summary: String {
+    private func summary(_ found: [[String]]) -> String {
         if pattern.isEmpty { return "Type a pattern and some text to test it." }
         if isError { return "That pattern isn't valid." }
-        let count = matches.count
+        let count = found.count
         return count == 0 ? "No matches" : "\(count) match\(count == 1 ? "" : "es")"
     }
 }
@@ -735,12 +752,13 @@ enum DevCron {
         guard var date = calendar.date(bySetting: .second, value: 0, of: start.addingTimeInterval(60)) else { return nil }
         date = calendar.date(from: calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)) ?? date
         var out: [Date] = []
-        var steps = 0
-        while out.count < count, steps < 600_000 {
-            steps += 1
+        // Bounded by time (an expression like Feb 31 never matches).
+        let limit = start.addingTimeInterval(4 * 366 * 86_400)
+        while out.count < count, date < limit {
             let c = calendar.dateComponents([.month, .day, .hour, .minute, .weekday], from: date)
             guard let month = c.month, months.contains(month) else {
-                date = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date)) ?? date; continue
+                let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+                date = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? limit; continue
             }
             let dayOK = days.contains(c.day ?? 0), weekOK = weekdays.contains((c.weekday ?? 1) - 1)
             let matchesDay = dayAny && weekAny ? true : (dayAny ? weekOK : (weekAny ? dayOK : dayOK || weekOK))
@@ -748,8 +766,8 @@ enum DevCron {
                 date = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date)) ?? date; continue
             }
             guard hours.contains(c.hour ?? 0) else {
-                date = calendar.date(byAdding: .hour, value: 1, to: calendar.date(bySetting: .minute, value: 0, of: date) ?? date) ?? date
-                date = calendar.date(from: calendar.dateComponents([.year, .month, .day, .hour], from: date)) ?? date
+                let hourStart = calendar.date(from: calendar.dateComponents([.year, .month, .day, .hour], from: date)) ?? date
+                date = calendar.date(byAdding: .hour, value: 1, to: hourStart) ?? limit
                 continue
             }
             if minutes.contains(c.minute ?? 0) { out.append(date) }

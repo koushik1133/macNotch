@@ -572,6 +572,9 @@ final class MeetingAssistant: ObservableObject {
         if current?.id == meetingID { current = nil }
         store.delete(id: meetingID)
         Task { await MeetingIntelSidecarStore.shared.remove(meetingID) }
+        // The Live Translation captions of this meeting go too.
+        let captions = LiveTranslationTranscript.url(for: meetingID)
+        Task.detached(priority: .utility) { try? FileManager.default.removeItem(at: captions) }
     }
 
     /// Writes fresh notes for a saved meeting.

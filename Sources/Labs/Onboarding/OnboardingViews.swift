@@ -485,7 +485,7 @@ private struct OnboardingAboutYouPage: View {
             Text("What should SparkV call you?")
                 .font(.system(size: 26, weight: .bold))
                 .tracking(-0.8)
-            Text("Use the name people say to you in meetings. It never leaves this Mac and is never sent anywhere.")
+            Text("Use the name people say to you in meetings. It's stored only on this Mac. If you turn on Groq for Meetings or Reply Drafter, it's included in what's sent there.")
                 .font(.system(size: 12.5))
                 .foregroundStyle(SparkVTheme.textSecondary)
                 .padding(.top, 4)

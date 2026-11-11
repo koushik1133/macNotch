@@ -347,7 +347,11 @@ enum MeetingLinkDetector {
               !confno.isEmpty else { return nil }
         var web = URLComponents()
         web.scheme = "https"
-        web.host = components.host.flatMap { $0.isEmpty ? nil : $0 } ?? "zoom.us"
+        // Only Zoom's own domains (a calendar invite can carry any host).
+        let zoomDomains = ["zoom.us", "zoom.com", "zoomgov.com", "zoom.com.cn", "zoom.de", "zoom-x.de"]
+        let host = components.host?.lowercased() ?? ""
+        let isZoom = zoomDomains.contains { host == $0 || host.hasSuffix("." + $0) }
+        web.host = isZoom ? host : "zoom.us"
         web.path = "/j/" + confno
         if let pwd = components.queryItems?.first(where: { $0.name == "pwd" })?.value {
             web.queryItems = [URLQueryItem(name: "pwd", value: pwd)]

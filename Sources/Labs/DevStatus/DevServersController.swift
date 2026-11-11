@@ -141,7 +141,11 @@ final class DevServersController: ObservableObject {
 
     /// Asks the server to quit (SIGTERM), only from an explicit menu choice.
     func stopServer(_ server: DevServer) {
-        guard server.pid > 1, server.pid != getpid() else { return }
+        guard server.pid > 1, server.pid != getpid(),
+              DevShell.confirm("Stop \(server.process)?", "SparkV asks process \(server.pid) on port \(server.port) to quit (SIGTERM). Unsaved work in it may be lost.", button: "Stop"),
+              // Still the same process on that port (pids get reused).
+              LocalProcesses.name(of: server.pid) == server.process,
+              LocalProcesses.listeners(of: server.pid).contains(where: { $0.port == server.port }) else { return }
         kill(server.pid, SIGTERM)
         AppLog.log("Dev Servers: sent SIGTERM to a process on port \(server.port)")
         Task { [weak self] in
