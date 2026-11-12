@@ -20,7 +20,7 @@ H="$ROOT/Helpers/FanHelper"
 xcrun swiftc -swift-version 6 -target arm64-apple-macos15.0 -sdk "$SDK" \
   -import-objc-header "$HERE/smc-layout.h" \
   "$F"/FanCore*.swift "$F/FanCurve.swift" "$F/FanSensorSampler.swift" "$F/FanHIDTemperatures.swift" \
-  "$F/FanHelperClient.swift" "$F/FanController.swift" \
+  "$F/FanHelperClient.swift" "$F/FanController.swift" "$ROOT/Sources/SparkVEnergy.swift" "$ROOT/Sources/AppLog.swift" \
   "$H/FanHelperEngine.swift" "$H/FanHelperServer.swift" \
   "$HERE/FakeSMC.swift" "$HERE/main.swift" \
   -o "$WORK/fan-tests"

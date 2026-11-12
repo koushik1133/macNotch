@@ -25,8 +25,8 @@ rm -rf "$W" "$OUT/controller"; mkdir -p "$W/src" "$W/mod" "$W/lib"
 cp "$ROOT"/Sources/*.swift "$W/src/"
 rm -f "$W/src/NotchIslandApp.swift" "$W/src/AppLog.swift"
 # Every Labs folder build.sh compiles (the app's sources refer to them).
-for d in Converter Spaces UIAudit JobAgent ScreenRegion PromptRefiner Clipboard BrowserRecorder; do
-  cp "$ROOT/Sources/Labs/$d"/*.swift "$W/src/"
+for f in $(find "$ROOT/Sources/Labs" -name '*.swift' -not -path '*/Tests/*'); do
+  cp "$f" "$W/src/"
 done
 cp "$HERE/AppLogStub.swift" "$HERE/ControllerHarness.swift" "$W/src/"
 cp -R "$ROOT/Vendor/glance/Sources" "$W/glance"
