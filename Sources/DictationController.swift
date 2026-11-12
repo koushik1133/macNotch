@@ -74,6 +74,31 @@ final class DictationController: ObservableObject {
 
     var isActive: Bool { phase == .listening || phase == .formatting }
 
+    /// macOS also acts on the 🌐 key (System Settings › Keyboard › "Press 🌐
+    /// key to" is not "Do Nothing"): emoji picker, input source or macOS
+    /// Dictation would fire along with SparkV's. Read-only; SparkV never
+    /// changes the setting.
+    static var fnKeyHasSystemAction: Bool {
+        let value = CFPreferencesCopyAppValue("AppleFnUsageType" as CFString, "com.apple.HIToolbox" as CFString)
+        return ((value as? NSNumber)?.intValue ?? 0) != 0
+    }
+
+    private static var loggedFnConflict = false
+
+    static func noteFnConflictOnce(_ hotkey: Hotkey) {
+        guard hotkey == .fn, !loggedFnConflict, fnKeyHasSystemAction else { return }
+        loggedFnConflict = true
+        AppLog.log("Dictation: macOS also acts on the 🌐 key (Keyboard › Press 🌐 key to); suggest Do Nothing")
+    }
+
+    static let fnConflictNote = "macOS also uses the 🌐 key. In System Settings › Keyboard, set “Press 🌐 key to” to “Do Nothing” so fn only dictates."
+
+    static func openKeyboardSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     /// What stops a hands-free session, for the live band ("fn to stop").
     var hotkeyHint: String {
         switch hotkey {
@@ -115,12 +140,7 @@ final class DictationController: ObservableObject {
         static let historyShortcuts = "dictation.historyShortcutsEnabled"
     }
 
-    /// A press shorter than this is a tap (half of a double-tap), not a hold.
-    private static let tapThreshold: TimeInterval = 0.3
-    /// Second press must follow a tap within this window to lock hands-free.
-    private static let doubleTapWindow: TimeInterval = 0.4
-    /// Another key within this time of pressing the hotkey means a shortcut.
-    private static let chordWindow: TimeInterval = 1.0
+    /// Hold / double-tap / shortcut handling (DictationKeyMachine.swift).
     /// Safety stop for forgotten hands-free sessions.
     private static let maximumDuration: TimeInterval = 6 * 60
     /// Safety stop for a command capture nobody finished.
@@ -132,7 +152,9 @@ final class DictationController: ObservableObject {
     /// Bumped by every new session and every cancel; stale async work checks it.
     private var sessionID = 0
     private var started = false
-    private var pressedAt: TimeInterval = 0
+    private var keys = DictationKeyMachine()
+    /// Fires the machine's hold / double-tap deadline.
+    private var keyDeadlineTask: Task<Void, Never>?
     /// Name of the app that had focus when the session began, for the history.
     private var targetAppName: String?
     /// Receives the formatted note text (nil when cancelled or failed).
@@ -142,7 +164,6 @@ final class DictationController: ObservableObject {
 
     private var startTask: Task<Void, Never>?
     private var finishTask: Task<Void, Never>?
-    private var pendingTapTask: Task<Void, Never>?
     private var durationTask: Task<Void, Never>?
     private var resetTask: Task<Void, Never>?
     /// Re-creates the key tap when Accessibility is granted (or re-granted).
@@ -185,6 +206,7 @@ final class DictationController: ObservableObject {
             break
         case .idle, .done, .failed:
             beginSession(handsFree: true, trigger: "button")
+            if phase == .listening { keys.startedHandsFreeElsewhere() }
         }
     }
 
@@ -410,66 +432,22 @@ final class DictationController: ObservableObject {
     private func handleKey(_ event: PushToTalkMonitor.Event, at time: TimeInterval) {
         switch event {
         case .pressed:
-            AppLog.log("Dictation: hotkey down")
-            // The assistant owns the microphone; its own UI ends the capture.
-            guard !isCapturingCommand else { return }
-            switch phase {
-            case .listening:
-                if pendingTapTask != nil {
-                    pendingTapTask?.cancel()
-                    pendingTapTask = nil
-                    isHandsFree = true
-                    SparkVHaptics.play(.snap)
-                    AppLog.log("Dictation: hands-free (double tap)")
-                } else if isHandsFree {
-                    AppLog.log("Dictation: stop (hotkey)")
-                    finish()
-                }
-            case .formatting:
-                break
-            case .idle, .done, .failed:
-                pressedAt = time
-                beginSession(handsFree: false, trigger: "hotkey")
-            }
-
+            apply(keys.handle(.press(time)), at: time)
         case .released:
-            AppLog.log("Dictation: hotkey up")
-            guard phase == .listening, !isHandsFree, pendingTapTask == nil else { return }
-            if time - pressedAt < Self.tapThreshold {
-                // Maybe the first half of a double-tap: wait for the second press.
-                let id = sessionID
-                pendingTapTask = Task { [weak self] in
-                    try? await Task.sleep(nanoseconds: UInt64(Self.doubleTapWindow * 1_000_000_000))
-                    guard let self, !Task.isCancelled, self.sessionID == id else { return }
-                    self.pendingTapTask = nil
-                    if self.phase == .listening, !self.isHandsFree {
-                        AppLog.log("Dictation: tap too short, discarded")
-                        self.cancel()
-                    }
-                }
-            } else {
-                finish()
-            }
-
+            apply(keys.handle(.release(time)), at: time)
         case .space:
-            guard phase == .listening, !isHandsFree else { return }
-            pendingTapTask?.cancel()
-            pendingTapTask = nil
-            isHandsFree = true
-            SparkVHaptics.play(.snap)
-            AppLog.log("Dictation: hands-free (hotkey+Space)")
-
-        case .yieldedToControl:
-            guard phase == .listening, !isHandsFree else { return }
-            AppLog.log("Dictation: fn+Control belongs to the Job Agent, discarded")
-            cancel()
-
+            apply(keys.handle(.space(time)), at: time)
         case .chord:
-            guard phase == .listening, !isHandsFree, pendingTapTask == nil,
-                  time - pressedAt < Self.chordWindow else { return }
-            AppLog.log("Dictation: hotkey used in a shortcut, discarded")
-            cancel()
-
+            apply(keys.handle(.chord(time)), at: time)
+        case .yieldedToControl:
+            // fn+Control belongs to the Job Agent.
+            if keys.isListening, phase == .listening, !isHandsFree {
+                AppLog.log("Dictation: fn+Control belongs to the Job Agent, discarded")
+                keys.reset()
+                cancel()
+            } else if !keys.isListening {
+                keys.reset()
+            }
         case .escape:
             AppLog.log("Dictation: Esc")
             cancel()
@@ -479,6 +457,63 @@ final class DictationController: ObservableObject {
 
         case .copyLast:
             copyLastTranscript()
+        }
+    }
+
+    /// Acts on the key machine's answer and re-arms its deadline.
+    private func apply(_ action: DictationKeyMachine.Action, at time: TimeInterval) {
+        // The assistant owns the microphone; its own UI ends the capture.
+        if isCapturingCommand {
+            keys.reset()
+            return
+        }
+        switch action {
+        case .none:
+            break
+        case .startHold:
+            guard canStartFromKey else { keys.reset(); break }
+            Self.noteFnConflictOnce(hotkey)
+            beginSession(handsFree: false, trigger: "hold")
+            if phase != .listening { keys.reset() }
+        case .startHandsFree:
+            guard canStartFromKey else { keys.reset(); break }
+            beginSession(handsFree: true, trigger: "double tap")
+            if phase != .listening { keys.reset() }
+        case .lockHandsFree:
+            guard phase == .listening else { break }
+            isHandsFree = true
+            SparkVHaptics.play(.snap)
+            AppLog.log("Dictation: hands-free (hotkey+Space)")
+        case .finish:
+            guard phase == .listening else { break }
+            AppLog.log("Dictation: stop (hotkey)")
+            finish()
+        case .cancel:
+            guard phase == .listening else { break }
+            AppLog.log("Dictation: hotkey used in a shortcut, discarded")
+            cancel()
+        }
+        scheduleKeyDeadline()
+    }
+
+    /// Idle, or showing the last result: a new dictation may start.
+    private var canStartFromKey: Bool {
+        switch phase {
+        case .idle, .done, .failed: true
+        case .listening, .formatting: false
+        }
+    }
+
+    private func scheduleKeyDeadline() {
+        keyDeadlineTask?.cancel()
+        keyDeadlineTask = nil
+        guard let deadline = keys.deadline else { return }
+        let wait = max(0, deadline - ProcessInfo.processInfo.systemUptime)
+        keyDeadlineTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000) + 5_000_000)
+            guard let self, !Task.isCancelled else { return }
+            self.keyDeadlineTask = nil
+            self.apply(self.keys.handle(.tick(ProcessInfo.processInfo.systemUptime)), at: ProcessInfo.processInfo.systemUptime)
         }
     }
 
@@ -567,8 +602,6 @@ final class DictationController: ObservableObject {
     private func finish(byUser: Bool = true) {
         guard phase == .listening else { return }
         if byUser { SparkVHaptics.play(.stop) }
-        pendingTapTask?.cancel()
-        pendingTapTask = nil
         durationTask?.cancel()
         durationTask = nil
         let id = sessionID
@@ -593,6 +626,13 @@ final class DictationController: ObservableObject {
             guard self.sessionID == id else { return }
             AppLog.log("Dictation: transcript \(raw.count) chars")
             guard !raw.isEmpty else {
+                // A brief accidental hold with nothing said: end quietly.
+                if !recorder.heardVoice, !recorder.heardDigitalSilence, recorder.capturedSeconds < 1.2 {
+                    AppLog.log("Dictation: short hold with no speech, discarded")
+                    SparkVHaptics.play(.stop)
+                    self.resetToIdle()
+                    return
+                }
                 self.fail(recorder.heardDigitalSilence
                           ? "Mic is silent: allow SparkV in Privacy › Microphone"
                           : recorder.heardVoice ? "Couldn’t make out any words" : "No speech detected")
@@ -655,8 +695,8 @@ final class DictationController: ObservableObject {
     }
 
     private func endSession() {
-        pendingTapTask?.cancel()
-        pendingTapTask = nil
+        // Whatever ended it (Esc, an error, the button), the key starts fresh.
+        if keys.isListening { keys.reset() }
         durationTask?.cancel()
         durationTask = nil
         isHandsFree = false
@@ -835,6 +875,9 @@ final class DictationRecorder {
     /// Only zeros arrived: macOS gives an app silence (no error) when its
     /// Microphone access is off, or another app holds the input exclusively.
     var heardDigitalSilence: Bool { capture.buffers > 0 && capture.peakDecibels < -100 }
+
+    /// Seconds of microphone audio captured.
+    var capturedSeconds: Double { capture.capturedSeconds }
 
     /// Something louder than room tone reached the mic (speech, most likely).
     var heardVoice: Bool { capture.voicedSeconds >= Self.minimumVoicedSeconds }

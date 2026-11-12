@@ -562,6 +562,12 @@ private struct SettingsMenu: View {
                     }
                     Toggle("AI Formatting", isOn: $dictation.formattingEnabled)
                     Toggle("Paste / Copy Last Dictation  ⌃⌘V ⌃⌘C", isOn: $dictation.historyShortcutsEnabled)
+                    Text("Hold to talk · double-tap for hands-free · Esc cancels")
+                    if dictation.hotkey == .fn, DictationController.fnKeyHasSystemAction {
+                        Divider()
+                        Text("macOS also uses the 🌐 key: set “Press 🌐 key to” to Do Nothing")
+                        Button("Open Keyboard Settings…") { DictationController.openKeyboardSettings() }
+                    }
                 }
                 Menu("Focus") {
                     Button(focus.isActive ? "End Focus" : "Start Focus (\(focus.settings.focusMinutes) min)") { focus.toggle() }

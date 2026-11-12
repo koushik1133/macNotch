@@ -232,7 +232,9 @@ private struct FlowHistoryStrip: View {
             FlowEmptyHint(
                 systemImage: "waveform",
                 title: "No dictations yet",
-                detail: "\(holdHint) and talk. ⌃⌘V pastes the last one, ⌃⌘C copies it."
+                detail: dictation.hotkey == .fn && DictationController.fnKeyHasSystemAction
+                    ? "\(holdHint) and talk, double-tap for hands-free. " + DictationController.fnConflictNote
+                    : "\(holdHint) and talk, or double-tap for hands-free. ⌃⌘V pastes the last one, ⌃⌘C copies it."
             )
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
