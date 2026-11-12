@@ -208,7 +208,8 @@ final class MeetingAssistant: ObservableObject {
             calendarEventID: calendarEventID,
             segments: [],
             notes: nil,
-            answers: []
+            answers: [],
+            language: MeetingLanguage.effectiveID
         )
         current = record
         segmentIndex = [:]
@@ -307,6 +308,9 @@ final class MeetingAssistant: ObservableObject {
                     segment.isFinal = true
                     return segment
                 }
+                // Both sides in time order: each side's phrases arrive on
+                // their own, so your lines could land after later ones.
+                .sorted { $0.start < $1.start }
             current = record
             upsertLibrary(record)
             await store.saveAndWait(record)
@@ -911,6 +915,10 @@ enum MeetingFormat {
         out.append("# \(record.title)")
         let date = record.startedAt.formatted(date: .complete, time: .shortened)
         out.append("_\(date) · \(duration(duration(of: record)))_")
+        if let language = record.language {
+            out.append("")
+            out.append("_Transcribed in \(MeetingLanguage.name(language)). Speech in other languages may be transcribed wrongly, and the notes with it._")
+        }
         out.append("")
 
         if let notes = record.notes {
@@ -957,7 +965,8 @@ enum MeetingFormat {
 
         if !record.segments.isEmpty {
             out.append("## Transcript")
-            for segment in record.segments {
+            // Both sides in time order (each side's phrases arrive separately).
+            for segment in record.segments.sorted(by: { $0.start < $1.start }) {
                 let who = segment.speaker == .me ? MeetingAssistant.userName : "Others"
                 out.append("**[\(clock(segment.start))] \(who):** \(segment.text)")
                 out.append("")

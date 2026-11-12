@@ -70,4 +70,6 @@ struct MeetingRecord: Identifiable, Codable, Equatable, Sendable {
     /// minutes are written around these points. Optional so meetings saved
     /// before this field existed still decode.
     var userNotes: String? = nil
+    /// The language it was transcribed in ("te-IN"); nil for older meetings.
+    var language: String? = nil
 }

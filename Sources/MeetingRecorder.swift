@@ -445,6 +445,7 @@ extension MeetingTranscriberError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .recognizerUnavailable: "Speech recognition is unavailable right now"
+        case .languageNotReady(let id): "The \(MeetingLanguage.name(id)) speech model is still downloading. Try again in a minute, or pick another language in Meetings."
         }
     }
 }

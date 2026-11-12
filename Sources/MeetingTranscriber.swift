@@ -342,6 +342,9 @@ protocol MeetingSpeechEngine: AnyObject {
 
 enum MeetingTranscriberError: Error {
     case recognizerUnavailable
+    /// The chosen meeting language's speech model isn't on this Mac yet
+    /// (it downloads in the background).
+    case languageNotReady(String)
 }
 
 @MainActor
@@ -559,7 +562,8 @@ final class MeetingAnalyzerEngine: MeetingSpeechEngine {
         onFailure: @escaping @MainActor (any MeetingSpeechEngine, String) -> Void
     ) async -> MeetingAnalyzerEngine? {
         // Live Translation's "Others Speak" setting (nil: the Mac's language).
-        let wanted = LiveTranslationSpokenLanguage.transcriberLocale(speakerLabel: label) ?? Locale.current
+        // …else the Meetings language (nil: the Mac's language).
+        let wanted = LiveTranslationSpokenLanguage.transcriberLocale(speakerLabel: label) ?? MeetingLanguage.locale ?? Locale.current
         guard SpeechTranscriber.isAvailable,
               let locale = await SpeechTranscriber.supportedLocale(equivalentTo: wanted) else {
             AppLog.log("Meeting[\(label)]: SpeechTranscriber unavailable for \(wanted.identifier)")
@@ -814,7 +818,14 @@ final class MeetingLegacyEngine: MeetingSpeechEngine {
         onFailure: @escaping @MainActor (any MeetingSpeechEngine, String) -> Void
     ) throws {
         // Live Translation's "Others Speak" setting (nil: the Mac's language).
-        let wanted = LiveTranslationSpokenLanguage.transcriberLocale(speakerLabel: label)
+        let wanted = LiveTranslationSpokenLanguage.transcriberLocale(speakerLabel: label) ?? MeetingLanguage.locale
+        // A chosen language this recognizer can't do: fail clearly rather
+        // than listen in English (which turns other languages into
+        // nonsense English words).
+        if let wanted, SFSpeechRecognizer(locale: wanted) == nil {
+            AppLog.log("Meeting[\(label)]: no SFSpeechRecognizer for \(wanted.identifier)")
+            throw MeetingTranscriberError.languageNotReady(wanted.identifier)
+        }
         guard let recognizer = wanted.flatMap({ SFSpeechRecognizer(locale: $0) }) ?? SFSpeechRecognizer() ?? SFSpeechRecognizer(locale: Locale(identifier: "en-US")),
               recognizer.isAvailable else {
             throw MeetingTranscriberError.recognizerUnavailable

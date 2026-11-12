@@ -314,6 +314,7 @@ private struct MeetingSidebar: View {
                 Toggle("Suggest answers to questions", isOn: $assistant.suggestAnswers)
                 Toggle("Use Groq for notes and answers", isOn: $assistant.allowGroqForMeetings)
                     .help("Sends the transcript to Groq with Clicky's API key. Off: everything stays on this Mac.")
+                MeetingLanguagePicker()
             }
             .toggleStyle(.switch)
             .tint(SparkVTheme.accent)
@@ -592,6 +593,26 @@ private struct MeetingDetail: View {
     }
 }
 
+/// Meetings › Language: what speech recognition listens for.
+private struct MeetingLanguagePicker: View {
+    @AppStorage(MeetingLanguage.key) private var language = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Picker("Language", selection: $language) {
+                ForEach(MeetingLanguage.options, id: \.self) { id in
+                    Text(MeetingLanguage.name(id)).tag(id)
+                }
+            }
+            .pickerStyle(.menu)
+            Text("Meetings are transcribed in this language only. Speech in another language comes out as wrong words. Pick “Indian languages, mixed” for calls that switch between Telugu, Hindi and English.")
+                .font(.system(size: 10))
+                .foregroundStyle(SparkVTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 // MARK: - Notes tab
 
 private struct MeetingNotesTab: View {
@@ -863,7 +884,7 @@ private struct MeetingTranscriptTab: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
-                        ForEach(record.segments) { segment in
+                        ForEach(record.segments.sorted { $0.start < $1.start }) { segment in
                             MeetingBubble(segment: segment)
                                 .id(segment.id)
                         }
