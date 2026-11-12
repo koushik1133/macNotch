@@ -1,3 +1,4 @@
+import AVFoundation
 import AppKit
 import SwiftUI
 
@@ -142,6 +143,15 @@ struct OngoingCallBand: View {
                         tint: muted ? SparkVTheme.destructive : nil
                     ) { controller.toggleMute() }
                 }
+                // macOS's own call controls (the menu-bar icons beside the
+                // notch): Mic Mode (Standard / Voice Isolation / Wide
+                // Spectrum) and Video Effects, opened from here.
+                NotificationBandButton(systemImage: "waveform.badge.mic", label: "Mic Mode (Voice Isolation)") {
+                    AVCaptureDevice.showSystemUserInterface(.microphoneModes)
+                }
+                NotificationBandButton(systemImage: "camera.filters", label: "Video Effects") {
+                    AVCaptureDevice.showSystemUserInterface(.videoEffects)
+                }
                 if call.iconBundleID != nil {
                     NotificationBandButton(systemImage: "arrow.up.forward.app", label: "Show \(call.service)") {
                         controller.showCallApp()
@@ -154,6 +164,8 @@ struct OngoingCallBand: View {
         .accessibilityLabel(muted ? "\(call.service) call, microphone muted" : "\(call.service) call")
         .accessibilityAction(named: muted ? "Unmute" : "Mute") { controller.toggleMute() }
         .accessibilityAction(named: "Show \(call.service)") { controller.showCallApp() }
+        .accessibilityAction(named: "Mic Mode") { AVCaptureDevice.showSystemUserInterface(.microphoneModes) }
+        .accessibilityAction(named: "Video Effects") { AVCaptureDevice.showSystemUserInterface(.videoEffects) }
     }
 }
 
