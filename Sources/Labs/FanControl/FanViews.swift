@@ -3,47 +3,26 @@ import SwiftUI
 
 // Fan Control views in the SparkV brand (SparkVTheme): the drawer page,
 // the Agents hub tile, gear-menu items and the small shared pieces.
+// Read-only: macOS controls the fans.
 // Sampling runs only while one of these is on screen (attach/detach).
 
 // MARK: - Shared pieces
 
-/// The fan glyph: red while the fan is under manual control.
+/// The fan glyph.
 struct FanGlyph: View {
-    let manual: Bool
     var size: CGFloat = 13
 
     var body: some View {
         Image(systemName: "fan.fill")
             .font(.system(size: size, weight: .semibold))
-            .foregroundStyle(manual ? SparkVTheme.red : SparkVTheme.text.opacity(0.85))
+            .foregroundStyle(SparkVTheme.text.opacity(0.85))
             .frame(width: size + 6, height: size + 6)
-    }
-}
-
-/// Small red "MANUAL" or neutral "AUTO" capsule.
-struct FanModeBadge: View {
-    let manual: Bool
-    var waiting = false
-    /// Manual through another app (Macs Fan Control, TG Pro...).
-    var elsewhere = false
-
-    var body: some View {
-        Text(elsewhere ? "OTHER APP" : waiting ? "WAIT" : manual ? "MANUAL" : "AUTO")
-            .font(SparkVTheme.eyebrow(8))
-            .tracking(LabsBStyle.eyebrowTracking(0.8))
-            .foregroundStyle(manual ? Color.white : (waiting || elsewhere) ? SparkVTheme.warning : SparkVTheme.textSecondary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(Capsule().fill(manual ? SparkVTheme.red : SparkVTheme.surface))
-            .overlay(Capsule().strokeBorder(manual ? Color.clear : SparkVTheme.stroke))
-            .fixedSize()
     }
 }
 
 /// Actual RPM within 0...max, with a tick at the fan's minimum.
 struct FanRPMBar: View {
     let fan: FanInfo
-    let manual: Bool
 
     var body: some View {
         GeometryReader { geo in
@@ -53,7 +32,7 @@ struct FanRPMBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(SparkVTheme.surface)
                 Capsule()
-                    .fill(manual ? SparkVTheme.red : SparkVTheme.text.opacity(0.75))
+                    .fill(SparkVTheme.text.opacity(0.75))
                     .frame(width: max(3, geo.size.width * fraction))
                 Rectangle()
                     .fill(SparkVTheme.textTertiary)
@@ -64,153 +43,26 @@ struct FanRPMBar: View {
         .frame(height: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Fan speed")
-        .accessibilityValue("\(Int(fan.actual ?? 0)) RPM\(fan.maximum.map { " of \(Int($0))" } ?? "")\(manual ? ", manual" : "")")
+        .accessibilityValue("\(Int(fan.actual ?? 0)) RPM\(fan.maximum.map { " of \(Int($0))" } ?? "")")
     }
 }
 
-/// Mode choices for one fan, used by the drawer chip and the hub tile.
-struct FanModeMenuItems: View {
-    @ObservedObject var controller: FanController
-    let fan: FanInfo
-
-    private var current: FanControlMode { controller.mode(for: fan.index) }
-
-    private func item(_ title: String, _ mode: FanControlMode) -> some View {
-        Button {
-            controller.setMode(mode, for: fan.index)
-        } label: {
-            if current == mode { Label(title, systemImage: "checkmark") } else { Text(title) }
-        }
-    }
-
-    var body: some View {
-        item("Auto (macOS)", .auto)
-        if let limits = fan.validLimits {
-            Menu("Constant Speed") {
-                ForEach([0.0, 0.25, 0.5, 0.75, 1.0], id: \.self) { fraction in
-                    let rpm = FanCurveMath.quantize(limits.lowerBound + fraction * (limits.upperBound - limits.lowerBound), step: 100, limits: limits)
-                    item("\(Int(rpm)) rpm" + (fraction == 0 ? " (minimum)" : fraction == 1 ? " (maximum)" : ""), .constant(rpm: rpm))
-                }
-            }
-            Menu("Follow Sensor") {
-                item("CPU Hottest · 50 → 80 °C", .sensor(id: "agg.cpu.max", startC: 50, maxC: 80))
-                item("CPU Hottest · 60 → 90 °C", .sensor(id: "agg.cpu.max", startC: 60, maxC: 90))
-                item("GPU Hottest · 50 → 80 °C", .sensor(id: "agg.gpu.max", startC: 50, maxC: 80))
-                item("SSD · 40 → 65 °C", .sensor(id: "agg.storage.max", startC: 40, maxC: 65))
-            }
-        } else {
-            Text("Speed limits unknown: Auto only")
-        }
-        Divider()
-        Button("Custom Speed or Curve…") { FanControlWindowController.shared.show(controller: controller) }
-    }
-}
-
-extension FanControlMode {
-    /// "Auto", "2400 rpm", "CPU Hottest 50→80°".
-    func summary(sensors: [FanSensorReading]) -> String {
-        switch self {
-        case .auto: return "Auto"
-        case .constant(let rpm): return "\(Int(rpm)) rpm"
-        case .sensor(let id, let startC, let maxC):
-            let name = sensors.first { $0.id == id }?.name ?? FanControlMode.sensorFallbackName(id)
-            return "\(name) \(Int(startC))→\(Int(maxC))°"
-        }
-    }
-
-    /// Fits the drawer chip: "Auto", "2800", "CPU 50–80°".
-    var compactSummary: String {
-        switch self {
-        case .auto: return "Auto"
-        case .constant(let rpm): return "\(Int(rpm))"
-        case .sensor(let id, let startC, let maxC):
-            let short: String
-            if id.hasPrefix("agg."), let group = FanSensorGroup(rawValue: String(id.dropFirst(4).prefix { $0 != "." })) {
-                short = group.title
-            } else {
-                short = String(id.split(separator: ".", maxSplits: 1).last?.prefix(6) ?? "Sensor")
-            }
-            return "\(short) \(Int(startC))–\(Int(maxC))°"
-        }
-    }
-
-    static func sensorFallbackName(_ id: String) -> String {
-        if id.hasPrefix("agg."), let group = FanSensorGroup(rawValue: String(id.dropFirst(4).prefix { $0 != "." })) {
-            return id.hasSuffix(".avg") ? "\(group.title) Average" : "\(group.title) Hottest"
-        }
-        return String(id.split(separator: ".", maxSplits: 1).last ?? "Sensor")
-    }
-}
-
-/// One line about the helper and the failsafe; shows a button when the
-/// user has something to do.
-struct FanHelperLine: View {
+/// The one-line note under the fans: macOS controls them.
+struct FanInfoLine: View {
     @ObservedObject var controller: FanController
 
     var body: some View {
         HStack(spacing: 6) {
-            if let failsafe = controller.failsafeText {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(SparkVTheme.destructive)
-                Text("Failsafe: \(failsafe). Fans are on Auto.").foregroundStyle(SparkVTheme.text)
-            } else if let conflict = controller.conflictText {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(SparkVTheme.warning)
-                Text(conflict).foregroundStyle(SparkVTheme.textSecondary)
-            } else if let notice = controller.notice {
-                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(SparkVTheme.warning)
-                Text(notice).foregroundStyle(SparkVTheme.textSecondary)
-            } else {
-                switch controller.helperState {
-                case .connected:
-                    Image(systemName: "checkmark.shield.fill").foregroundStyle(SparkVTheme.success)
-                    Text("Back to Auto above \(Int(FanHelperConstants.thermalLimit)) °C, on quit, sleep or no response")
-                        .foregroundStyle(SparkVTheme.textTertiary)
-                case .notInstalled where !controller.hasFans:
-                    Image(systemName: "thermometer.medium").foregroundStyle(SparkVTheme.textTertiary)
-                    Text("Temperatures only: nothing to control on this Mac.")
-                        .foregroundStyle(SparkVTheme.textTertiary)
-                case .notInstalled:
-                    Image(systemName: "lock.fill").foregroundStyle(SparkVTheme.textTertiary)
-                    Text("Reading only. Setting speeds needs the fan helper (one password).")
-                        .foregroundStyle(SparkVTheme.textTertiary)
-                default:
-                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(SparkVTheme.warning)
-                    Text(controller.helperState.title).foregroundStyle(SparkVTheme.textSecondary)
-                }
-            }
+            Image(systemName: controller.hasFans ? "checkmark.shield.fill" : "thermometer.medium")
+                .foregroundStyle(SparkVTheme.textTertiary)
+            Text(controller.hasFans ? "Fans are controlled by macOS. SparkV only reads speeds and temperatures."
+                                    : "Temperatures only: this Mac has no fans.")
+                .foregroundStyle(SparkVTheme.textTertiary)
             Spacer(minLength: 4)
-            if controller.helperState == .connected, FanHelperInstaller.updateAvailable {
-                Button(controller.isInstallingHelper ? "Updating…" : "Update Helper…") {
-                    controller.runHelperInstaller(install: true)
-                }
-                .buttonStyle(FanSmallButtonStyle(primary: true))
-                .disabled(controller.isInstallingHelper)
-                .help("This SparkV build carries a newer fan helper than the one installed")
-            }
-            if needsInstall {
-                Button(controller.isInstallingHelper ? "Installing…" : installTitle) {
-                    controller.runHelperInstaller(install: true)
-                }
-                .buttonStyle(FanSmallButtonStyle(primary: true))
-                .disabled(controller.isInstallingHelper || !FanHelperInstaller.isBundled)
-                .help(FanHelperInstaller.isBundled ? "Asks for your password once, then installs the fan helper"
-                                                   : "This build has no fan helper (see Fan Control's INTEGRATION.md)")
-            }
         }
         .font(SparkVTheme.caption(10))
         .lineLimit(1)
         .truncationMode(.tail)
-    }
-
-    private var needsInstall: Bool {
-        guard controller.hasFans else { return false }
-        switch controller.helperState {
-        case .notInstalled, .outdated, .unauthorized: return true
-        default: return false
-        }
-    }
-
-    private var installTitle: String {
-        controller.helperState == .notInstalled ? "Install Helper…" : "Reinstall Helper…"
     }
 }
 
@@ -252,7 +104,6 @@ struct FanPressFeedback: ViewModifier {
     }
 }
 
-
 // MARK: - Drawer page (508 x 114)
 
 struct FanTabView: View {
@@ -273,7 +124,7 @@ struct FanTabView: View {
                 sensorGrid
             }
             .frame(height: 66, alignment: .top)
-            FanHelperLine(controller: controller)
+            FanInfoLine(controller: controller)
                 .frame(height: 16)
         }
         .frame(width: Self.size.width, height: Self.size.height, alignment: .topLeading)
@@ -287,29 +138,15 @@ struct FanTabView: View {
                 .font(SparkVTheme.eyebrow(9))
                 .tracking(SparkVTheme.isApple ? 0.4 : 1.2)
                 .foregroundStyle(SparkVTheme.textTertiary)
-            if controller.manualFanCount > 0 {
-                Text("\(controller.manualFanCount) MANUAL")
-                    .font(SparkVTheme.eyebrow(8))
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, 5).padding(.vertical, 2)
-                    .background(Capsule().fill(SparkVTheme.red))
-            }
             Spacer(minLength: 4)
-            if controller.hasFans {
-                ForEach(FanPreset.builtins) { preset in
-                    Button(preset.name) { controller.applyPreset(preset) }
-                        .buttonStyle(FanSmallButtonStyle(selected: controller.activePresetID == preset.id))
-                        .help(preset.subtitle)
-                }
-            }
             Button {
                 FanControlWindowController.shared.show(controller: controller)
             } label: {
                 Image(systemName: "macwindow")
             }
             .buttonStyle(FanSmallButtonStyle())
-            .help("Open Fan Control")
-            .accessibilityLabel("Open Fan Control")
+            .help("Open Fans & Temperatures")
+            .accessibilityLabel("Open Fans and Temperatures")
         }
         .frame(height: 20)
     }
@@ -350,7 +187,7 @@ struct FanTabView: View {
                         .foregroundStyle(SparkVTheme.textTertiary)
                     Text(controller.temperatureText(reading?.celsius))
                         .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(heatColor(reading?.celsius))
+                        .foregroundStyle(FanHeat.color(reading?.celsius))
                 }
                 .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
                 .padding(.horizontal, 7)
@@ -358,8 +195,11 @@ struct FanTabView: View {
             }
         }
     }
+}
 
-    private func heatColor(_ c: Double?) -> Color {
+/// Temperature color: warning from 75 °C, red from 90 °C.
+enum FanHeat {
+    static func color(_ c: Double?) -> Color {
         guard let c else { return SparkVTheme.textTertiary }
         if c >= 90 { return SparkVTheme.destructive }
         if c >= 75 { return SparkVTheme.warning }
@@ -372,10 +212,8 @@ private struct FanDrawerRow: View {
     let fan: FanInfo
 
     var body: some View {
-        let manual = controller.isManual(fan.index)
-        let wanted = controller.mode(for: fan.index)
         HStack(spacing: 7) {
-            FanGlyph(manual: manual)
+            FanGlyph()
             VStack(alignment: .leading, spacing: 1) {
                 Text(controller.name(for: fan.index))
                     .font(SparkVTheme.headline(11)).foregroundStyle(SparkVTheme.text)
@@ -383,68 +221,29 @@ private struct FanDrawerRow: View {
                     .font(SparkVTheme.caption(9).monospacedDigit()).foregroundStyle(SparkVTheme.textTertiary)
             }
             .frame(width: 58, alignment: .leading)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text(FanFormat.rpm(fan.actual))
-                        .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(SparkVTheme.text)
-                    Text("rpm").font(SparkVTheme.caption(9)).foregroundStyle(SparkVTheme.textTertiary)
-                }
-                FanRPMBar(fan: fan, manual: manual)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(FanFormat.rpm(fan.actual))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(SparkVTheme.text)
+                Text("rpm").font(SparkVTheme.caption(9)).foregroundStyle(SparkVTheme.textTertiary)
             }
-            .frame(width: 70)
-            Spacer(minLength: 2)
-            Menu {
-                FanModeMenuItems(controller: controller, fan: fan)
-            } label: {
-                // Manual: a red chip; waiting for the helper: amber; held by
-                // another app: amber warning; Auto: neutral.
-                let elsewhere = controller.isControlledElsewhere(fan.index)
-                let waiting = (wanted.isManual && !manual) || elsewhere
-                HStack(spacing: 4) {
-                    if manual {
-                        Image(systemName: "hand.raised.fill").font(.system(size: 8, weight: .bold))
-                    } else if elsewhere {
-                        Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 8, weight: .bold))
-                    } else if waiting {
-                        Image(systemName: "hourglass").font(.system(size: 8, weight: .bold))
-                    }
-                    Text(elsewhere ? "Other app" : wanted.compactSummary)
-                        .font(SparkVTheme.caption(10).monospacedDigit())
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 7, weight: .bold))
-                        .opacity(0.7)
-                }
-                .foregroundStyle(manual ? Color.white : waiting ? SparkVTheme.warning : SparkVTheme.textSecondary)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(manual ? SparkVTheme.red : SparkVTheme.surface))
-                .overlay(Capsule().strokeBorder(manual ? Color.clear : waiting ? SparkVTheme.warning.opacity(0.6) : SparkVTheme.stroke))
-                .contentShape(Capsule())
-            }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .frame(maxWidth: 134, alignment: .trailing)
-            .help(controller.isControlledElsewhere(fan.index)
-                  ? "\(controller.otherFanApp ?? "Another app") controls this fan"
-                  : wanted.summary(sensors: controller.snapshot.sensors))
+            .frame(width: 70, alignment: .leading)
+            FanRPMBar(fan: fan)
+                .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 6)
         .frame(height: 30)
         .background(
             RoundedRectangle(cornerRadius: SparkVTheme.cornerSmall, style: .continuous)
-                .fill(manual ? SparkVTheme.redSoft : SparkVTheme.surface)
+                .fill(SparkVTheme.surface)
         )
+        .accessibilityElement(children: .combine)
     }
 }
 
 // MARK: - Agents hub tile
 
-/// Same footprint as the other hub tiles (48 pt). Lit red while any fan is
-/// manual, showing the fastest fan's speed. Right-click: presets.
+/// Same footprint as the other hub tiles (48 pt): the fastest fan's speed.
 struct FanHubTile: View {
     @ObservedObject var controller: FanController
     let onOpen: () -> Void
@@ -456,20 +255,17 @@ struct FanHubTile: View {
     }
 
     var body: some View {
-        let manual = controller.manualFanCount > 0
-        let lit = manual || hover.isOn
         let shape = RoundedRectangle(cornerRadius: SparkVTheme.cornerMedium, style: .continuous)
-        let fastest = controller.snapshot.fans.compactMap(\.actual).max()
         let apple = SparkVTheme.usesTileTints
         Button(action: onOpen) {
             VStack(spacing: 5) {
                 Image(systemName: "fan.fill")
                     .font(.system(size: 16, weight: .semibold))
                     // Apple: cyan, like the hub's other tinted glyphs.
-                    .foregroundStyle(apple ? Color.cyan : (lit ? SparkVTheme.red : SparkVTheme.text.opacity(0.88)))
-                Text(manual ? "\(FanFormat.compactRPM(fastest)) rpm" : "Fans")
+                    .foregroundStyle(apple ? Color.cyan : (hover.isOn ? SparkVTheme.red : SparkVTheme.text.opacity(0.88)))
+                Text("Fans")
                     .font(.system(size: 9, weight: .medium).monospacedDigit())
-                    .foregroundStyle(LabsBHubTileBackground.label(isActive: manual, isHovered: hover.isOn))
+                    .foregroundStyle(LabsBHubTileBackground.label(isActive: false, isHovered: hover.isOn))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -477,10 +273,10 @@ struct FanHubTile: View {
             .frame(maxWidth: .infinity, minHeight: 48)
             .background {
                 if apple {
-                    LabsBHubTileBackground(isActive: manual, isHovered: hover.isOn, tint: .cyan)
+                    LabsBHubTileBackground(isActive: false, isHovered: hover.isOn, tint: .cyan)
                 } else {
-                    shape.fill(manual ? SparkVTheme.redSoft : (hover.isOn ? SparkVTheme.red.opacity(0.10) : SparkVTheme.surface))
-                        .overlay(shape.strokeBorder(lit ? SparkVTheme.red.opacity(manual ? 0.55 : 0.35) : SparkVTheme.stroke, lineWidth: 1))
+                    shape.fill(hover.isOn ? SparkVTheme.red.opacity(0.10) : SparkVTheme.surface)
+                        .overlay(shape.strokeBorder(hover.isOn ? SparkVTheme.red.opacity(0.35) : SparkVTheme.stroke, lineWidth: 1))
                 }
             }
             .contentShape(shape)
@@ -488,7 +284,7 @@ struct FanHubTile: View {
         .buttonStyle(SparkVPressStyle())
         .onHover { hover.isOn = $0 }
         .animation(SparkVMotion.hover(), value: hover.isOn)
-        .help(manual ? "Fans: \(controller.manualFanCount) under manual control" : "Fan Control: speeds, temperatures, presets")
+        .help("Fans & Temperatures: speeds and temperatures (read-only)")
         .contextMenu { FanMenuItems(controller: controller) }
     }
 }
@@ -507,31 +303,12 @@ struct FanMenuItems: View {
         if controller.hasFans {
             Text(controller.snapshot.fans.map { "\(FanFormat.rpm($0.actual))" }.joined(separator: " · ") + " rpm"
                  + (controller.snapshot.hottestCPU.map { " · CPU \(controller.temperatureText($0.celsius))" } ?? ""))
-            if controller.manualFanCount > 0 {
-                Text("\(controller.manualFanCount) fan(s) under manual control")
-            }
-            Divider()
-            ForEach(controller.presets) { preset in
-                Button {
-                    controller.applyPreset(preset)
-                } label: {
-                    if controller.activePresetID == preset.id { Label(preset.name, systemImage: "checkmark") } else { Text(preset.name) }
-                }
-            }
-            Button("All Fans to Auto") { controller.resetAllToAuto() }
-                .disabled(!controller.wantsManual && controller.manualFanCount == 0)
             Divider()
         } else if controller.snapshot.smcAvailable {
             Text("This Mac has no fans")
             Divider()
         }
-        Button("Open Fan Control…") { FanControlWindowController.shared.show(controller: controller) }
-        if controller.helperState == .notInstalled || controller.helperState == .unauthorized {
-            Button(controller.helperState == .notInstalled ? "Install Fan Helper…" : "Reinstall Fan Helper…") {
-                controller.runHelperInstaller(install: true)
-            }
-            .disabled(!FanHelperInstaller.isBundled || controller.isInstallingHelper)
-        }
+        Button("Open Fans & Temperatures…") { FanControlWindowController.shared.show(controller: controller) }
     }
 }
 
@@ -556,25 +333,19 @@ struct FanActivityTrailing: View {
     }
 }
 
-/// The band (about 360 x 30): what is manual, each fan's speed, the hottest sensor.
+/// The band (about 360 x 30): each fan's speed and the hottest sensor.
 struct FanActivityBand: View {
     let state: FanActivityState
 
     var body: some View {
         HStack(spacing: 8) {
-            FanGlyph(manual: state.manualFans > 0 || state.failsafe != nil, size: 12)
-            if let failsafe = state.failsafe {
-                Text("Failsafe: \(failsafe). Fans on Auto")
+            FanGlyph(size: 12)
+            Text("Fans").foregroundStyle(SparkVTheme.textSecondary)
+            ForEach(Array(state.rpms.enumerated()), id: \.offset) { pair in
+                Text("\(FanFormat.rpm(pair.element))")
                     .foregroundStyle(SparkVTheme.text)
-            } else {
-                Text(state.manualFans > 0 ? "\(state.manualFans) fan\(state.manualFans == 1 ? "" : "s") manual" : "Fans auto")
-                    .foregroundStyle(state.manualFans > 0 ? SparkVTheme.red : SparkVTheme.textSecondary)
-                ForEach(Array(state.rpms.enumerated()), id: \.offset) { pair in
-                    Text("\(FanFormat.rpm(pair.element))")
-                        .foregroundStyle(SparkVTheme.text)
-                }
-                Text("rpm").foregroundStyle(SparkVTheme.textTertiary)
             }
+            Text("rpm").foregroundStyle(SparkVTheme.textTertiary)
             Spacer(minLength: 4)
             if let hottest = state.hottest {
                 Text("\(state.hottestName ?? "CPU") \(FanFormat.temperature(hottest, fahrenheit: state.fahrenheit))")

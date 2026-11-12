@@ -116,7 +116,7 @@ cp Info.plist "$STAGED/Contents/Info.plist"
 cp Packaging/PrivacyInfo.xcprivacy "$STAGED/Contents/Resources/PrivacyInfo.xcprivacy"
 ```
 
-## 4. build.sh: the fan helper's symbols
+## 4. build.sh: the fan helper's symbols (obsolete: the fan helper was removed; Fans & Temperatures is read-only)
 
 File: `build.sh`
 

@@ -14,14 +14,11 @@ WORK="${WORK:-$(mktemp -d)}"
 mkdir -p "$WORK"
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 F="$ROOT/Sources/Labs/FanControl"
-H="$ROOT/Helpers/FanHelper"
-# The app's Foundation-level files plus the helper's engine and server
-# (not its main.swift), and the tests.
+# The app's Foundation-level read-only files and the tests.
 xcrun swiftc -swift-version 6 -target arm64-apple-macos15.0 -sdk "$SDK" \
   -import-objc-header "$HERE/smc-layout.h" \
-  "$F"/FanCore*.swift "$F/FanCurve.swift" "$F/FanSensorSampler.swift" "$F/FanHIDTemperatures.swift" \
-  "$F/FanHelperClient.swift" "$F/FanController.swift" "$ROOT/Sources/SparkVEnergy.swift" "$ROOT/Sources/AppLog.swift" \
-  "$H/FanHelperEngine.swift" "$H/FanHelperServer.swift" \
+  "$F"/FanCore*.swift "$F/FanSettings.swift" "$F/FanSensorSampler.swift" "$F/FanHIDTemperatures.swift" \
+  "$F/FanController.swift" "$ROOT/Sources/SparkVEnergy.swift" "$ROOT/Sources/AppLog.swift" \
   "$HERE/FakeSMC.swift" "$HERE/main.swift" \
   -o "$WORK/fan-tests"
 "$WORK/fan-tests" "$WORK" "${LIVE[@]}"

@@ -45,6 +45,8 @@ final class MeetingRecorder: ObservableObject {
     /// A Screen Recording grant only applies after SparkV restarts.
     static let screenRecordingRelaunchMessage = "Restart SparkV to capture other participants"
 
+    static let systemAudioProblemMessage = "Allow System Audio Recording for SparkV to capture other participants"
+
     private static var screenRecordingProblem: String {
         PermissionCenter.shared.screenRecordingNeedsRelaunch ? screenRecordingRelaunchMessage : screenRecordingMessage
     }
@@ -56,7 +58,7 @@ final class MeetingRecorder: ObservableObject {
         var micTranscriber: MeetingTranscriber?
         var watchdog: Task<Void, Never>?
         var systemWatchdog: Task<Void, Never>?
-        var system: MeetingSystemAudioCapture?
+        var system: (any MeetingSystemAudioSource)?
         var systemPipeline: MeetingStreamPipeline?
         var systemTranscriber: MeetingTranscriber?
         var systemRestarts = 0
@@ -67,6 +69,9 @@ final class MeetingRecorder: ObservableObject {
     }
 
     private var session: Session?
+    /// Screen Recording was allowed when this recording started (the
+    /// ScreenCaptureKit fallback needs it).
+    private var systemAllowed = false
     private var generation = 0
     private var isStarting = false
     private var isStopping = false
@@ -136,14 +141,11 @@ final class MeetingRecorder: ObservableObject {
         AppLog.log("Meeting: recording started (mic: \(micTranscriber.backendName))")
         session.watchdog = Task { [weak self] in await self?.watchMicrophone(session: session, token: token) }
 
-        // System audio (best effort).
-        if systemAllowed {
-            await startSystemAudio(session: session, token: token)
-        } else {
-            lastError = Self.screenRecordingProblem
-            systemAudioProblem = Self.screenRecordingProblem
-            AppLog.log("Meeting: screen recording not allowed, recording the microphone only")
-        }
+        // System audio (best effort): a Core Audio tap first (only needs
+        // System Audio Recording, follows AirPods/speaker switches), then
+        // ScreenCaptureKit when Screen Recording is allowed.
+        self.systemAllowed = systemAllowed
+        await startSystemAudio(session: session, token: token)
     }
 
     /// Checks the microphone stream while nothing has been recognized yet:
@@ -235,7 +237,7 @@ final class MeetingRecorder: ObservableObject {
             session.systemPipeline = pipeline
         }
 
-        let capture = MeetingSystemAudioCapture()
+        var capture: any MeetingSystemAudioSource = MeetingProcessTapCapture()
         do {
             try await capture.start(
                 onBuffer: { buffer in pipeline.process(buffer) },
@@ -243,15 +245,32 @@ final class MeetingRecorder: ObservableObject {
             )
         } catch {
             await capture.stop()
-            AppLog.log("Meeting: system audio capture failed: \(error)")
-            let message = MeetingPermissions.isScreenCaptureDenial(error)
-                ? Self.screenRecordingProblem
-                : "Couldn't capture system audio: \(error.localizedDescription)"
-            if self.session === session {
-                lastError = message
-                systemAudioProblem = message
+            AppLog.log("Meeting: system audio tap failed (\(error.localizedDescription)); trying ScreenCaptureKit")
+            guard systemAllowed else {
+                if self.session === session {
+                    lastError = Self.systemAudioProblemMessage
+                    systemAudioProblem = lastError
+                }
+                return
             }
-            return
+            capture = MeetingSystemAudioCapture()
+            do {
+                try await capture.start(
+                    onBuffer: { buffer in pipeline.process(buffer) },
+                    onStop: makeSystemStopHandler(token: token)
+                )
+            } catch {
+                await capture.stop()
+                AppLog.log("Meeting: system audio capture failed: \(error)")
+                let message = MeetingPermissions.isScreenCaptureDenial(error)
+                    ? Self.screenRecordingProblem
+                    : "Couldn't capture system audio: \(error.localizedDescription)"
+                if self.session === session {
+                    lastError = message
+                    systemAudioProblem = message
+                }
+                return
+            }
         }
         guard token == generation, self.session === session else {
             await capture.stop()
@@ -260,7 +279,7 @@ final class MeetingRecorder: ObservableObject {
         session.system = capture
         isCapturingSystemAudio = true
         systemAudioProblem = nil
-        AppLog.log("Meeting: system audio capture started (\(transcriber.backendName))")
+        AppLog.log("Meeting: system audio capture started (\(capture.kind), \(transcriber.backendName))")
         if session.systemWatchdog == nil {
             session.systemWatchdog = Task { [weak self] in await self?.watchSystemAudio(session: session, token: token) }
         }
@@ -745,10 +764,109 @@ final class MeetingMicCapture: @unchecked Sendable {
 
 // MARK: - System audio capture
 
+/// Where other participants' audio comes from.
+protocol MeetingSystemAudioSource: AnyObject, Sendable {
+    var kind: String { get }
+    func start(onBuffer: @escaping @Sendable (AVAudioPCMBuffer) -> Void,
+               onStop: @escaping @Sendable (String) -> Void) async throws
+    func stop() async
+}
+
+/// Everything the Mac plays (except SparkV), through a Core Audio process
+/// tap: needs only System Audio Recording (not Screen Recording), and is
+/// rebuilt on the new output device when you switch between speakers and
+/// AirPods mid-meeting, so the other side is always recorded.
+final class MeetingProcessTapCapture: MeetingSystemAudioSource, @unchecked Sendable {
+    let kind = "system audio tap"
+    private let queue = DispatchQueue(label: "SparkV.Meeting.ProcessTap", qos: .userInitiated)
+    private let ring = AmbientSampleRing(capacity: 1 << 18)
+    private var source: AmbientProcessTapSource?
+    private var timer: DispatchSourceTimer?
+    private var format: AVAudioFormat?
+    private var onBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)?
+    private var onStop: (@Sendable (String) -> Void)?
+
+    func start(onBuffer: @escaping @Sendable (AVAudioPCMBuffer) -> Void,
+               onStop: @escaping @Sendable (String) -> Void) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            queue.async {
+                do {
+                    self.onBuffer = onBuffer
+                    self.onStop = onStop
+                    try self.startTap()
+                    self.startReading()
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// On `queue`.
+    private func startTap() throws {
+        source?.stop()
+        let source = AmbientProcessTapSource(ring: ring)
+        ring.clear()
+        let rate = try source.startBlocking()
+        format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)
+        source.onRouteChange = { [weak self] in
+            // New output device (AirPods connected, back to speakers).
+            self?.queue.async { [weak self] in
+                guard let self, self.source != nil else { return }
+                AppLog.log("Meeting: output device changed; moving the system audio tap")
+                do { try self.startTap() } catch {
+                    self.onStop?("System audio stopped after the output device changed")
+                }
+            }
+        }
+        self.source = source
+    }
+
+    /// Drains the tap into ~20 ms buffers for the transcriber.
+    private func startReading() {
+        timer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + .milliseconds(20), repeating: .milliseconds(20), leeway: .milliseconds(5))
+        timer.setEventHandler { [weak self] in self?.drain() }
+        timer.resume()
+        self.timer = timer
+    }
+
+    private func drain() {
+        guard let format, let onBuffer else { return }
+        // Fell far behind (the Mac was busy): keep the newest 2 s.
+        let maxKeep = Int(format.sampleRate * 2)
+        if ring.available > maxKeep { ring.skip(keeping: maxKeep) }
+        let count = ring.available
+        guard count > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)),
+              let channel = buffer.floatChannelData?[0], ring.read(into: channel, count: count) else { return }
+        buffer.frameLength = AVAudioFrameCount(count)
+        onBuffer(buffer)
+    }
+
+    func stop() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            queue.async {
+                self.timer?.cancel()
+                self.timer = nil
+                let source = self.source
+                self.source = nil
+                source?.onRouteChange = nil
+                source?.stop()
+                self.onBuffer = nil
+                self.onStop = nil
+                continuation.resume()
+            }
+        }
+    }
+}
+
 /// System audio through ScreenCaptureKit: a display stream with a 2×2,
 /// 1 fps video track (ignored) and audio enabled, excluding NotchIsland's
 /// own sounds.
-final class MeetingSystemAudioCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
+final class MeetingSystemAudioCapture: NSObject, MeetingSystemAudioSource, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
+    let kind = "ScreenCaptureKit"
     private let audioQueue = DispatchQueue(label: "SparkV.Meeting.SystemAudio", qos: .userInitiated)
     private let videoQueue = DispatchQueue(label: "SparkV.Meeting.SystemVideo", qos: .utility)
     private let lock = NSLock()

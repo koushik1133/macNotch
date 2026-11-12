@@ -67,6 +67,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // dictation pipeline and logs what it heard (counts only, no text).
         // A launch argument, so no link or web page can start the mic.
         if CommandLine.arguments.contains("--mic-selftest") { DictationSelfTest.run() }
+        // `--meeting-selftest`: 20 s through the meeting recorder and translation
+        // (counts only). Launch argument only, like the mic self-test.
+        if CommandLine.arguments.contains("--meeting-selftest") { MeetingSelfTest.run() }
     }
 
     /// Opening SparkV again (Finder, Spotlight, Launchpad, the Dock icon

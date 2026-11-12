@@ -164,12 +164,11 @@ enum FanSensorCatalog {
         }
     }
 
-    /// CPU and GPU die sensors: the ones the helper's thermal failsafe watches.
+    /// CPU and GPU die sensors (the hottest real silicon).
     static func isDie(smcKey key: String, type: FanSMCCode? = nil) -> Bool {
         let g = group(smcKey: key, type: type)
         guard g == .cpu || g == .gpu else { return false }
-        // Proximity and heatsink sensors read lower than the die; keep them
-        // out so the failsafe watches the hottest real silicon.
+        // Proximity and heatsink sensors read lower than the die.
         return !["TC0P", "TC0H", "TG0P", "TG0H"].contains(key)
     }
 

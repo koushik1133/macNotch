@@ -156,27 +156,6 @@ cp "$A/LICENSE" "$ADAPTER_DIR/LICENSE"
 rsync -a --delete --exclude test Vendor/ui-audit/ "$STAGED/Contents/Resources/ui-audit/"
 rsync -a --delete --exclude test Vendor/browser-recorder/ "$STAGED/Contents/Resources/BrowserRecorder/"
 
-# Fan Control's privileged helper (Helpers/FanHelper). A separate root
-# executable, installed by the user once (Fans > Install Helper, or
-# Contents/Resources/FanHelper/install-fanhelper.sh). It shares the FanCore*
-# files with the app.
-mkdir -p "$WORK/fanhelper-src" "$STAGED/Contents/Library/LaunchServices" "$STAGED/Contents/Resources/FanHelper"
-cp Helpers/FanHelper/*.swift Sources/Labs/FanControl/FanCore*.swift "$WORK/fanhelper-src/"
-xcrun swiftc \
-  -swift-version 5 \
-  "${OPT_FLAGS[@]}" \
-  -target arm64-apple-macos15.0 \
-  -sdk "$SDK" \
-  "$WORK/fanhelper-src"/*.swift \
-  -o "$STAGED/Contents/Library/LaunchServices/com.sparkv.fanhelper"
-if [[ -d "$STAGED/Contents/Library/LaunchServices/com.sparkv.fanhelper.dSYM" ]]; then
-  rm -rf "$SYMBOLS/com.sparkv.fanhelper.dSYM"
-  mv "$STAGED/Contents/Library/LaunchServices/com.sparkv.fanhelper.dSYM" "$SYMBOLS/"
-fi
-cp Helpers/FanHelper/com.sparkv.fanhelper.plist Helpers/FanHelper/install-fanhelper.sh Helpers/FanHelper/uninstall-fanhelper.sh \
-  "$STAGED/Contents/Resources/FanHelper/"
-chmod 755 "$STAGED/Contents/Resources/FanHelper/"*.sh
-
 xattr -cr "$STAGED"
 
 # Signing identity. Face Unlock keeps its secrets in the login keychain, whose
@@ -208,10 +187,6 @@ fi
 if [[ "$SIGN_IDENTITY" == "-" ]]; then
   codesign --force --sign - "$FW"
 fi
-# The fan helper: same identity, Hardened Runtime, its own identifier. The
-# install script checks that its certificate matches SparkV's.
-codesign --force --sign "$SIGN_IDENTITY" "${SIGN_EXTRA[@]}" --options runtime \
-  --identifier com.sparkv.fanhelper "$STAGED/Contents/Library/LaunchServices/com.sparkv.fanhelper"
 codesign --force --sign "$SIGN_IDENTITY" "${SIGN_EXTRA[@]}" --options runtime \
   --entitlements NotchIsland.entitlements "$STAGED"
 codesign --verify --strict "$STAGED"

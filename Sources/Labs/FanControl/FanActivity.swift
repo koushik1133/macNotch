@@ -1,9 +1,7 @@
 import SwiftUI
 
-// The fan live activity: the island's wings show the fan speed and the
-// hottest CPU reading while a fan is under manual control (or always, if
-// the user picks that). A change in the number of manual fans, or the
-// failsafe tripping, peeks the band below the notch for a few seconds.
+// The fan live activity (Show in the Notch: Always): the island's wings
+// show the fan speed and the hottest CPU reading.
 
 extension FanController {
     /// Call once, after `start()`: `FanController.shared.connect(activities: activities)`.
@@ -28,25 +26,25 @@ enum FanLiveActivity {
         return LiveActivity(
             id: id,
             kind: .battery,
-            // Below meetings and HUDs; the failsafe outranks a running timer.
-            priority: state.failsafe != nil ? 55 : 15,
+            // Below meetings, HUDs and timers.
+            priority: 15,
             duration: nil,
             opensTab: opensTab,
             presentation: .compact,
             symbol: "fan.fill",
-            tint: state.failsafe != nil ? SparkVTheme.destructive : (state.manualFans > 0 ? SparkVTheme.red : SparkVTheme.text),
+            tint: SparkVTheme.text,
             compactText: FanFormat.compactRPM(fastest),
-            peekKey: state.failsafe != nil ? "failsafe" : "manual-\(state.manualFans)"
+            peekKey: nil
         ) {
             FanActivityBand(state: state)
         }
         .compact(leading: {
-            FanGlyph(manual: state.manualFans > 0 || state.failsafe != nil, size: 12)
+            FanGlyph(size: 12)
         }, trailing: {
             FanActivityTrailing(state: state, fastest: fastest)
         })
         .minimal {
-            FanGlyph(manual: state.manualFans > 0, size: 11)
+            FanGlyph(size: 11)
         }
     }
 }
