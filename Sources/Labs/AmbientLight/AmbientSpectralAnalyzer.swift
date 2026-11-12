@@ -404,6 +404,28 @@ final class AmbientSpectralAnalyzer {
         }
     }
 
+    /// Bar levels for a spectrum display (SparkV DJ): `out.count` bands
+    /// spaced logarithmically from `lowHz` to `highHz`, each the loudest bin
+    /// of the latest hop as log(1 + 1000·amplitude) (0 silent, ~7 full
+    /// scale). Call after `process(hop:at:)`, on the same queue.
+    func barLevels(into out: inout [Float], lowHz: Double = 35, highHz: Double = 15_000) {
+        let count = out.count
+        guard count > 0 else { return }
+        let half = fftSize / 2
+        let binHz = sampleRate / Double(fftSize)
+        let ratio = pow(highHz / lowHz, 1 / Double(count))
+        // `process` swapped the newest log spectrum into previousLogMag.
+        for band in 0..<count {
+            let from = lowHz * pow(ratio, Double(band))
+            let to = from * ratio
+            let lo = max(1, min(half - 1, Int(from / binHz)))
+            let hi = max(lo + 1, min(half, Int((to / binHz).rounded(.up))))
+            var peak: Float = 0
+            for bin in lo..<hi where previousLogMag[bin] > peak { peak = previousLogMag[bin] }
+            out[band] = peak
+        }
+    }
+
     private func bandDB(_ bins: Range<Int>) -> Float {
         var sum: Float = 0
         power.withUnsafeBufferPointer { p in

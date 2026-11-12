@@ -58,6 +58,9 @@ final class AppVolumeController: ObservableObject {
     private var gains: [String: Double]
     private var groups: [AppAudioGroup] = []
     private var routes: [String: AppGainRoute] = [:]
+    /// Process objects App Volumes plays itself right now (SparkV DJ leaves
+    /// them out of its tap so they aren't heard twice).
+    var routedProcessObjects: [AudioObjectID] { routes.values.flatMap(\.objects) }
     /// Routes whose start finished (main-actor copy of their state).
     private var liveRoutes: Set<String> = []
     private var problems: [String: String] = [:]

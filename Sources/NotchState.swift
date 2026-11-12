@@ -54,6 +54,8 @@ enum NotchMetrics {
             devStatusExpandedHeight
         } else if tab == .menuBar {
             menuBarExpandedHeight
+        } else if tab == .dj {
+            collapsedSize.height + DJLayout.contentHeight + drawerBottomPadding
         } else if tallTabs.contains(tab) {
             trayExpandedHeight
         } else if tab == .today {
@@ -198,12 +200,15 @@ final class NotchState: ObservableObject {
         case status
         /// Color Picker: formats, contrast, shades, palettes (Agents hub tile; ⌃⌥P picks).
         case colorPicker
+        /// SparkV DJ: turntable, Sound FX presets / EQ, live beat stats
+        /// (Agents hub tile, Media; Labs/DJ).
+        case dj
 
         /// Tabs opened from the Agents hub rather than the header.
         static let agentTabs: Set<Tab> = [
             .agents, .uiAudit, .jobs, .screen, .promptRefiner, .browser, .clipboard, .screenDistance,
             .focus, .search, .replyDrafter, .fileDrop, .downloads, .fans, .devStatus, .menuBar, .colorPicker,
-            .status,
+            .status, .dj,
         ]
     }
 

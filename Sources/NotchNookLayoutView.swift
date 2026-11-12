@@ -248,6 +248,7 @@ struct NotchNookLayoutView: View {
         case .widgets: WidgetsTabView()
         case .fans: FanTabView()
         case .colorPicker: ColorPickerDrawerView(controller: colorPicker)
+        case .dj: DJDrawerView()
         case .devStatus: DevStatusDrawerView()
         case .menuBar: MenuBarOverflowDrawerView()
         case .status: SystemStatusTabView()
