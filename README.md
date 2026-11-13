@@ -99,6 +99,14 @@ repeated failures. Preset changes ramp, so they don't click. Turning it off fade
 and then removes the tap. Apps whose level App Volumes changes are left out of the tap so they aren't
 heard twice. Audio stays in memory and is never logged or saved.
 
+`open SparkV.app --args --dj-selftest` runs DJ live for about 20 s on whatever is playing. It logs
+counts and levels only (IO cycles, render failures, peaks, beats, BPM) to `~/Library/Logs/SparkV.log`.
+
+If DJ and Ambient Light both report that they have no system audio, look for a leftover copy of the
+app, such as an iCloud `SparkV 2.app` next to `SparkV.app`. macOS gives System Audio Recording to the
+copy Launch Services has registered for `com.sparkv.app`, and System Settings then lists it as
+"SparkV 2". Move the extra copies away; the DJ page's permission link names the copy it finds.
+
 `Sources/Labs/DJ/Tests/run-tests.sh` runs the signal path offline on test tones. It checks that Flat
 and A/B are transparent, that each preset shapes the tone, that Concert leaves a hall tail and that
 the limiter holds peaks under full scale.

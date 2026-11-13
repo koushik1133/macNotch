@@ -45,17 +45,12 @@ struct DJDrawerView: View {
                     Text("Sound FX")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(SparkVTheme.text)
+                        .lineLimit(1)
                     statusLine
                 }
-                Spacer(minLength: 4)
-                Picker("", selection: $page.showsEQ) {
-                    Text("Presets").tag(false)
-                    Text("EQ").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.mini)
-                .frame(width: 96)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+                DJModeToggle(showsEQ: $page.showsEQ)
             }
             ZStack(alignment: .topLeading) {
                 if page.showsEQ {
@@ -67,7 +62,7 @@ struct DJDrawerView: View {
                     presetGrid.transition(.opacity)
                 }
             }
-            .frame(height: 92, alignment: .top)
+            .frame(height: 88, alignment: .top)
             .animation(SparkVMotion.respecting(SparkVMotion.easeOut(SparkVMotion.Duration.small)), value: page.showsEQ)
             HStack(spacing: 8) {
                 Image(systemName: "dial.low")
@@ -102,23 +97,28 @@ struct DJDrawerView: View {
     private var statusLine: some View {
         switch dj.status {
         case .off:
-            Text("Off · the Mac plays untouched")
+            Text("Off · plays untouched")
                 .font(.system(size: 9.5)).foregroundStyle(SparkVTheme.textTertiary)
+                .lineLimit(1).minimumScaleFactor(0.8)
         case .starting:
             Text("Starting…")
                 .font(.system(size: 9.5)).foregroundStyle(SparkVTheme.textSecondary)
         case .running:
             Text(runningText)
                 .font(.system(size: 9.5)).foregroundStyle(DJLayout.neon.opacity(0.9))
-                .lineLimit(1)
+                .lineLimit(1).truncationMode(.middle)
+                .help(runningText)
         case .needsPermission:
-            Button("Allow System Audio Recording…") { dj.openPermissionSettings() }
+            Button("Needs System Audio access…") { dj.openPermissionSettings() }
                 .buttonStyle(.link)
                 .font(.system(size: 9.5))
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .help(dj.permissionHelp)
         case .failed(let text):
             Text(text)
                 .font(.system(size: 9.5)).foregroundStyle(SparkVTheme.warning)
-                .lineLimit(1)
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .help(text)
         }
     }
 
@@ -140,6 +140,36 @@ struct DJDrawerView: View {
 }
 
 // MARK: - Power
+
+/// Two small icon tabs: presets grid / 10-band EQ.
+struct DJModeToggle: View {
+    @Binding var showsEQ: Bool
+
+    var body: some View {
+        HStack(spacing: 2) {
+            tab("square.grid.3x2.fill", selected: !showsEQ, help: "Presets") { showsEQ = false }
+            tab("slider.vertical.3", selected: showsEQ, help: "10-band EQ") { showsEQ = true }
+        }
+        .padding(2)
+        .background(Capsule().fill(SparkVTheme.surface))
+        .fixedSize()
+    }
+
+    private func tab(_ symbol: String, selected: Bool, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(selected ? Color.black : SparkVTheme.textSecondary)
+                .frame(width: 26, height: 20)
+                .background(Capsule().fill(selected ? DJLayout.neon : Color.clear))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
 
 struct DJPowerButton: View {
     let isOn: Bool
@@ -191,7 +221,7 @@ struct DJPresetChip: View {
                     .minimumScaleFactor(0.8)
             }
             .foregroundStyle(isSelected ? Color.black : SparkVTheme.text.opacity(0.85))
-            .frame(maxWidth: .infinity, minHeight: 41)
+            .frame(maxWidth: .infinity, minHeight: 40)
             .background(
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .fill(isSelected
@@ -500,7 +530,7 @@ struct DJStatsPanel: View {
                 }
                 DJLevelMeter(level: stats.features.isSilent ? 0 : stats.features.level)
                     .frame(height: 6)
-                Text(dj.pump == nil ? "Open with music playing to see the beat" : (stats.features.isSilent ? "Waiting for sound…" : "Live"))
+                Text(dj.pump == nil ? dj.statsIdleText : (stats.features.isSilent ? "Waiting for sound…" : "Live"))
                     .font(.system(size: 8.5))
                     .foregroundStyle(SparkVTheme.textTertiary)
                     .lineLimit(1)

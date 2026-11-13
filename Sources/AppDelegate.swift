@@ -70,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `--meeting-selftest`: 20 s through the meeting recorder and translation
         // (counts only). Launch argument only, like the mic self-test.
         if CommandLine.arguments.contains("--meeting-selftest") { MeetingSelfTest.run() }
+        // `--dj-selftest`: ~20 s of SparkV DJ (levels and counts only).
+        if CommandLine.arguments.contains("--dj-selftest") { DJSelfTest.run() }
     }
 
     /// Opening SparkV again (Finder, Spotlight, Launchpad, the Dock icon

@@ -44,6 +44,7 @@ final class DJController: ObservableObject {
     private var watchdog: Timer?
     private var lastCycles = 0
     private var stalledSeconds = 0
+    private var isCheckingStall = false
     private var rebuildTask: Task<Void, Never>?
     private var rebuildAttempts = 0
     private var outputListener: AudioObjectPropertyListenerBlock?
@@ -315,16 +316,27 @@ final class DJController: ObservableObject {
 
     // MARK: Health
 
-    /// The IO block must run within 2 s; a tap that only delivers zeros
+    /// The IO block must run within 8 s; a tap that only delivers zeros
     /// while System Audio Recording isn't granted means macOS withholds the
     /// audio (everything would be silent): undo at once.
     private func checkHealth(_ route: DJRoute) {
         healthTask?.cancel()
         healthTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(2))
+            // Bluetooth outputs (AirPods waking up) can take several seconds
+            // before the first IO cycle; wait up to 8 s for it.
+            var waited = 0
+            while waited < 32, route.state.cycles.load(ordering: .relaxed) == 0 {
+                try? await Task.sleep(for: .milliseconds(250))
+                waited += 1
+                guard !Task.isCancelled else { return }
+            }
             guard let self, !Task.isCancelled, self.route === route else { return }
-            if route.state.cycles.load(ordering: .relaxed) == 0 {
-                AppLog.log("DJ: route isn’t running; undoing it")
+            // The aggregate's IO idles while no app plays and starts by
+            // itself with the first sound, so no cycles is only a failure
+            // while something is actually playing.
+            if route.state.cycles.load(ordering: .relaxed) == 0, await Self.othersArePlaying(ignoring: self.excludedObjects) {
+                guard self.route === route else { return }
+                AppLog.log("DJ: route isn’t running while audio plays; undoing it")
                 self.isOn = false
                 self.fadeOutAndStop()
                 self.status = .failed("Couldn’t start on this output")
@@ -362,10 +374,28 @@ final class DJController: ObservableObject {
     }
 
     private func watch() {
-        guard let route, isOn else { return }
+        guard let route, isOn, !isCheckingStall else { return }
         let cycles = route.state.cycles.load(ordering: .relaxed)
-        stalledSeconds = cycles == lastCycles ? stalledSeconds + 1 : 0
-        lastCycles = cycles
+        guard cycles == lastCycles else {
+            lastCycles = cycles
+            stalledSeconds = 0
+            if cycles > 200 { rebuildAttempts = 0 }
+            return
+        }
+        // No new cycles: normal while nothing plays (the IO idles). A stall
+        // only counts while some app is sending audio.
+        isCheckingStall = true
+        Task { [weak self] in
+            let playing = await Self.othersArePlaying(ignoring: self?.excludedObjects ?? [])
+            guard let self else { return }
+            self.isCheckingStall = false
+            guard self.route === route, self.isOn else { return }
+            self.stalledSeconds = playing ? self.stalledSeconds + 1 : 0
+            self.handleStall()
+        }
+    }
+
+    private func handleStall() {
         if stalledSeconds >= 3 {
             stalledSeconds = 0
             rebuildAttempts += 1
@@ -377,8 +407,19 @@ final class DJController: ObservableObject {
             } else {
                 scheduleRebuild(after: 0.2, reason: "IO stalled")
             }
-        } else if stalledSeconds == 0, cycles > 200 {
-            rebuildAttempts = 0
+        }
+    }
+
+    /// Another app is sending audio right now (HAL read off the main thread).
+    /// `ignoring`: process objects left out of the tap (App Volumes' apps).
+    nonisolated static func othersArePlaying(ignoring: [AudioObjectID] = []) async -> Bool {
+        let ignored = Set(ignoring)
+        return await withCheckedContinuation { continuation in
+            DJAudio.queue.async {
+                let own = getpid()
+                continuation.resume(returning: AppAudioProcesses.read(excludingPID: own)
+                    .contains { $0.isRunningOutput && !ignored.contains($0.object) })
+            }
         }
     }
 
@@ -482,6 +523,8 @@ final class DJController: ObservableObject {
 
     func pageAppeared() {
         visibleCount += 1
+        // Granted in System Settings since we last asked: clear the notice.
+        if status == .needsPermission, AmbientAudioPermission.preflight() == .granted { status = .off }
         refreshMonitor()
     }
 
@@ -493,7 +536,10 @@ final class DJController: ObservableObject {
     private func refreshMonitor() {
         let wants = visibleCount > 0 && !isOn
         if wants, monitor == nil {
-            guard AmbientAudioPermission.preflight() == .granted else { return }
+            switch AmbientAudioPermission.preflight() {
+            case .granted, .unknown: break
+            case .denied, .notDetermined: return
+            }
             let ring = AmbientSampleRing(capacity: 1 << 16)
             let source = AmbientProcessTapSource(ring: ring)
             monitor = source
@@ -529,6 +575,39 @@ final class DJController: ObservableObject {
     }
 
     // MARK: Helpers
+
+    /// Why the stats are empty (shown under the meter).
+    var statsIdleText: String {
+        switch AmbientAudioPermission.preflight() {
+        case .denied, .notDetermined: "Needs System Audio Recording"
+        default: isOn ? "Starting…" : "Play music to see the beat"
+        }
+    }
+
+    /// macOS gives System Audio Recording to the copy of SparkV that Launch
+    /// Services knows for `com.sparkv.app`. Leftover copies (an iCloud
+    /// "SparkV 2.app") can hold the permission instead of this one.
+    var otherCopyHoldingIdentity: URL? {
+        guard let id = Bundle.main.bundleIdentifier,
+              let registered = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return nil }
+        return registered.standardizedFileURL == Bundle.main.bundleURL.standardizedFileURL ? nil : registered
+    }
+
+    var permissionHelp: String {
+        if let other = otherCopyHoldingIdentity {
+            return "Another copy of SparkV (\(other.path)) is registered for this app, so macOS may give it the permission. Remove that copy, then allow SparkV in System Settings › Privacy & Security › Screen & System Audio Recording."
+        }
+        return "Allow SparkV in System Settings › Privacy & Security › Screen & System Audio Recording › System Audio Recording Only."
+    }
+
+    /// Counters for the self-test: IO cycles, failed renders, peaks since
+    /// the last call. nil while no route runs. Levels only, never audio.
+    func selfTestSnapshot() -> (cycles: Int, failures: Int, output: Float, input: Float)? {
+        guard let route else { return nil }
+        let peaks = route.state.takePeaks()
+        return (route.state.cycles.load(ordering: .relaxed), route.state.renderFailures.load(ordering: .relaxed),
+                peaks.output, peaks.input)
+    }
 
     static func deviceName(_ device: AudioObjectID) -> String {
         guard device != kAudioObjectUnknown else { return "" }
