@@ -8,8 +8,8 @@ final class DownloadsRulesEditorModel: ObservableObject {
 }
 
 /// The rules editor window: watcher settings on top, the rule list on the
-/// left, the selected rule on the right (Hazel's layout: conditions, then
-/// the action), with a live preview against recent downloads.
+/// left, the selected rule on the right (conditions, then the
+/// action), with a live preview against recent downloads.
 @MainActor
 final class DownloadsRulesWindowController: NSObject, NSWindowDelegate {
     static let shared = DownloadsRulesWindowController()

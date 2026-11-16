@@ -1,6 +1,6 @@
 import Foundation
 
-// Pure logic for Script widgets (xbar-style): the saved configuration, the
+// Pure logic for Script widgets: the saved configuration, the
 // rules for intervals and timeouts, output parsing and the ticker presets.
 // Foundation only, so the test harness compiles it on its own.
 
@@ -54,8 +54,8 @@ struct ScriptOutput: Equatable, Sendable {
 
     static let byteLimit = 4096
 
-    /// xbar conventions: the first line is the headline (several lines before
-    /// `---` cycle in xbar; here the rest are body lines), lines after the
+    /// Output conventions: the first line is the headline (the rest before
+    /// `---` are body lines), lines after the
     /// first `---` become menu items, `| key=value` sets parameters. ANSI
     /// escapes are removed and output is capped.
     static func parse(_ raw: String) -> ScriptOutput {

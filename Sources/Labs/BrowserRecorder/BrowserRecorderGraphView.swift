@@ -3,7 +3,6 @@ import SwiftUI
 /// Read-only node graph of a flow: a Manual trigger card followed by one
 /// card per step, joined by curved connectors. Cards are laid out in a
 /// snake (left→right, then right→left) so long flows fit the window width.
-/// Inspired by block editors such as Automa (no code from them is used).
 struct BrowserRecorderGraphView: View {
     let flow: BRFlow
     let statuses: [String: BRStepStatus]

@@ -1,9 +1,8 @@
 import Foundation
 
-/// What the user picked before, for ranking. Two signals, as in Raycast's
-/// root search ("how often you open every element" plus "whether you typed a
-/// previously triggered search term or a prefix of it") and Alfred's
-/// Knowledge:
+/// What the user picked before, for ranking. Two signals (how often
+/// you open every element, and whether you typed a previously triggered
+/// search term or a prefix of it):
 /// - frecency per item: open count weighted by Mozilla's Places recency
 ///   buckets (4 days 100, 14 days 70, 31 days 50, 90 days 30, older 10),
 /// - query memory: the item chosen for a query gets a strong boost when the
@@ -91,7 +90,7 @@ struct UniversalSearchKnowledge: Codable, Sendable, Equatable {
                 let w = Self.recencyWeight(p.last, now: now) / 100
                 best = max(best, exact * w * min(1, 0.7 + Double(p.count) * 0.3))
             }
-            // Alfred/Raycast: what you picked for this query comes first
+            // What you picked for this query comes first
             // next time, even over a better text match.
             b += 120 * best
         }

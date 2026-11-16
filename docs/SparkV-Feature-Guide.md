@@ -126,7 +126,7 @@ Hotkeys that watch modifier keys (dictation, Clicky, ⌘+number+V, ⌘⇧V) need
 
 **Permissions:** none.
 
-**Status:** Verified headless. All 21 drawer pages render inside the real `NotchNookLayoutView` with the header.
+**Status:** Verified headless. All 21 drawer pages render inside the real `IslandLayoutView` with the header.
 
 ---
 
@@ -223,7 +223,7 @@ Hotkeys that watch modifier keys (dictation, Clicky, ⌘+number+V, ⌘⇧V) need
 
 **How to use:** drop a PDF, image, document, spreadsheet or slides, then click a format: Word, JPG, PNG, TXT, Compress, Split, Extract, Remove pages, Rotate, page Numbers, Watermark, Protect, Unlock, Repair, OCR, Merge (several PDFs), Images to PDF, Resize. Results appear in the box underneath, ready to drag anywhere or add to the Tray. The sliders button holds options (quality, page ranges, password).
 
-**Who it is for:** students, office workers, anyone who uses iLovePDF-style tools; works offline.
+**Who it is for:** students, office workers, anyone who uses online PDF tools; works offline.
 
 **Permissions:** none.
 
@@ -334,7 +334,7 @@ It works in **any app and on any screen**, not only in a browser. It points and 
 - **Screen Distance**, **Spaces** (Open, Save Current Web Page, Save Selected Mail, Quick Capture), **Quick Capture**, **Search**, **File Drop** settings.
 - **Permissions & Setup**, **Set Up Face Unlock… / Face Unlock Settings…**, **Launch at Login**, **Quit SparkV**.
 
-**Status:** Verified headless (wiring read from `NotchNookLayoutView.swift`; not rendered).
+**Status:** Verified headless (wiring read from `IslandLayoutView.swift`; not rendered).
 
 ---
 
@@ -727,7 +727,7 @@ Checks run on Oct 22, 2026 against the current sources (snapshot taken 07:04).
 | Check | Result |
 | --- | --- |
 | Full app (all `Sources/*.swift` plus the 22 `Sources/Labs/*` folders listed in `build.sh`) compiles with the Command Line Tools | Pass, no errors |
-| Every drawer tab, hub tile, header icon and default hotkey is wired (read from `NotchNookLayoutView`, `AgentsHubView`, `NotchWindowController`) | Pass |
+| Every drawer tab, hub tile, header icon and default hotkey is wired (read from `IslandLayoutView`, `AgentsHubView`, `NotchWindowController`) | Pass |
 | Offscreen renders of 50 views with sample data | 50 written, all reviewed |
 | UI Audit runner self-test (`Vendor/ui-audit/test/run-test.mjs`) | 48/48 pass |
 | UI Audit end to end through SparkV's controller, plus the P fix prompt | Pass (6 pages, 69 findings, 51,666-char prompt) |

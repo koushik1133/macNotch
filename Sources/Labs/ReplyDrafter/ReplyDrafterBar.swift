@@ -8,7 +8,7 @@ enum ReplyBarMetrics {
 }
 
 /// A floating bar that never takes focus: clicks on it leave the other app
-/// (and its message box) active, the way Grammarly's floating button works,
+/// (and its message box) active, as a floating writing button should,
 /// so pasting and ⌘Z go to the right field.
 final class ReplyBarPanel: NSPanel {
     init(size: CGSize) {

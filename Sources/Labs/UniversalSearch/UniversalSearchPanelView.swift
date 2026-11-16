@@ -15,7 +15,7 @@ enum UniversalSearchPalette {
     static var ask: Color { SparkVTheme.accent }
 }
 
-/// The floating search panel (Raycast/Spotlight layout): field, source and
+/// The floating search panel (launcher layout): field, source and
 /// date filters, grouped results or the Ask answer, and an action bar.
 struct UniversalSearchPanelView: View {
     @ObservedObject var controller: UniversalSearchController
@@ -375,7 +375,7 @@ struct UniversalSearchRow: View {
     }
 }
 
-/// Text with matched characters brighter and bolder (Raycast/Alfred style).
+/// Text with matched characters brighter and bolder.
 struct UniversalSearchHighlightedText: View {
     let text: String
     let positions: [Int]

@@ -515,7 +515,7 @@ enum CPShades {
         return result
     }
 
-    /// Tailwind-style steps.
+    /// The usual 50–950 steps.
     static let scaleSteps = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
     /// Target OKLCH lightness per step (close to Tailwind v4's palette).
     static let scaleLightness: [Double] = [0.975, 0.94, 0.885, 0.81, 0.715, 0.63, 0.55, 0.48, 0.41, 0.36, 0.27]

@@ -230,7 +230,7 @@ Stop, in `tearDown()`. Change `        meetingAssistant.shutdown()` to:
         meetingAssistant.shutdown()
 ```
 
-## 7. NotchNookLayoutView.swift: gear menu (A and B)
+## 7. IslandLayoutView.swift: gear menu (A and B)
 
 In the struct that already declares
 `    @EnvironmentObject private var liveTranslation: LiveTranslationController`, add

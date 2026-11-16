@@ -4,7 +4,7 @@ import ApplicationServices
 import Combine
 import Speech
 
-/// Wispr Flow-style dictation: hold the hotkey and talk, release to type the
+/// Hold-to-talk dictation: hold the hotkey and talk, release to type the
 /// cleaned-up text into the focused app.
 ///
 /// - Hold the hotkey (fn / Globe by default) to talk; releasing it finishes.

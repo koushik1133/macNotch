@@ -353,7 +353,7 @@ final class ClipboardController: ObservableObject {
     }
 
     /// Copies `item` with every representation, then pastes it into the
-    /// frontmost app with ⌘V (as Maccy does), so rich text, images and files
+    /// frontmost app with ⌘V, so rich text, images and files
     /// paste as themselves. Without Accessibility the item is left on the
     /// clipboard with a hint.
     /// `target`: the app to paste into (the stack panel's). `keepCommand`:
@@ -428,7 +428,7 @@ final class ClipboardController: ObservableObject {
         publishAndSave()
     }
 
-    /// Menu "Clear History": asks first, as Maccy and Raycast do.
+    /// Menu "Clear History": asks first.
     func confirmAndClear(includingPinned: Bool = false) {
         let count = includingPinned ? history.items.count : history.unpinned.count
         guard count > 0 else { return }
@@ -607,7 +607,7 @@ final class ClipboardController: ObservableObject {
 
     private func beginPolling(readNow: Bool) {
         pollTask?.cancel()
-        // Like Maccy: what was on the clipboard before launch isn't recorded,
+        // What was on the clipboard before launch isn't recorded,
         // unless the user just turned history on.
         lastChangeCount = readNow ? -1 : pasteboard.changeCount
         status = isPaused ? .paused : .running
@@ -789,7 +789,7 @@ final class ClipboardController: ObservableObject {
     }
 
     /// Reads the text in a copied image on this Mac (Vision) so the search
-    /// field finds screenshots by their words, as Raycast does. Runs beside
+    /// field finds screenshots by their words. Runs beside
     /// the ingest queue, so a slow recognition never delays later copies.
     private func recognizeText(in item: ClipboardItem) {
         guard let url = store.imageFileURL(for: item) else { return }

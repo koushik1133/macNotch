@@ -8,7 +8,7 @@ Code lives in files this package owns (`Sources/TrayView.swift`,
 `Sources/Labs/Downloads/`) and in the new lab `Sources/Labs/ShelfPlus/`.
 Everything below goes into files the package does not own. Apply the steps
 in order (1, 1b, 2 … 12); every **Find** block occurs exactly once (checked against the
-repo's current `NotchWindowController.swift` and `NotchNookLayoutView.swift`
+repo's current `NotchWindowController.swift` and `IslandLayoutView.swift`
 as well as the starting snapshot).
 
 No new global hotkeys. The Tray's keys (Space, ← →, ⌘A, Delete, ⌘Z,
@@ -118,7 +118,7 @@ Replace with:
 Links, tabs and text no longer flip the drawer to the Tray; promised files
 (Mail attachments, Photos, Affinity, WeChat) land as real files.
 
-File: Sources/NotchNookLayoutView.swift
+File: Sources/IslandLayoutView.swift
 
 Find:
 ```
@@ -152,7 +152,7 @@ Replace with:
 
 ### Step 4: gear menu
 
-File: Sources/NotchNookLayoutView.swift
+File: Sources/IslandLayoutView.swift
 
 Find:
 ```

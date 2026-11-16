@@ -226,30 +226,30 @@ All screenshot paths below are relative to `docs/screenshots/`.
 
 | Job | Typical app | Its price | In SparkV |
 | --- | --- | --- | --- |
-| Notch hub | NotchNook | $25 one-time (or $3/mo) | Free plan |
-| Notch island | Alcove | about $13.99 one-time | Free plan |
-| Launcher with AI | Raycast Pro | $8/mo billed yearly ($10 monthly) | Pro: ⌥Space Universal Search + agents |
-| AI dictation | Wispr Flow | $15/mo ($144/yr) | Pro: AI dictation |
-| AI meeting notes | Granola Business | $14/user/mo | Pro: Meetings |
-| Clipboard manager | Paste | $29.99/yr | Pro: unlimited history + Paste Stack |
-| Screenshots and recording | CleanShot X | $29 one-time, then $19/yr updates (optional) | Pro: Copy Text, Quick Capture, Screen Recorder |
+| Notch hub | Notch hub app | $25 one-time (or $3/mo) | Free plan |
+| Notch island | Notch island app | about $13.99 one-time | Free plan |
+| Launcher with AI | AI launcher | $8/mo billed yearly ($10 monthly) | Pro: ⌥Space Universal Search + agents |
+| AI dictation | Dictation app | $15/mo ($144/yr) | Pro: AI dictation |
+| AI meeting notes | Meeting-notes app | $14/user/mo | Pro: Meetings |
+| Clipboard manager | Clipboard app | $29.99/yr | Pro: unlimited history + Paste Stack |
+| Screenshots and recording | Screenshot app | $29 one-time, then $19/yr updates (optional) | Pro: Copy Text, Quick Capture, Screen Recorder |
 | **All of the above** | **SparkV Pro** | **$39 one-time (launch $29)** | |
 
 - **Right column chart ("revenue chart", buyer-side spend): clustered bar, USD**
 
 | Item | Year 1 | Year 2 | Source |
 | --- | --- | --- | --- |
-| NotchNook | 25.00 | 0.00 | iMore, Lowyat (business plan §3) |
-| Raycast Pro (yearly) | 96.00 | 96.00 | Raycast blog, tech-insider |
-| Wispr Flow (yearly) | 144.00 | 144.00 | getvoibe, spokenly |
-| Granola Business | 168.00 | 168.00 | granola.ai |
-| Paste (yearly) | 29.99 | 29.99 | App Store |
-| CleanShot X | 29.00 | 19.00 | toolradar, TrustRadius |
+| Notch hub app | 25.00 | 0.00 | public list price (business plan §3) |
+| AI launcher (yearly) | 96.00 | 96.00 | public list price |
+| Dictation app (yearly) | 144.00 | 144.00 | public list price |
+| Meeting-notes app | 168.00 | 168.00 | public list price |
+| Clipboard app (yearly) | 29.99 | 29.99 | public list price |
+| Screenshot app | 29.00 | 19.00 | public list price |
 | **Separate apps total** | **491.99** | **456.99** | sum |
 | **SparkV Pro** | **39.00** | **0.00 (optional 19.00 renewal)** | business plan §6a |
 
-  Chart shows two bars per year: "Separate apps" (stacked by product, neutral tones) vs "SparkV Pro" (accent). Alcove is excluded from the sum (same job as NotchNook).
-- **Speaker notes:** "Here is the honest maths. These are the public prices of popular single-purpose apps that do jobs SparkV also does. Bought separately, the first year is about four hundred and ninety-two dollars, and most of it repeats every year. SparkV Pro is thirty-nine dollars once, twenty-nine during launch week. These apps have features we don't have, and we don't claim otherwise; the point is the jobs most people actually use them for." (Legal review required before naming competitors. Re-check every price on vendor sites on publish day.)
+  Chart shows two bars per year: "Separate apps" (stacked by product, neutral tones) vs "SparkV Pro" (accent). The notch island app is excluded from the sum (same job as the notch hub app).
+- **Speaker notes:** "Here is the honest maths. These are the public prices of popular single-purpose apps that do jobs SparkV also does. Bought separately, the first year is about four hundred and ninety-two dollars, and most of it repeats every year. SparkV Pro is thirty-nine dollars once, twenty-nine during launch week. These apps have features we don't have, and we don't claim otherwise; the point is the jobs most people actually use them for." (Re-check every price on vendor sites on publish day.)
 
 ### Slide 14: Made for the Mac you already have
 

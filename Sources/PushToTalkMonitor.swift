@@ -34,7 +34,7 @@ final class PushToTalkMonitor {
     enum Event: Sendable, Equatable {
         case pressed
         case released
-        /// Space pressed while the hotkey is held (Wispr's hands-free chord).
+        /// Space pressed while the hotkey is held (the hands-free chord).
         case space
         /// Esc pressed while dictation is active (the key was swallowed).
         case escape

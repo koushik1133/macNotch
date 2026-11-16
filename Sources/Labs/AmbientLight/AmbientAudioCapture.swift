@@ -532,7 +532,7 @@ final class AmbientOutputActivityMonitor {
 /// macOS's "System Audio Recording" (TCC service kTCCServiceAudioCapture)
 /// has no public status API. `rawPreflight` / `rawRequest` use the TCC
 /// framework's preflight / request functions when they're present (looked up
-/// at run time, as AudioCap does) and report `.unknown` otherwise; then the
+/// at run time) and report `.unknown` otherwise; then the
 /// first `AudioDeviceStart` of a tap is the prompt.
 ///
 /// Ambient Light calls only `preflight()` (never prompts) and, from the

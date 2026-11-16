@@ -163,11 +163,11 @@ ColorPicker and Planner rewrite the whole `tallTabs` line. Don't replace it: **a
     static let tallTabs: Set<NotchState.Tab> = [.tray, .converter, .clipboard, .search, .downloads, .widgets, .replyDrafter, .fans, .status]
 ```
 
-## 3. Sources/NotchNookLayoutView.swift
+## 3. Sources/IslandLayoutView.swift
 
 ### 3a. The page
 
-File: `Sources/NotchNookLayoutView.swift`
+File: `Sources/IslandLayoutView.swift`
 
 Find:
 
@@ -183,7 +183,7 @@ Insert after:
 
 ### 3b. Live Activities menu
 
-File: `Sources/NotchNookLayoutView.swift`
+File: `Sources/IslandLayoutView.swift`
 
 Find:
 
@@ -200,7 +200,7 @@ Insert after:
 
 ### 3c. Keep Awake, Microphone and Quick Toggles menus
 
-File: `Sources/NotchNookLayoutView.swift`
+File: `Sources/IslandLayoutView.swift`
 
 Find:
 

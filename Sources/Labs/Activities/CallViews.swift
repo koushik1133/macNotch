@@ -170,7 +170,7 @@ struct OngoingCallBand: View {
 }
 
 /// A ringing call: who (or just the app), then Decline and Accept, the
-/// way the iPhone's Dynamic Island shows it.
+/// way a compact live call status shows it.
 struct IncomingCallBand: View {
     @ObservedObject private var energy = SparkVEnergy.shared
     let caller: String?

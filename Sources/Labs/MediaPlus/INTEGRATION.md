@@ -130,9 +130,9 @@ this code:
         MediaPlus.stop()
 ```
 
-### 5. NotchNookLayoutView.swift: Home's media slot (idle Home)
+### 5. IslandLayoutView.swift: Home's media slot (idle Home)
 
-File: `Sources/NotchNookLayoutView.swift`. **Replace** this anchor (it occurs once):
+File: `Sources/IslandLayoutView.swift`. **Replace** this anchor (it occurs once):
 
 ```swift
             MediaColumnV2()
@@ -148,9 +148,9 @@ with:
 
 `HomeMediaSlot` shows `MediaColumnV2` while something plays and the idle column otherwise.
 
-### 6. NotchNookLayoutView.swift: progress line under the closed island
+### 6. IslandLayoutView.swift: progress line under the closed island
 
-File: `Sources/NotchNookLayoutView.swift`. Insert directly **after** this anchor (it occurs once):
+File: `Sources/IslandLayoutView.swift`. Insert directly **after** this anchor (it occurs once):
 
 ```swift
                 ClosedIslandContent(layout: closed, restingHeight: state.collapsedSize.height, source: wingsSource)
@@ -170,9 +170,9 @@ this code:
             }
 ```
 
-### 7. NotchNookLayoutView.swift: gear menu › Media
+### 7. IslandLayoutView.swift: gear menu › Media
 
-File: `Sources/NotchNookLayoutView.swift`. Insert directly **before** this anchor (it occurs once):
+File: `Sources/IslandLayoutView.swift`. Insert directly **before** this anchor (it occurs once):
 
 ```swift
             Menu("Downloads") {

@@ -414,7 +414,7 @@ final class HUDController: ObservableObject {
         }
         // An output switch has a name to read: always the band.
         guard allowsCompact else { return band }
-        // Inline OSD beside the camera housing (boring.notch style): the
+        // Inline OSD beside the camera housing: the
         // level never covers what is under the menu bar. The band style keeps
         // the same wings for when dictation or Clicky holds the band.
         let compact = band.compact {

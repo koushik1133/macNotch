@@ -174,7 +174,7 @@ enum ReplyAXReader {
 
 /// The message box (or Subject) of another app.
 ///
-/// Write order, like assistive apps and Grammarly: select the range through
+/// Write order, like assistive apps: select the range through
 /// `AXSelectedTextRange` and set `AXSelectedText` (native fields), verified
 /// by reading the value back because browsers and Electron often report
 /// success without changing anything; otherwise paste over the selection with

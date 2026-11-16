@@ -3,25 +3,25 @@
 Drop one or more files near the notch, pick an action, drag the result
 anywhere.
 
-## What we copied, and from whom
+## Proven ideas we follow
 
-| Product | Proven idea we replicate | How it shows up here |
+| Idea | What it means | How it shows up here |
 |---|---|---|
-| **Dropover** | A temporary shelf; "Instant Actions" you drop straight onto so the task runs with no extra clicks; files are kept by reference, never copied or moved; results drag out with Finder's copy semantics; "drop to notch" on notched MacBooks. | The shelf's Compress / To Space / AirDrop buckets run on drop; the strip holds file URLs only; drags out are copies (`TrayDragSource`, `.copy` outside the app). |
-| **Yoink** | The drop target exists only while you're dragging, then gets out of the way. | `FileDropDragWatcher` shows the shelf only during a file drag near the notch and hides it when the drag ends or moves away. |
-| **NotchNook / NotchDrop** | The notch grows a drop zone as a drag approaches; a separate AirDrop target beside the shelf. | Black shelf directly under the notch with an AirDrop bucket; dragging on into the notch keeps SparkV's existing Tray behaviour. |
-| **Finder › Compress** | `ditto -c -k --keepParent`, "Name.ext.zip" for one item, "Archive.zip" for several. | `FileDropOps.zip`. We add `--norsrc --noextattr --noqtn --noacl` (Keka/BetterZip's "exclude Mac resource forks") so zips have no `__MACOSX` folder. |
-| **ImageOptim / Squoosh-style lossy re-encode** | Re-encode at ~0.7 quality, cap the long side, drop metadata, keep the copy only if it's smaller; keep PNG only when it has real transparency. | `FileDropOps.compressImage` (JPEG/HEIC same format, opaque PNG/TIFF/BMP/WebP → JPEG, transparent PNG stays PNG, 3072 px cap, GPS/EXIF dropped). |
-| **AI renamers (Hazel rules + LLM, e.g. NameQuick/Renamer.ai)** | Read the content (OCR for images, the text layer for PDFs), ask a model for a 2–7 word name with the key facts first and ISO dates, preview it in an editable field, undo. | `FileDropNamer` + the rename row; on-device FoundationModels only. |
+| **Drop-to-act shelf** | A temporary shelf; instant actions you drop straight onto so the task runs with no extra clicks; files are kept by reference, never copied or moved; results drag out with Finder's copy semantics; a drop target at the notch on notched MacBooks. | The shelf's Compress / To Space / AirDrop buckets run on drop; the strip holds file URLs only; drags out are copies (`TrayDragSource`, `.copy` outside the app). |
+| **Drag-only drop target** | The drop target exists only while you're dragging, then gets out of the way. | `FileDropDragWatcher` shows the shelf only during a file drag near the notch and hides it when the drag ends or moves away. |
+| **Notch drop zone** | The notch grows a drop zone as a drag approaches; a separate AirDrop target beside the shelf. | Black shelf directly under the notch with an AirDrop bucket; dragging on into the notch keeps SparkV's existing Tray behaviour. |
+| **Finder › Compress** | `ditto -c -k --keepParent`, "Name.ext.zip" for one item, "Archive.zip" for several. | `FileDropOps.zip`. We add `--norsrc --noextattr --noqtn --noacl` (excluding Mac resource forks) so zips have no `__MACOSX` folder. |
+| **Lossy image re-encode** | Re-encode at ~0.7 quality, cap the long side, drop metadata, keep the copy only if it's smaller; keep PNG only when it has real transparency. | `FileDropOps.compressImage` (JPEG/HEIC same format, opaque PNG/TIFF/BMP/WebP → JPEG, transparent PNG stays PNG, 3072 px cap, GPS/EXIF dropped). |
+| **AI file naming** | Read the content (OCR for images, the text layer for PDFs), ask a model for a 2–7 word name with the key facts first and ISO dates, preview it in an editable field, undo. | `FileDropNamer` + the rename row; on-device FoundationModels only. |
 
-Drag detection is the standard notch-shelf technique (also used by
-boring.notch and NotchDrop): remember `NSPasteboard(name: .drag).changeCount`
+Drag detection is the standard notch-shelf technique: remember
+`NSPasteboard(name: .drag).changeCount`
 on mouse-down, and on mouse-dragged treat a changed count whose declared
 types include file URLs, file promises or image data as a file drag. Only the
 pasteboard's *types* are read, never its contents. Global monitors only, so a
 drag that starts inside SparkV (out of the Tray or the strip) never opens the
-shelf. Nothing was vendored: NotchDrop (MIT) was read for the approach; no code
-was copied, so no third-party license is bundled.
+shelf. Nothing was vendored and no code was copied, so no third-party license
+is bundled.
 
 ## Pieces
 
@@ -75,9 +75,9 @@ was copied, so no third-party license is bundled.
 
 ## Dragging out (round 3)
 
-Modelled on Dropover (drag the whole stack, Cmd-click to pick some, Shift
-while dragging keeps the shelf open, click the stack to see each file) and
-Yoink (stacks drag out together; files go out as Finder does).
+The usual shelf gestures: drag the whole stack, Cmd-click to pick some, Shift
+while dragging keeps the shelf open, click the stack to see each file; stacks
+drag out together and files go out as Finder does.
 
 - Every item leaves as a real `public.file-url` (NSURL), never a copy of its
   bytes and never a file promise: Finder, Mail, Messages, Slack and other

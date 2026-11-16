@@ -167,7 +167,7 @@ struct IslandMenuBarSettingsSection: View {
             }
             Toggle(isOn: $settings.stepAsideForMenuBarManagers) {
                 Text("Step aside for menu bar managers")
-                Text("When Ice, Bartender, Hidden Bar or a similar app shows its bar over the island, the island fades out until the bar goes.")
+                Text("When a menu bar manager shows its bar over the island, the island fades out until the bar goes.")
             }
             if let names = box.controller?.runningManagerNames, !names.isEmpty {
                 IslandStatusLine(text: "Running now: \(names.joined(separator: ", ")).", symbol: "menubar.rectangle")

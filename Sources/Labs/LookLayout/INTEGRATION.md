@@ -219,11 +219,11 @@ Replace with:
                                         header: collapsedSize.height, bottomInset: drawerBottomPadding)
 ```
 
-## 3. NotchNookLayoutView.swift
+## 3. IslandLayoutView.swift
 
 ### 3a. Drawer material (black or Liquid Glass)
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -239,7 +239,7 @@ Replace with:
 
 ### 3b. Album Glow pauses with Decorative Glows off, Reduce Transparency or higher contrast
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -250,7 +250,7 @@ Replace with:
             if themeSettings.effectiveBackground == .albumGlow, state.isExpanded, state.tab == .nook {
 ```
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -263,7 +263,7 @@ Replace with:
 
 ### 3c. Text Size: the drawer's content zooms
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -292,7 +292,7 @@ Replace with:
 
 ### 3d. Resting opacity (displays without a notch only)
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -311,7 +311,7 @@ Replace with:
 They sit behind the body and would show through the glass (and make it
 re-blur every frame). `NotchThemeBackdrop` already steps aside by itself.
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -329,7 +329,7 @@ Replace with:
 Switching the Agents hub's category (All, Write, …) changes the hub's rows;
 the drawer follows with the island's own spring while the grid crossfades.
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -342,7 +342,7 @@ Replace with:
     @ObservedObject private var layout = LayoutSettings.shared
 ```
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -356,7 +356,7 @@ Replace with:
 
 ### 3e. Header: controls, order and pins from Customize Layout
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -371,7 +371,7 @@ Replace with:
     @ObservedObject private var headerLayout = LayoutSettings.shared
 ```
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -391,7 +391,7 @@ Find:
             RecordMeetingButton()
             IconTab(systemImage: "square.grid.2x2.fill", tab: .agents, help: "Agents: search, focus, capture, reply, screen, prompts, clipboard, files, downloads and more",
                     activeFor: NotchState.Tab.agentTabs, pill: pill)
-            // Original SF Symbols, not the Wispr Flow or Clicky logos.
+            // Original SF Symbols.
             IconTab(systemImage: "waveform", tab: .flow, help: "Flow: dictation history and notes", pill: pill)
             IconTab(systemImage: "cursorarrow.rays", tab: .clicky, help: "Clicky: ask about your screen", pill: pill)
             SettingsMenu()
@@ -415,7 +415,7 @@ Replace with:
         }
 ```
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -442,7 +442,7 @@ Replace with:
             IconTab(systemImage: "square.grid.2x2.fill", tab: .agents, help: HeaderCatalog.info(id)?.help ?? "Agents",
                     activeFor: HubCatalog.agentsActiveTabs(pins: headerLayout.header.pins), pill: pill)
         default:
-            // Original SF Symbols, not the Wispr Flow or Clicky logos.
+            // Original SF Symbols.
             if let tab = HeaderTabs.tab(for: id), let item = HeaderCatalog.info(id) {
                 IconTab(systemImage: item.systemImage, tab: tab, help: item.help, pill: pill)
             } else {
@@ -458,7 +458,7 @@ Replace with:
 The column follows Show Empty Shortcut Buttons live, and right-click on it
 always offers Add Shortcut (also when every empty button is hidden).
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -505,7 +505,7 @@ private struct MacroColumn: View {
 }
 ```
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -548,7 +548,7 @@ Replace with:
 
 ### 3g. Gear menu: Appearance and Layout submenus
 
-### File: `Sources/NotchNookLayoutView.swift`
+### File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Script widgets: shell commands you add yourself, run with /bin/zsh -lc,
-/// their output shown as text (xbar conventions). A command runs only after
+/// their output shown as text. A command runs only after
 /// you saw it and chose Run; it runs while its widget is on screen, at most
 /// once per interval (60 s floor), with a timeout (30 s ceiling). A script you
 /// pin to the island wings also refreshes while the drawer is closed, still

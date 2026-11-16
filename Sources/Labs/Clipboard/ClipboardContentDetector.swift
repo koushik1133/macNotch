@@ -4,8 +4,8 @@ import Foundation
 // (a link, an email address, a phone number, a colour, a file path, code),
 // so the stack panel, the Clipboard tab and the C menu can offer the one
 // action that fits ("Open", "Compose", "Call via FaceTime", a swatch,
-// "Reveal in Finder", monospaced text). Raycast and Paste do the same with
-// colours and links; detection follows Apple's NSDataDetector for links and
+// "Reveal in Finder", monospaced text), colours and links included;
+// detection follows Apple's NSDataDetector for links and
 // phone numbers plus plain regexes. Pure: no AppKit, no UI, unit-tested by
 // the harness in the scratch folder.
 

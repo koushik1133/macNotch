@@ -8,19 +8,19 @@ is written as exact code in `INTEGRATION.md`.
 
 ---
 
-## 1. What the best tools do (research, Oct 2026)
+## 1. What good meeting tools do (research, Oct 2026)
 
-| Tool | Features worth learning from | What SparkV takes |
+| Pattern | Features worth learning from | What SparkV takes |
 |---|---|---|
-| **Granola** | No bot: captures device audio. You type rough notes and the AI rewrites them around the transcript. Templates/"recipes", chat over meetings, team folders. | Already have the notepad (`MeetingRecord.userNotes`). Take: **the call is detected, not scheduled**. Take: **past meetings as context**. |
-| **Otter** | Live transcript, live action items and highlights during the call, AI chat, auto-shared summary after the call. | Take: **live action-item flagging**. Leave out: sharing automatically (SparkV never sends). |
-| **Fathom** | Bookmark/highlight a moment during the call with one click, then share a clip. Instant summary when the call ends. | Take: **bookmark this moment** (no video, a timestamp + note). |
-| **tl;dv** | Timestamps tied to notes, multi-language, free recordings. | Take: **every flag jumps to its timestamp** in the transcript. |
-| **Fireflies** | Talk-time tracking, topic tracking, sentiment, follow-up summaries, CRM push. | Take: **talk-time stats** after the call. Leave out: sentiment, CRM push. |
-| **Read AI** | Speaker coach: talking too fast, interruptions, filler words, baselines over past meetings. | Take: **one gentle live nudge** (long monologue), not a scorecard. |
-| **Jamie** | Bot-free, audio dropped once the transcript exists, decisions and speakers found, Ask AI. | Take: **decisions as their own flag**; privacy wording ("on this Mac"). |
-| **Krisp** | Noise cancelling plus notes; an optional bot. | Confirms that bot-free, local capture is what people expect on a Mac. |
-| **Google Meet (Gemini)** | "Take notes for me" with **suggested next steps** you can edit and assign; translated captions. | Take: **next steps reviewed before they become tasks** (Reminders only on approval). |
+| **Bot-free notepads** | No bot: captures device audio. You type rough notes and the AI rewrites them around the transcript. Templates, chat over meetings, team folders. | Already have the notepad (`MeetingRecord.userNotes`). Take: **the call is detected, not scheduled**. Take: **past meetings as context**. |
+| **Live transcribers** | Live transcript, live action items and highlights during the call, AI chat, auto-shared summary after the call. | Take: **live action-item flagging**. Leave out: sharing automatically (SparkV never sends). |
+| **One-click highlights** | Bookmark/highlight a moment during the call with one click, then share a clip. Instant summary when the call ends. | Take: **bookmark this moment** (no video, a timestamp + note). |
+| **Timestamped notes** | Timestamps tied to notes, multi-language, free recordings. | Take: **every flag jumps to its timestamp** in the transcript. |
+| **Conversation analytics** | Talk-time tracking, topic tracking, sentiment, follow-up summaries, CRM push. | Take: **talk-time stats** after the call. Leave out: sentiment, CRM push. |
+| **Speaker coaching** | Talking too fast, interruptions, filler words, baselines over past meetings. | Take: **one gentle live nudge** (long monologue), not a scorecard. |
+| **Privacy-first notetakers** | Bot-free, audio dropped once the transcript exists, decisions and speakers found, Ask AI. | Take: **decisions as their own flag**; privacy wording ("on this Mac"). |
+| **Noise cancelling with notes** | Noise cancelling plus notes; an optional bot. | Confirms that bot-free, local capture is what people expect on a Mac. |
+| **Built-in call notes** | "Take notes for me" with **suggested next steps** you can edit and assign; translated captions. | Take: **next steps reviewed before they become tasks** (Reminders only on approval). |
 | **Apple (macOS 26)** | Live Translation captions in FaceTime; Phone/FaceTime audio call recording with an Apple Intelligence summary in Notes; recording tells the other side. | Take: **consent built in** (a reminder every time recording starts) and on-device translation (already in the LiveTranslation lab). |
 
 Common thread across the best ones: (1) notice the call on its own, (2) one tap to

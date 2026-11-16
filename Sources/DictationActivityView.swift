@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Expanded live activity: the band that grows out of the notch while the
-/// drawer is closed, the way the Dynamic Island expands. Dictation while you
+/// drawer is closed, expanding in place. Dictation while you
 /// talk, otherwise Clicky while it listens, thinks or answers, otherwise the
 /// `ActivityCenter` activity that currently owns the band. Dictation wins
 /// when both are busy, which only happens briefly since they share the
@@ -822,7 +822,7 @@ private struct Waveform: View {
 // MARK: - Compact building blocks for feature activities
 
 /// Thin level bar for a compact trailing view (volume, brightness, battery),
-/// like boring.notch's inline OSD.
+/// like an inline OSD.
 struct CompactLevelBar: View {
     let level: Double
     var tint: Color = SparkVTheme.choose(apple: Color.white, sparkv: SparkVTheme.red)

@@ -1,7 +1,7 @@
 import Foundation
 
-/// Resume ↔ JD fit, Jobscan-style priorities (hard skills weigh most, then
-/// experience, keywords, education, title) with a Jobright-style breakdown.
+/// Resume ↔ JD fit with weighted priorities (hard skills weigh most, then
+/// experience, keywords, education, title) and a per-part breakdown.
 /// Components without data are left out and the remaining weights
 /// renormalised, and the explanation says what could not be checked.
 enum JobFitScorer {

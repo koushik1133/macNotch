@@ -14,7 +14,7 @@ The folder also contains `INTEGRATION.md`, but `*.swift` skips it. There are no 
 
 ## 2. Header icon in the notch
 
-In `NotchNookLayoutView.swift`, add the button to the header icon row (around the `IconTab(...)` list, for example after the Spaces tab):
+In `IslandLayoutView.swift`, add the button to the header icon row (around the `IconTab(...)` list, for example after the Spaces tab):
 
 ```swift
 FlowCanvasNotchButton(help: "Flow Canvas: turn anything into a workflow")
@@ -71,7 +71,7 @@ Flow Canvas has its own opt-in, separate from Tray AI and Meetings. It is stored
 - the keychain is never read (`ClickyKeychain.hasKey()` and `load()` are not called);
 - all AI runs on this Mac: Apple Intelligence through FoundationModels, Vision OCR, Apple Translation, or the built-in rules.
 
-The window already has the toggle, in the "On this Mac" engine menu at the top right. To also show it in the notch gear menu (`NotchNookLayoutView.swift`, next to "Allow Meeting Notes to Use My Groq Key"):
+The window already has the toggle, in the "On this Mac" engine menu at the top right. To also show it in the notch gear menu (`IslandLayoutView.swift`, next to "Allow Meeting Notes to Use My Groq Key"):
 
 ```swift
 Toggle("Allow Flow Canvas to Use My Groq Key", isOn: $flowCanvasSettings.allowsGroq)

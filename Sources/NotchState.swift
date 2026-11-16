@@ -162,7 +162,7 @@ final class NotchState: ObservableObject {
         case clicky
         /// Upcoming meetings and the timer.
         case today
-        /// iLovePDF-style file converter.
+        /// On-device PDF and file converter.
         case converter
         /// Knowledge Spaces: organization folders with their own agents.
         case spaces
@@ -269,7 +269,7 @@ final class NotchState: ObservableObject {
 }
 
 /// How the island is drawn on the display it is on (Labs/IslandPlacement
-/// decides; NotchNookLayoutView draws it).
+/// decides; IslandLayoutView draws it).
 struct IslandSurface: Equatable {
     enum Shape: Equatable {
         /// glance-style silhouette flaring into the top edge.

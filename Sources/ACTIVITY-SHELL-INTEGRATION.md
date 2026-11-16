@@ -1,13 +1,13 @@
 # Live activity shell: compact wings, alert queue, tab crossfade
 
 Owner files: `LiveActivity.swift`, `DictationActivityView.swift`,
-`NotchNookLayoutView.swift` (root struct only), `NotchState.swift`
+`IslandLayoutView.swift` (root struct only), `NotchState.swift`
 (`NotchMetrics`), `NotchWindowController.swift` (hot zone, tab resize),
 `IslandShape.swift` (`IslandClosedLayout`).
 
 ## What changed
 
-The closed island now works like the Dynamic Island:
+The closed island now has compact and expanded forms:
 
 - **Compact (default)**: the island grows *sideways* inside the menu-bar
   height. Leading view left of the camera housing, trailing view right of it.
@@ -77,7 +77,7 @@ meetings: no `urgent` at "Now" (the join window lasts 6 min, so an urgent band
 would cover the page for that long, which is the original complaint); instead
 `if isNow, !joined { activities.peek(id: id, for: 10) }` after posting.
 
-**HUDController** (`postVolume`, `postBrightness`) — boring.notch inline OSD,
+**HUDController** (`postVolume`, `postBrightness`) — inline OSD,
 never covers content:
 ```swift
 activities.post(LiveActivity(id: Self.volumeActivityID, kind: .volume, priority: 90,

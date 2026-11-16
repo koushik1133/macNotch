@@ -1,8 +1,7 @@
 import Foundation
 import FoundationModels
 
-/// Turns a raw speech transcript into the text that gets typed, the way Wispr
-/// Flow does: fillers removed, self-corrections applied, punctuation and
+/// Turns a raw speech transcript into the text that gets typed: fillers removed, self-corrections applied, punctuation and
 /// capitalization fixed, spoken lists turned into lists, "new line" /
 /// "new paragraph" honored.
 ///

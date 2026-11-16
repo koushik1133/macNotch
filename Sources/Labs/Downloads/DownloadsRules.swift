@@ -1,9 +1,8 @@
 import Foundation
 
-// Hazel-style sorting rules: each rule has conditions on the file (kind,
+// Sorting rules: each rule has conditions on the file (kind,
 // extension, name, source domain, size, browser), matched all/any, and a
-// destination. Rules run top to bottom and the first match wins (Hazel stops
-// at the first rule that moves the file). Nothing moves on its own unless the
+// destination. Rules run top to bottom and the first match wins. Nothing moves on its own unless the
 // user ticks "Sort automatically" on that rule.
 
 struct DownloadCondition: Identifiable, Codable, Equatable, Sendable {
@@ -105,7 +104,7 @@ struct DownloadRule: Identifiable, Codable, Equatable, Sendable {
     var isEnabled = true
     /// Move matching downloads as soon as they finish (off: just suggest).
     var sortsAutomatically = false
-    /// All conditions must match (Hazel "all"), else any.
+    /// All conditions must match ("all"), else any.
     var matchAll = true
     var conditions: [DownloadCondition]
     var destination: DownloadDestination
@@ -205,7 +204,7 @@ enum DownloadRuleEngine {
         rules.first { matches($0, subject) }
     }
 
-    /// Default rules: one per kind into a subfolder of Downloads (Hazel's
+    /// Default rules: one per kind into a subfolder of Downloads (the
     /// classic "sort Downloads by kind" recipe), plus a disabled example of a
     /// name rule. None sorts automatically.
     static func defaultRules() -> [DownloadRule] {

@@ -178,8 +178,7 @@ struct MeetingLink: Sendable, Equatable {
 // MARK: - Link detection
 
 /// Finds Zoom, Meet, Teams, Webex, Slack huddle, FaceTime, Around and Whereby
-/// links in an event's URL, location and notes (checked in that order, the
-/// order MeetingBar ranks them in). Pure Foundation, so it can be exercised
+/// links in an event's URL, location and notes (checked in that order). Pure Foundation, so it can be exercised
 /// outside the app.
 enum MeetingLinkDetector {
     static func detect(url: URL?, location: String?, notes: String?) -> MeetingLink? {
@@ -362,8 +361,8 @@ enum MeetingLinkDetector {
     /// https://teams.microsoft.com/l/meetup-join/… → msteams:/l/meetup-join/…
     /// (percent-encoding kept as is). The newer short links
     /// (teams.microsoft.com/meet/<id>?p=…) become
-    /// msteams://teams.microsoft.com/meet/<id>?p=…, the form MeetingBar
-    /// opens Teams with. teams.live.com (Teams free) stays on the web, which
+    /// msteams://teams.microsoft.com/meet/<id>?p=…, the form that opens the
+    /// Teams app. teams.live.com (Teams free) stays on the web, which
     /// offers to open the app.
     static func teamsNativeURL(fromWeb url: URL) -> URL? {
         let string = url.absoluteString
@@ -381,7 +380,6 @@ enum MeetingLinkDetector {
     }
 
     /// https://app.slack.com/huddle/T0123/C0456 → slack://join-huddle?team=T0123&id=C0456
-    /// (MeetingBar's SlackHuddleOpenStrategy).
     static func slackNativeURL(fromWeb url: URL) -> URL? {
         let parts = url.path.split(separator: "/").map(String.init)
         guard parts.count >= 3, parts[0].lowercased() == "huddle", !parts[1].isEmpty, !parts[2].isEmpty else { return nil }
@@ -604,7 +602,7 @@ final class CalendarPreferences: ObservableObject {
     ]
 }
 
-/// Which events never get a heads-up or a Join (the MeetingBar defaults):
+/// Which events never get a heads-up or a Join (the defaults):
 /// all-day, cancelled, declined, and "free" time (reminders, holds).
 enum MeetingFilter {
     static func shouldSkip(isAllDay: Bool, isCanceled: Bool, isDeclined: Bool, isFree: Bool) -> Bool {
@@ -1174,7 +1172,7 @@ final class MeetingsController: ObservableObject {
         return nil
     }
 
-    /// "Fantastical", for the "Open Events In" choices. Menus ask on every
+    /// "Calendar", for the "Open Events In" choices. Menus ask on every
     /// update, so the answer is kept for half a minute.
     static var defaultCalendarAppName: String? {
         if let cached = defaultAppNameCache, Date().timeIntervalSince(cached.date) < 30 { return cached.name }
@@ -1190,7 +1188,7 @@ final class MeetingsController: ObservableObject {
 
     private static var defaultAppNameCache: (date: Date, name: String?)?
 
-    /// "Default calendar app (Fantastical)".
+    /// "Default calendar app (Calendar)".
     static func title(for target: CalendarOpenTarget) -> String {
         guard target == .defaultApp, let name = defaultCalendarAppName else { return target.title }
         return "\(target.title) (\(name))"
@@ -1238,7 +1236,7 @@ final class MeetingsController: ObservableObject {
         let startText = Self.timeFormatter.string(from: meeting.start)
         let isNow = timing.isJoinMoment
         let compactStatus = isNow ? "Now" : status.replacingOccurrences(of: "in ", with: "")
-        // Dynamic Island style: the band peeks when the heads-up starts and
+        // The band peeks when the heads-up starts and
         // again at "Now" (10 s), then the countdown or a green "Now" rests in
         // the wings beside the camera.
         let activity = LiveActivity(

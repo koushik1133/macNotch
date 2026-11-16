@@ -133,7 +133,7 @@ footer { max-width: 1180px; margin: 0 auto; padding-block: 0 48px; color: var(--
     <h2>Business plan</h2>
     <ol><li><a href="#1-summary">Summary</a></li>
 <li><a href="#2-what-sparkv-actually-contains-from-the-code">What SparkV actually contains (from the code)</a></li>
-<li><a href="#3-comparable-products-and-prices">Comparable products and prices</a></li>
+<li><a href="#3-comparable-products-and-prices">Comparable app categories and prices</a></li>
 <li><a href="#4-payment-and-licensing-platforms">Payment and licensing platforms</a></li>
 <li><a href="#5-apple-requirements-for-selling-outside-the-app-store">Apple requirements for selling outside the App Store</a></li>
 <li><a href="#6-pricing">Pricing</a></li>
@@ -380,7 +380,7 @@ open build/SparkV.app
 <p><strong>How to use:</strong> click an icon to switch the drawer page. The drawer remembers the last tab. Dragging a file over any tab flips to the Tray (Converter, Spaces and File Drop keep their own drop targets).</p>
 <p><strong>Who it is for:</strong> every SparkV user.</p>
 <p><strong>Permissions:</strong> none.</p>
-<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. All 21 drawer pages render inside the real <code>NotchNookLayoutView</code> with the header.</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. All 21 drawer pages render inside the real <code>IslandLayoutView</code> with the header.</p>
 <hr />
 <h2 id="2-home-media-shortcut-capsules-and-camera-mirror">2. Home: media, shortcut capsules and camera mirror</h2>
 <figure class="shot"><img alt="Home" src="screenshots/01-home.png" loading="lazy"><figcaption>Home</figcaption></figure>
@@ -443,7 +443,7 @@ open build/SparkV.app
 <figure class="shot"><img alt="Converter" src="screenshots/07-converter.png" loading="lazy"><figcaption>Converter</figcaption></figure>
 <p><strong>Where:</strong> header › Converter (arrows icon). Drop a file on the page.</p>
 <p><strong>How to use:</strong> drop a PDF, image, document, spreadsheet or slides, then click a format: Word, JPG, PNG, TXT, Compress, Split, Extract, Remove pages, Rotate, page Numbers, Watermark, Protect, Unlock, Repair, OCR, Merge (several PDFs), Images to PDF, Resize. Results appear in the box underneath, ready to drag anywhere or add to the Tray. The sliders button holds options (quality, page ranges, password).</p>
-<p><strong>Who it is for:</strong> students, office workers, anyone who uses iLovePDF-style tools; works offline.</p>
+<p><strong>Who it is for:</strong> students, office workers, anyone who uses online PDF tools; works offline.</p>
 <p><strong>Permissions:</strong> none.</p>
 <p><strong>Status:</strong> <span class="pill ok">Verified headless</span>. Rendered with a 3-page PDF and the full format row; converter harness passed in the earlier validation round.</p>
 <hr />
@@ -533,7 +533,7 @@ open build/SparkV.app
 <li><strong>Screen Distance</strong>, <strong>Spaces</strong> (Open, Save Current Web Page, Save Selected Mail, Quick Capture), <strong>Quick Capture</strong>, <strong>Search</strong>, <strong>File Drop</strong> settings.</li>
 <li><strong>Permissions &amp; Setup</strong>, <strong>Set Up Face Unlock… / Face Unlock Settings…</strong>, <strong>Launch at Login</strong>, <strong>Quit SparkV</strong>.</li>
 </ul>
-<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> (wiring read from <code>NotchNookLayoutView.swift</code>; not rendered).</p>
+<p><strong>Status:</strong> <span class="pill ok">Verified headless</span> (wiring read from <code>IslandLayoutView.swift</code>; not rendered).</p>
 <hr />
 <h2 id="12-universal-search">12. Universal Search</h2>
 <p><img class="inline-shot" alt="Search page" src="screenshots/15-universal-search.png" loading="lazy">
@@ -791,7 +791,7 @@ open build/SparkV.app
 <td>Pass, no errors</td>
 </tr>
 <tr>
-<td>Every drawer tab, hub tile, header icon and default hotkey is wired (read from <code>NotchNookLayoutView</code>, <code>AgentsHubView</code>, <code>NotchWindowController</code>)</td>
+<td>Every drawer tab, hub tile, header icon and default hotkey is wired (read from <code>IslandLayoutView</code>, <code>AgentsHubView</code>, <code>NotchWindowController</code>)</td>
 <td>Pass</td>
 </tr>
 <tr>
@@ -934,74 +934,60 @@ open build/SparkV.app
 </tbody>
 </table></div>
 <hr />
-<h2 id="3-comparable-products-and-prices">3. Comparable products and prices</h2>
+<h2 id="3-comparable-products-and-prices">3. Comparable app categories and prices</h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Product</th>
-<th>What it is</th>
-<th>Price</th>
-<th>Source</th>
+<th>Category</th>
+<th>What it does</th>
+<th>Typical price</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>NotchNook</td>
-<td>Notch hub (media, tray)</td>
-<td>$25 one-time or $3 a month, 2-day trial. Sold direct and through Setapp. Not on the App Store because it uses private APIs.</td>
-<td><a href="https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny">iMore</a>, <a href="https://lowyat.net/2024/327211/notchnook-dynamic-island-macbooks-us25">Lowyat</a>, <a href="https://www.smartworld.it/app/notchnook-app-mac-dynamic-island.html">Smartworld</a></td>
+<td>Paid notch apps</td>
+<td>Notch hub (media, file tray)</td>
+<td>$14–25 one-time, or about $3 a month. Short trials (2–3 days). Usually sold direct, not on the App Store, because they use private APIs.</td>
 </tr>
 <tr>
-<td>boring.notch</td>
-<td>Open-source notch app</td>
-<td>Free, GPL-3.0, about 11.1k GitHub stars. Not notarized ("unidentified developer" warning).</td>
-<td><a href="https://github.com/TheBoredTeam/boring.notch">GitHub</a>, <a href="https://korben.info/en/boring-notch-macbook-notch-finally-useful.html">Korben</a></td>
+<td>Open-source notch apps</td>
+<td>Free notch app</td>
+<td>Free (GPL). Often not notarized ("unidentified developer" warning).</td>
 </tr>
 <tr>
-<td>Alcove</td>
-<td>Dynamic Island for the Mac</td>
-<td>About $13.99 one-time, 72-hour trial</td>
-<td><a href="https://www.appgefahren.de/alcove-bringt-die-dynamic-island-auf-den-mac-394469.html">appgefahren</a>, <a href="https://www.slashgear.com/2175261/macos-apps-give-features-apple-doesnt-include/">SlashGear</a></td>
-</tr>
-<tr>
-<td>Raycast Pro</td>
+<td>AI launchers</td>
 <td>Launcher with AI</td>
-<td>$10 a month, or $8 a month billed yearly. 14-day trial. Pro+ is $20 a month.</td>
-<td><a href="https://tech-insider.org/raycast-vs-alfred-2026/">tech-insider</a>, <a href="https://www.raycast.com/blog/changing-how-raycast-ai-is-priced">Raycast blog</a></td>
+<td>About $8–10 a month. Higher AI tiers around $20 a month.</td>
 </tr>
 <tr>
-<td>CleanShot X</td>
+<td>Screenshot and recording tools</td>
 <td>Screenshots and recording</td>
-<td>$29 one-time with 1 year of updates, then $19 a year (optional). Cloud Pro is $8–10 a month.</td>
-<td><a href="https://toolradar.com/tools/cleanshot/pricing">toolradar</a>, <a href="https://trustradius.com/products/cleanshot-x/pricing">TrustRadius</a></td>
+<td>About $29 one-time with 1 year of updates, then about $19 a year (optional). Cloud add-ons $8–10 a month.</td>
 </tr>
 <tr>
-<td>Wispr Flow</td>
+<td>Standalone dictation apps</td>
 <td>AI dictation</td>
-<td>Pro is $15 a month, or $144 a year. Teams from $10 per user per month. Students pay $6 a month.</td>
-<td><a href="https://www.getvoibe.com/resources/wispr-flow-pricing/">getvoibe</a>, <a href="https://spokenly.app/blog/wispr-flow-pricing">spokenly</a></td>
+<td>About $15 a month, or $144 a year. Team plans from about $10 per user per month. Student discounts are common.</td>
 </tr>
 <tr>
-<td>Granola</td>
+<td>Meeting note-takers</td>
 <td>AI meeting notes</td>
-<td>Business is $14 per user per month. Enterprise from $35.</td>
-<td><a href="https://granola.ai/blog/granola-pricing-plans-features-roi">Granola</a>, <a href="https://www.read.ai/it/articles/granola-ai-pricing-alternatives">Read AI</a></td>
+<td>About $14 per user per month for business plans. Enterprise from about $35.</td>
 </tr>
 <tr>
-<td>Paste</td>
-<td>Clipboard manager</td>
-<td>$3.99 a month, $29.99 a year, or $89.99 lifetime</td>
-<td><a href="https://apps.apple.com/app/id967805235">App Store</a></td>
+<td>Clipboard managers</td>
+<td>Clipboard history</td>
+<td>About $4 a month, $30 a year, or $90 lifetime</td>
 </tr>
 <tr>
-<td>Setapp</td>
-<td>App subscription bundle</td>
-<td>Mac plan about $14.99 a month, or about $8.99 a month billed yearly (prices rose June 2026)</td>
-<td><a href="https://pricingsaas.com/companies/setapp/diffs/2026W25">PricingSaaS</a>, <a href="https://setapp.com/app-reviews/setapp-pricing-explained">Setapp</a></td>
+<td>App subscription bundles</td>
+<td>Many Mac apps for one fee</td>
+<td>About $9–15 a month</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>What this means for us:</strong> SparkV does the work of a notch app, a clipboard manager, a dictation app, a meeting recorder and a screenshot tool in one app. Paying for those separately costs a buyer well over $300 a year. Pure notch apps sell for $14–25 one-time, so a <strong>$39 one-time Pro</strong> is easy to justify, and it is still cheaper than two months of Wispr Flow and Granola together. Because we pay nothing for AI, we can charge once instead of monthly, and that is a selling point against Wispr, Granola and Raycast.</p>
+<p>List prices were checked on public pricing pages and in press coverage in October 2026.</p>
+<p><strong>What this means for us:</strong> SparkV does the work of a notch app, a clipboard manager, a dictation app, a meeting recorder and a screenshot tool in one app. Paying for those separately costs a buyer well over $300 a year. Pure notch apps sell for $14–25 one-time, so a <strong>$39 one-time Pro</strong> is easy to justify, and it is still cheaper than two months of a dictation subscription and a meeting-notes subscription together. Because we pay nothing for AI, we can charge once instead of monthly, and that is a selling point against subscription dictation, meeting-notes and launcher apps.</p>
 <hr />
 <h2 id="4-payment-and-licensing-platforms">4. Payment and licensing platforms</h2>
 <p>A merchant of record (MoR) is the legal seller. It collects and pays VAT, GST and US sales tax around the world, which a solo Indian seller should not try to do alone.</p>
@@ -1139,8 +1125,8 @@ open build/SparkV.app
 </tr>
 <tr>
 <td>Now Playing through <code>mediaremote-adapter</code> running under <code>/usr/bin/perl</code></td>
-<td>A private MediaRemote workaround. NotchNook stays off the App Store for this same reason.</td>
-<td><a href="https://www.smartworld.it/app/notchnook-app-mac-dynamic-island.html">Smartworld</a></td>
+<td>A private MediaRemote workaround. Other notch apps stay off the App Store for this same reason.</td>
+<td>—</td>
 </tr>
 <tr>
 <td>Starting Node and Playwright, <code>/usr/bin/shortcuts</code>, and a visible Chromium</td>
@@ -1238,8 +1224,8 @@ open build/SparkV.app
 </tbody>
 </table></div>
 <p>Why this shape:
-- <strong>Free hooks people.</strong> A useful notch app at $0 takes boring.notch users and lets reviewers and Reddit try it with nothing at stake.
-- <strong>One-time Pro fits our costs.</strong> We pay no AI or server costs per user. Buyers on r/macapps prefer one-time prices, and CleanShot X ($29 plus $19 a year for updates) shows the model works.
+- <strong>Free hooks people.</strong> A useful notch app at $0 wins over users of free open-source notch apps and lets reviewers and Reddit try it with nothing at stake.
+- <strong>One-time Pro fits our costs.</strong> We pay no AI or server costs per user. Buyers on r/macapps prefer one-time prices, and established screenshot tools ($29 plus $19 a year for updates) show the model works.
 - <strong>Team adds recurring revenue</strong> from companies that need invoices and support. <strong>Be honest about the scope:</strong> shared Spaces today is a file package (<code>SpaceSharing.swift</code>), and live sync does not exist yet, so don't advertise it.</p>
 <h3 id="6b-alternative-price-per-feature-pack">6b. Alternative: price per feature pack</h3>
 <p>Each pack is a one-time purchase on top of Free. The "Everything" bundle equals Pro, so a buyer of two or more packs is pushed toward Pro.</p>
@@ -1307,7 +1293,7 @@ open build/SparkV.app
 </tr>
 <tr>
 <td>Students and teachers</td>
-<td><strong>50% off</strong> Pro ($19.50, or ₹749). Check a <code>.edu</code> or <code>.ac.in</code> email, or a student ID, through a Lemon Squeezy discount code. Wispr Flow gives students 50% off too (<a href="https://www.getvoibe.com/resources/wispr-flow-pricing/">getvoibe</a>).</td>
+<td><strong>50% off</strong> Pro ($19.50, or ₹749). Check a <code>.edu</code> or <code>.ac.in</code> email, or a student ID, through a Lemon Squeezy discount code. Subscription dictation apps commonly give students 50% off too.</td>
 </tr>
 <tr>
 <td>Launch week</td>
@@ -1360,7 +1346,7 @@ open build/SparkV.app
 </tr>
 <tr>
 <td><strong>Trademarks</strong></td>
-<td>Don't use other products' names in marketing ("Wispr-style", "Clicky"). The README already notes that the icons are SF Symbols and not those logos. Consider renaming the Clicky feature before launch, for example to "SparkV Assist".</td>
+<td>Don't use other products' names in marketing or comparisons. The icons are SF Symbols. Consider renaming the Clicky feature before launch, for example to "SparkV Assist".</td>
 </tr>
 </tbody>
 </table></div>
@@ -1420,9 +1406,9 @@ open build/SparkV.app
 <td>—</td>
 </tr>
 <tr>
-<td>boring.notch (reference only)</td>
+<td>GPL-licensed open-source notch apps (reference only)</td>
 <td>GPL-3.0</td>
-<td><strong>Don't copy any code from it.</strong> GPL would require us to open SparkV's source.</td>
+<td><strong>Don't copy any code from them.</strong> GPL would require us to open SparkV's source.</td>
 <td>Not used</td>
 </tr>
 </tbody>
@@ -1491,7 +1477,7 @@ open build/SparkV.app
 </tr>
 <tr>
 <td><strong>Comparison pages</strong></td>
-<td>Pages on our site: "SparkV vs NotchNook", "vs Alcove", "vs boring.notch". Lead with the fact that SparkV replaces five apps.</td>
+<td>Pages on our site that compare SparkV with each category (notch apps, dictation apps, meeting note-takers, clipboard managers, screenshot tools) without naming other products. Lead with the fact that SparkV replaces five apps.</td>
 <td>—</td>
 </tr>
 <tr>
@@ -1583,7 +1569,7 @@ open build/SparkV.app
 </tr>
 <tr>
 <td>5. Gating points</td>
-<td><strong><code>NotchWindowController</code>:</strong> don't create the controllers for gated features (MeetingsController, UIAudit, BrowserRecorder, FlowCanvas, and so on) unless <code>allows(...)</code>. This also saves memory. <strong><code>AgentsHubView</code>:</strong> locked tiles show a small lock badge, and tapping one opens the paywall instead of the feature. <strong><code>NotchNookLayoutView</code>:</strong> hide locked tabs in the header and add <strong>gear › License…</strong> and <strong>gear › Check for Updates…</strong>. <strong>Hotkeys</strong> (⌃⌥R, ⌃⌥ for Clicky, Copy Text): check <code>allows(...)</code> before acting, and show a band saying "Pro feature, start your trial".</td>
+<td><strong><code>NotchWindowController</code>:</strong> don't create the controllers for gated features (MeetingsController, UIAudit, BrowserRecorder, FlowCanvas, and so on) unless <code>allows(...)</code>. This also saves memory. <strong><code>AgentsHubView</code>:</strong> locked tiles show a small lock badge, and tapping one opens the paywall instead of the feature. <strong><code>IslandLayoutView</code>:</strong> hide locked tabs in the header and add <strong>gear › License…</strong> and <strong>gear › Check for Updates…</strong>. <strong>Hotkeys</strong> (⌃⌥R, ⌃⌥ for Clicky, Copy Text): check <code>allows(...)</code> before acting, and show a band saying "Pro feature, start your trial".</td>
 </tr>
 <tr>
 <td>6. Paywall window</td>

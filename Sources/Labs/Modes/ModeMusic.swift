@@ -5,7 +5,7 @@ import AVFoundation
 //
 // A YouTube study stream plays in its own new Safari window that SparkV opens
 // without bringing Safari forward, then minimizes once the page has started.
-// That is the approach Keyboard Maestro and Shortcuts users rely on ("open URL
+// That is the approach Shortcuts users rely on ("open URL
 // in a new window in the background"): a real Safari page keeps the user's
 // YouTube sign-in, Premium (no ads) and autoplay choices, and audio keeps
 // playing in a minimized window. SparkV remembers the window it made and, when

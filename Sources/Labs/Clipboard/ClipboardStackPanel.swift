@@ -4,7 +4,7 @@ import SwiftUI
 
 // The clipboard stack (⌘⇧V): a floating, non-activating panel at the text
 // caret (or the pointer) listing the history newest first with number
-// badges 1–9, like Paste's stack and Maccy's popup. It takes keystrokes
+// badges 1–9. It takes keystrokes
 // without activating SparkV, so the app you were typing in stays frontmost
 // and ↩ pastes straight back into it.
 

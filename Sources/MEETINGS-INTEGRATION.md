@@ -1,10 +1,10 @@
 # Meetings: calendar peek and Join (integration notes)
 
 Files: `MeetingsController.swift`, `MeetingsView.swift` (and the unchanged
-`MeetingCapsuleView.swift`). Approach copied from MeetingBar
-(leits/MeetingBar: `MeetingProvider.swift` regex catalogue, `MeetingOpener.swift`
-for zoommtg:// and slack://join-huddle), with the Dynamic Island compact and
-expanded forms from `LiveActivity`.
+`MeetingCapsuleView.swift`). Approach: a regex catalogue of meeting-link
+providers found in each event, and native links (zoommtg://,
+slack://join-huddle) to open them, with the island's compact and expanded
+forms from `LiveActivity`.
 
 ## What works with no wiring
 
@@ -42,7 +42,7 @@ expanded forms from `LiveActivity`.
 
 ## Wiring for the integrator
 
-1. **Settings menu** (`NotchNookLayoutView.swift`, `SettingsMenu`,
+1. **Settings menu** (`IslandLayoutView.swift`, `SettingsMenu`,
    inside `Menu("Meetings") { … }`, after "Meeting Notes…"): add
 
    ```swift

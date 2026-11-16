@@ -1,10 +1,10 @@
 # SparkV Modes: integration
 
-Modes are one-tap setups such as Concentration, Study, Relax, Meeting, Presentation and Night. Each one changes the wallpaper, starts music in a background Safari window, turns Do Not Disturb on, hides or quits apps, sets volume, brightness and appearance, and starts a Pomodoro. Ending the mode puts everything back. The approach copies proven products:
+Modes are one-tap setups such as Concentration, Study, Relax, Meeting, Presentation and Night. Each one changes the wallpaper, starts music in a background Safari window, turns Do Not Disturb on, hides or quits apps, sets volume, brightness and appearance, and starts a focus timer. Ending the mode puts everything back. The approach follows proven patterns:
 
 - **Apple Focus filters.** Settings apply while the mode is on and revert on their own when it ends.
-- **Session and Tuple.** Do Not Disturb runs through two user-made Shortcuts ("Set Focus" is Apple's only supported path since macOS 12).
-- **Keyboard Maestro macro groups and Bartender presets.** Each mode is an ordered list of steps the user can edit.
+- **Shortcuts for Do Not Disturb.** Do Not Disturb runs through two user-made Shortcuts ("Set Focus" is Apple's only supported path since macOS 12).
+- **Editable step lists.** Each mode is an ordered list of steps the user can edit, like a macro group or a saved preset.
 - **System Settings › Focus.** The editor copies its layout: a sidebar of modes, and for each one what happens when it turns on and when it ends.
 
 This one file covers the engine, the UI and the music/wallpaper parts. (It replaces INTEGRATION-UI.md and INTEGRATION-MUSIC.md.) Every Swift snippet below was typechecked against the current NotchWindowController, FocusController, NotificationMonitor, ActivityCenter, ScreenRegionHotkey and AppDelegate types, in Swift 6 and Swift 5.
@@ -153,7 +153,7 @@ The grid is full: 8 columns x 2 rows fill the 508 x 114 pt content area, and `ce
 
 With a Modes drawer page (4c), use `ModesHubTile(onOpen: { withAnimation(.easeOut(duration: 0.15)) { state.select(.modes) } })`. The mode list then moves to the tile's right-click menu.
 
-### 4b. Gear menu (NotchNookLayoutView.swift)
+### 4b. Gear menu (IslandLayoutView.swift)
 
 Put this right after `Menu("Focus") { … }`:
 
@@ -168,7 +168,7 @@ It has one checkable item per mode (checked = on; picking another mode switches)
 `ModesDrawerView()` is exactly 508 x 69 pt, the standard drawer content area (115 pt drawer), so it needs no change to `NotchMetrics.expandedSize(for:)`. It needs:
 
 1. `case modes` in `NotchState.Tab`, and `.modes` in `Tab.agentTabs` (it is opened from the hub).
-2. `case .modes: ModesDrawerView()` in `NotchNookLayoutView.tabContent`.
+2. `case .modes: ModesDrawerView()` in `IslandLayoutView.tabContent`.
 3. The hub tile with `onOpen` (4a).
 
 It shows six 66 x 58 pt chips; a click turns that mode on or off, and right-click offers Turn On/Off and "Edit <Mode>…". A seventh mode and beyond scroll sideways (the next chip shows cut off at the edge). On the right: a Stop button in the mode's colour with the elapsed or remaining time while a mode is on, otherwise an Edit button.

@@ -415,7 +415,7 @@ private struct FileDropResultRow: View {
 // MARK: - Pieces
 
 /// Up to three thumbnails fanned like a pile, with a count badge. Drags
-/// every file out (copy, like a Finder drag, Dropover's "drag the stack");
+/// every file out (copy, like a Finder drag: "drag the stack");
 /// click spreads a pile of several into one tile per file (`onSpread`),
 /// double-click opens the first, right-click has Copy / Show in Finder.
 struct FileDropPile: View {
@@ -488,7 +488,7 @@ extension FileDropPile {
 }
 
 /// A pile spread out: "All" (drags every file) then one tile per file, each
-/// dragged on its own, like Dropover's expanded shelf. Fits the 69 pt strip.
+/// dragged on its own, as in an expanded shelf. Fits the 69 pt strip.
 struct FileDropFilesRow: View {
     @ObservedObject var controller: FileDropController
     let urls: [URL]

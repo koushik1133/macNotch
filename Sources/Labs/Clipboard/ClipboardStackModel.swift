@@ -1,8 +1,8 @@
 import AppKit
 
 // Keyboard model of the clipboard stack panel (⌘⇧V), kept free of views so
-// the harness can drive it with synthetic keys. Behaviour follows Paste's
-// stack and Maccy's popup: numbers 1–9 on the newest items, ↑/↓ and the
+// the harness can drive it with synthetic keys. Behaviour:
+// numbers 1–9 on the newest items, ↑/↓ and the
 // scroll wheel move the selection, ↩ pastes, ⌘1…9 pastes that item,
 // Space previews, ⌫ deletes, P pins, typing filters, Esc closes.
 
@@ -304,7 +304,7 @@ enum ClipboardStackPlacement {
 }
 
 /// Finds the text caret of the focused app through Accessibility (the
-/// bounds of the selected range), as Maccy's "at text cursor" position does.
+/// bounds of the selected range), the "at text cursor" position.
 enum ClipboardCaretLocator {
     /// Caret rect in Accessibility coordinates, or nil (no AX access, no
     /// text field, or an app that reports nothing useful).

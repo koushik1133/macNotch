@@ -12,8 +12,7 @@ import SwiftUI
 /// the store's own filing suggestion (or the last-used Space, if the user
 /// picked that) is applied. The band under the notch says where it went and
 /// a small action strip below it offers Change Space, Open and Undo — the
-/// "act first, offer undo" pattern of Gmail's Undo Send and CleanShot's
-/// quick-access overlay rather than a destination picker before saving.
+/// "act first, offer undo" pattern rather than a destination picker before saving.
 @MainActor
 final class QuickCaptureController: ObservableObject {
     enum Phase: Equatable {

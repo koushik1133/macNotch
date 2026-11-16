@@ -4,8 +4,8 @@ import UniformTypeIdentifiers
 
 /// Screenshot to clipboard: when on, every new screenshot macOS saves is
 /// also put on the clipboard as an image (the file stays where it is), with
-/// a small "Copied screenshot" band — CleanShot's "copy and save" after
-/// capture, done without touching the system's screenshot settings.
+/// a small "Copied screenshot" band ("copy and save" after capture), done
+/// without touching the system's screenshot settings.
 ///
 /// The folder is the `com.apple.screencapture` location, read the way
 /// Spaces reads it. Watching a privacy-protected folder (the Desktop by

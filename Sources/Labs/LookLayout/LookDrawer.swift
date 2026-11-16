@@ -12,7 +12,7 @@ import SwiftUI
 /// grows by the same amount, so no layout truncates); the header band beside
 /// the camera housing and the closed island keep their size.
 enum LookDrawerMetrics {
-    /// Content inset on each side of the body (`NotchNookLayoutView` pads
+    /// Content inset on each side of the body (`IslandLayoutView` pads
     /// the content by 16 pt plus the flare, which lies outside the body).
     static let horizontalInset: CGFloat = 32
 

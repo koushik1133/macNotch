@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Root view: one continuous black shape that grows out of the hardware notch.
-struct NotchNookLayoutView: View {
+struct IslandLayoutView: View {
     @EnvironmentObject private var state: NotchState
     @EnvironmentObject private var tray: TrayStore
     @EnvironmentObject private var dictation: DictationController
@@ -86,7 +86,7 @@ struct NotchNookLayoutView: View {
 
             Group {
 
-            // Album-art glow (boring.notch style), under all content; the
+            // Album-art glow, under all content; the
             // clip shape below keeps it inside the island.
             // Only with the Album Glow background; Black keeps the island pure black.
             if themeSettings.effectiveBackground == .albumGlow, state.isExpanded, state.tab == .nook {
@@ -322,7 +322,7 @@ private struct HeaderRow: View {
             IconTab(systemImage: "square.grid.2x2.fill", tab: .agents, help: HeaderCatalog.info(id)?.help ?? "Agents",
                     activeFor: HubCatalog.agentsActiveTabs(pins: headerLayout.header.pins), pill: pill)
         default:
-            // Original SF Symbols, not the Wispr Flow or Clicky logos.
+            // Original SF Symbols.
             if let tab = HeaderTabs.tab(for: id), let item = HeaderCatalog.info(id) {
                 IconTab(systemImage: item.systemImage, tab: tab, help: item.help, pill: pill)
             } else {
@@ -391,7 +391,7 @@ private struct RecordMeetingButton: View {
                 assistant.stop()
             } else {
                 assistant.start(title: nil, calendarEventID: nil)
-                // Like Granola: the notepad opens with the recording.
+                // The notepad opens with the recording.
                 assistant.openNotesWindow()
             }
         } label: {

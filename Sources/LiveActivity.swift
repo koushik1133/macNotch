@@ -5,7 +5,7 @@ import SwiftUI
 /// level, a charging battery, a countdown, the next meeting, a notification.
 /// Feature controllers post these to `ActivityCenter`.
 ///
-/// Like the Dynamic Island, an activity has two presentations:
+/// An activity has two presentations:
 /// - **compact**: the island grows sideways inside the menu bar, with a
 ///   leading view left of the camera housing and a trailing view right of it.
 ///   Nothing below the menu bar is covered. This is the resting form.

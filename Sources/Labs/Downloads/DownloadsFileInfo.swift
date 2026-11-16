@@ -70,7 +70,7 @@ enum DownloadPartials {
     static let safariExtension = "download"
     static let chromiumExtensions: Set<String> = ["crdownload", "opdownload"]
     static let firefoxExtension = "part"
-    /// Other common partial suffixes (old Edge, Transmit/FileZilla style).
+    /// Other common partial suffixes (older browsers and file-transfer apps).
     static let genericExtensions: Set<String> = ["partial", "filepart"]
 
     /// True for names that are partial downloads, whatever the browser.

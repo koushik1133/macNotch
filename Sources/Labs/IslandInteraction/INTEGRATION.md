@@ -16,7 +16,7 @@ package's Find text on them still matches, except the two listed under
 | `Sources/NotchPanel.swift` | `cancelOperation(_:)` and Esc in `keyDown` post `NotchPanel.escapeNotification`. |
 | `Sources/NotchState.swift` | `NotchMetrics.expandedSize` is now a computed `static var`. Its width comes from Drawer Width (540, 600 or 660) and its height stays 115. `hoverAnimation` follows Island Motion (style, speed) and still respects Reduce Motion. `tabShrinkDelay` is computed from the spring's settle time. New `NotchState.isPinned`, `isHoverPrimed` and `wingClearanceRevision`. |
 | `Sources/IslandShape.swift` | `IslandClosedLayout.make` caps each wing at the measured room before the nearest menu bar item (`IslandInteractionStore.wingClearance`). The cap is never narrower than the resting shoulder. |
-| `Sources/NotchNookLayoutView.swift` | `@ObservedObject interactionSettings`. The resting island grows 10 × 2 pt while the pointer is on it in Click, Press and Hold or Swipe Down. A click on the header's camera gap closes the drawer (`IslandNotchGapTarget`, an overlay after the header's `.frame(height:)`). Keep Open shows as a bar at the bottom (`IslandPinnedIndicator`). The gear menu gets `Menu("Island Behavior") { IslandInteractionMenuItems() }` right after `Menu("Island") { IslandPlacementMenuItems() }`. |
+| `Sources/IslandLayoutView.swift` | `@ObservedObject interactionSettings`. The resting island grows 10 × 2 pt while the pointer is on it in Click, Press and Hold or Swipe Down. A click on the header's camera gap closes the drawer (`IslandNotchGapTarget`, an overlay after the header's `.frame(height:)`). Keep Open shows as a bar at the bottom (`IslandPinnedIndicator`). The gear menu gets `Menu("Island Behavior") { IslandInteractionMenuItems() }` right after `Menu("Island") { IslandPlacementMenuItems() }`. |
 
 ## Steps for the integrator (apply in order)
 
@@ -426,7 +426,7 @@ Nothing polls while idle.
   or a layout change, at most once a second.
 - **Menu bar managers:** only while one runs, one read when the pointer
   reaches the island. Only a bar that hangs below the menu bar row counts
-  (never the stretched divider Ice, Hidden Bar and Dozer park in the row).
+  (never the stretched divider that menu bar managers park in the row).
   If such a bar is over or under the island, it is checked twice a second
   while the pointer stays, at most 10 s; the pointer leaving, the bar going
   or the cap ends it and the island shows again.

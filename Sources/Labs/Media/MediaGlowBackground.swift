@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Warm light behind the island tinted with the album art's vibrant color
-/// (`MediaEngine.artworkTint`), like boring.notch's colored glow: a soft
+/// (`MediaEngine.artworkTint`), a colored glow: a soft
 /// radial bloom around the artwork plus a faint wash along the bottom edge.
 /// Dims while paused, crossfades when the track changes, never takes clicks.
 ///

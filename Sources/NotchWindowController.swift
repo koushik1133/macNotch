@@ -368,7 +368,7 @@ final class NotchWindowController: NSWindowController {
             meetingIntel?.coordinator.wantsOffer(for: call) ?? false
         }
         // A file dragged out of a shelf and dropped in another app closes the
-        // drawer right away (Shift-drop keeps it open, Dropover-style).
+        // drawer right away (Shift-drop keeps it open).
         let dragEnd = NotificationCenter.default.addObserver(forName: TrayDragOut.didEndNotification, object: nil, queue: .main) { [weak self] note in
             let dropped = note.userInfo?["dropped"] as? Bool == true
             let keepOpen = note.userInfo?["keepOpen"] as? Bool == true
@@ -2807,7 +2807,7 @@ final class NotchWindowController: NSWindowController {
     /// island and the All Displays mirrors share it).
     private func islandRoot(state: NotchState) -> some View {
         // Rebuilt when the look changes (gear menu › Appearance).
-        NotchNookLayoutView()
+        IslandLayoutView()
             .followsAppearance()
             .environmentObject(state)
             .environmentObject(media)

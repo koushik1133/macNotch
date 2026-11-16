@@ -4,9 +4,9 @@ import Foundation
 /// controller runs it on a background task for every keystroke.
 ///
 /// Matching (per query term, all terms must match, as in fzf's extended
-/// search and Raycast/Alfred): fzf fuzzy score on the title and on hidden
+/// search): fzf fuzzy score on the title and on hidden
 /// keywords, or a word-prefix / substring hit in the body (full-text, as
-/// Spotlight and Rewind do; fuzzy over long text matches noise). Ranking
+/// Spotlight does; fuzzy over long text matches noise). Ranking
 /// adds a phrase bonus, a gentle recency boost and the user's frecency /
 /// remembered-query boost (`UniversalSearchKnowledge`).
 enum UniversalSearchEngine {
@@ -121,7 +121,7 @@ enum UniversalSearchEngine {
         return best
     }
 
-    /// Raycast-style sensitivity: scattered letters across a long title
+    /// Launcher-style sensitivity: scattered letters across a long title
     /// don't count. One-letter terms must start a word.
     static func accepts(_ match: UniversalSearchFuzzy.Match, length m: Int) -> Bool {
         if m == 1 { return match.firstBonus >= UniversalSearchFuzzy.bonusBoundary }

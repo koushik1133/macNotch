@@ -247,7 +247,7 @@ enum ConverterPageSize: String, CaseIterable, Sendable, Identifiable {
 
 enum ConverterSplitMode: String, CaseIterable, Sendable, Identifiable {
     case eachPage, ranges
-    /// iLovePDF's "fixed ranges": a new file every N pages.
+    /// "Fixed ranges": a new file every N pages.
     case fixed
     var id: String { rawValue }
     var title: String {

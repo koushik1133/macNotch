@@ -3,7 +3,7 @@
 One tap (header moon, Agents hub tile, gear menu) starts a focus session. The session:
 
 - mutes notifications (macOS Do Not Disturb through the user's Shortcuts, plus SparkV's own previews),
-- runs Pomodoro-style rounds on `TimerController`,
+- runs timed focus and break rounds on `TimerController`,
 - shows a "Focusing 18:42" band under the notch,
 - puts a calm overlay over apps and sites the user listed as distractions,
 - ends with a recap: time focused, apps, documents, and what SparkV captured during the session. The on-device model writes the recap, and the session is saved with today and week stats.
@@ -12,8 +12,8 @@ One tap (header moon, Agents hub tile, gear menu) starts a focus session. The se
 
 | Topic | What working tools do | Source |
 |---|---|---|
-| Muting other apps | Since macOS 12 there is no public API to set a Focus. `INFocusStatusCenter` can only *read* the status, and only for apps with the Communication Notifications capability. Session's current guide has the user make Shortcuts named `session_start` and `session_end`, each with **Set Focus** (Do Not Disturb On or Off). Session runs them when a session starts and ends. Tuple's trigger directory uses the same idea with shortcuts named `dnd-on` and `dnd-off`. Session's older AppleScript method, which presses a global keyboard shortcut, is marked as superseded for macOS 11 and later. Writing `~/Library/DoNotDisturb/DB/*.json` does not change the Focus. | stayinsession.com/learn/apple-focus-with-session-shortcuts, stayinsession.com/learn/do-not-disturb-on-mac, tuple.app/triggers/directory/do-not-disturb, talk.automators.fm "Get current focus mode via script", developer.apple.com INFocusStatus |
-| Distraction blocking | Raycast Focus (v1.89, 2025) starts a session with a goal, a duration, and apps and websites to block. Blocked items can be grouped into categories, and the user can **snooze** the block for an urgent message. Blocking is an overlay, not a kill. | raycast.com/changelog/macos/1-89-0, Raycast Focus launch notes |
+| Muting other apps | Since macOS 12 there is no public API to set a Focus. `INFocusStatusCenter` can only *read* the status, and only for apps with the Communication Notifications capability. The working approach is to have the user make a pair of Shortcuts (common names are `session_start`/`session_end` and `dnd-on`/`dnd-off`), each with **Set Focus** (Do Not Disturb On or Off), and run them when a session starts and ends. The older AppleScript method, which presses a global keyboard shortcut, no longer works on macOS 11 and later. Writing `~/Library/DoNotDisturb/DB/*.json` does not change the Focus. | talk.automators.fm "Get current focus mode via script", developer.apple.com INFocusStatus |
+| Distraction blocking | A session starts with a goal, a duration, and apps and websites to block. Blocked items can be grouped into categories, and the user can **snooze** the block for an urgent message. Blocking is an overlay, not a kill. | Common practice |
 | Pomodoro | 25-minute focus and 5-minute break by default, with a long break after 4 rounds. SparkV's `TimerController` already uses these values. | `TimerController.swift` (`Pomodoro`) |
 
 ## Decisions
@@ -44,7 +44,7 @@ One tap (header moon, Agents hub tile, gear menu) starts a focus session. The se
    - Apps are matched by bundle id.
    - Sites are matched by the front tab's host, read with the same AppleScript (`SpaceConnectors.Browser.tabScript`) and serial queue (`SpaceAppleEvents`) that Spaces uses. The tab is read every 2 s, and only while a supported browser is in front. The check never prompts; "Allow Site Checks in Browsers…" asks once, from a click.
    - The overlay is a non-activating panel just under the notch panel, over full-screen apps too. It offers Back to Work (returns to the last work app, or hides the distracting app or browser, never quits it), N More Minutes (snooze), and End Focus.
-   - When a snooze runs out, the front app is checked again, so a snoozed app that is still in front gets the reminder again, as in Raycast Focus.
+   - When a snooze runs out, the front app is checked again, so a snoozed app that is still in front gets the reminder again.
    - A site that comes back within a minute counts as the same distraction in the recap.
 7. **Recap.**
    - An instant template version is shown first.

@@ -329,7 +329,7 @@ Replace with:
 
 ## 4. Gear menu (required for the menu items)
 
-File: Sources/NotchNookLayoutView.swift
+File: Sources/IslandLayoutView.swift
 
 Find:
 ```

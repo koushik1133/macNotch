@@ -2,7 +2,7 @@ import AppKit
 import AVFoundation
 import SwiftUI
 
-/// One-click screen recording, the CleanShot X / macOS screenshot-toolbar way:
+/// One-click screen recording, the macOS screenshot-toolbar way:
 /// ⌃⌥⇧R (or the Screen tab's Record tile) shows the selection overlay: drag
 /// an area, click a window, or press Return for the whole screen. A red band
 /// under the notch and a menu-bar stop button show the elapsed time; the

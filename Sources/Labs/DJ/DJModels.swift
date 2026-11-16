@@ -68,7 +68,7 @@ enum DJPreset: String, CaseIterable, Identifiable, Codable, Sendable {
         case .flat: "No coloring: hear the track as mixed"
         case .bass: "Warm, deep low end"
         case .vocal: "Voices and dialogue forward, less boom"
-        case .spatial: "A wider, more open stage (like Dolby's virtualizer)"
+        case .spatial: "A wider, more open, surround-like stage"
         case .concert: "Hall reverb, wide stage and a little extra bass, like a live show"
         case .club: "Punchy kick, crisp highs, a small room"
         case .custom: "Your own EQ"

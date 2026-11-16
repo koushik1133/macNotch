@@ -4,9 +4,9 @@ This package adds three lab folders and upgrades the camera mirror:
 
 | Path | What |
 |---|---|
-| `Sources/Labs/DevStatus/` | **Coding Agents** (Claude Code, Codex, Cursor, Antigravity sessions; optional 127.0.0.1 hook with Allow / Deny), **Dev Status** (local dev-server ports, GitHub Actions, long-command finished), **Scripts & Tickers** (xbar-style shell-command widgets; tickers are presets), the Dev drawer tab, and `ExtrasUI.swift` (shared settings rows, hub-tile face, pills; used by all three folders and the mirror) |
+| `Sources/Labs/DevStatus/` | **Coding Agents** (Claude Code, Codex, Cursor, Antigravity sessions; optional 127.0.0.1 hook with Allow / Deny), **Dev Status** (local dev-server ports, GitHub Actions, long-command finished), **Scripts & Tickers** (shell-command output as widgets; tickers are presets), the Dev drawer tab, and `ExtrasUI.swift` (shared settings rows, hub-tile face, pills; used by all three folders and the mirror) |
 | `Sources/Labs/Teleprompter/` | **Teleprompter**: a non-activating panel under the notch, `sharingType = .none`, speed / size / mirror / countdown, on-device voice pacing, a script editor window |
-| `Sources/Labs/MenuBarOverflow/` | **Menu Bar Overflow**: menu bar extras hidden behind the notch, listed in a drawer tab and pressed through Accessibility; optional divider (Hidden Bar technique) |
+| `Sources/Labs/MenuBarOverflow/` | **Menu Bar Overflow**: menu bar extras hidden behind the notch, listed in a drawer tab and pressed through Accessibility; optional collapsible divider |
 | `Sources/CameraMirrorView.swift` | **Mirror**: camera picker (built-in, external, Continuity), mirrored / natural, Center Stage, Video Effects, a large pop-out mirror under the notch, optional pop-out when a call app turns the camera on |
 
 No other file was edited. Every change below goes into an existing file. Apply the steps **in order**; each **Find** block is copied from the current source and occurs exactly once at that point (checked by a script). Steps marked *optional* can be skipped.
@@ -171,7 +171,7 @@ The Menu Bar page needs 136 pt under the header (two 42 pt rows of tiles), more 
 
 ### Step 8: Draw the two tabs
 
-**File:** `Sources/NotchNookLayoutView.swift`
+**File:** `Sources/IslandLayoutView.swift`
 
 **Find (occurs once):**
 
@@ -189,7 +189,7 @@ The Menu Bar page needs 136 pt under the header (two 42 pt rows of tiles), more 
 
 ### Step 9: Mirror circle follows the Mirror Image setting
 
-**File:** `Sources/NotchNookLayoutView.swift`
+**File:** `Sources/IslandLayoutView.swift`
 
 **Find (occurs once):**
 
@@ -208,7 +208,7 @@ private struct MirrorColumn: View {
 
 ### Step 10: …pass it to the preview
 
-**File:** `Sources/NotchNookLayoutView.swift`
+**File:** `Sources/IslandLayoutView.swift`
 
 **Find (occurs once):**
 
@@ -224,7 +224,7 @@ private struct MirrorColumn: View {
 
 ### Step 11: Right-click the circle: camera, mirror, large mirror
 
-**File:** `Sources/NotchNookLayoutView.swift`
+**File:** `Sources/IslandLayoutView.swift`
 
 **Find (occurs once):**
 
@@ -241,7 +241,7 @@ private struct MirrorColumn: View {
 
 ### Step 12: Leaving Home keeps a popped-out mirror running
 
-**File:** `Sources/NotchNookLayoutView.swift`
+**File:** `Sources/IslandLayoutView.swift`
 
 **Find (occurs once):**
 
@@ -260,7 +260,7 @@ private struct MirrorColumn: View {
 
 ### Step 13: Gear menu entries
 
-**File:** `Sources/NotchNookLayoutView.swift`
+**File:** `Sources/IslandLayoutView.swift`
 
 **Find (occurs once):**
 
@@ -315,7 +315,7 @@ Categories: Agents, Dev and Scripts → **Developer**; Prompter and Mirror → *
                 AnyView(DevStatusHubTile(hubID: "devStatus"))
             },
             HubPackageTile(info: HubTileInfo(id: "scripts", title: "Scripts", systemImage: "terminal.fill", tint: Color(white: 0.78),
-                                             category: .developer, help: "Scripts: your shell commands' output, xbar-style"),
+                                             category: .developer, help: "Scripts: your shell commands' output as widgets"),
                            pinAction: { DevStatusNavigator.shared.open(.scripts) }) {
                 AnyView(ScriptWidgetHubTile(hubID: "scripts"))
             },
@@ -711,6 +711,6 @@ Nothing polls while idle: session folders through one FSEvents stream (2 s laten
 
 ## Tests and renders
 
-- `scratchpad/req/tests-extras/run-tests.sh` compiles the pure logic plus `ScriptRunner`, `LocalProcesses` and `AgentHookServer` and runs 91 assertions in Swift 5 and Swift 6: xbar parsing, the crypto preset's jq program run through `/usr/bin/jq`, wing text, hook HTTP checks (Origin, Host, token, sizes), the 0600 token file, teleprompter clock / voice matcher / restart backoff, menu bar geometry, and live script timeouts that must leave no orphaned children (pipelines, `&&` chains, a script that ignores SIGINT/SIGTERM).
+- `scratchpad/req/tests-extras/run-tests.sh` compiles the pure logic plus `ScriptRunner`, `LocalProcesses` and `AgentHookServer` and runs 91 assertions in Swift 5 and Swift 6: script output parsing, the crypto preset's jq program run through `/usr/bin/jq`, wing text, hook HTTP checks (Origin, Host, token, sizes), the 0600 token file, teleprompter clock / voice matcher / restart backoff, menu bar geometry, and live script timeouts that must leave no orphaned children (pipelines, `&&` chains, a script that ignores SIGINT/SIGTERM).
 - `scratchpad/req/render-extras/build-render.sh <copy> scratchpad/req/shots-extras` renders the drawer pages at their real sizes, hub tiles, wings, bands, the teleprompter, the large mirror and the six settings sections in both looks (42 PNGs).
 - `scratchpad/req/tools-extras/apply.py <copy> INTEGRATION.md [required]` applies these steps and counts each Find block.

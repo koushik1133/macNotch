@@ -74,7 +74,7 @@ enum SparkVAppInfo {
             .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: center,
         ]
-        let text = NSMutableAttributedString(string: "Dynamic Island for the MacBook notch. Everything runs on this Mac.\n\n", attributes: body)
+        let text = NSMutableAttributedString(string: "A live island for the MacBook notch. Everything runs on this Mac.\n\n", attributes: body)
         let lines = [
             "Face Unlock: glance (MIT) and the ArcFace model (non-commercial use only).",
             "Now Playing: mediaremote-adapter (BSD 3-Clause).",

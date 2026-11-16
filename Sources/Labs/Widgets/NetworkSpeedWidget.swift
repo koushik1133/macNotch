@@ -43,7 +43,7 @@ enum NetworkSpeedMath {
         return (Double(down) / seconds, Double(up) / seconds)
     }
 
-    /// "14.2 MB/s", "512 KB/s", "0.0 KB/s"; decimal units like iStat Menus.
+    /// "14.2 MB/s", "512 KB/s", "0.0 KB/s"; decimal units.
     static func format(_ bytesPerSecond: Double) -> String {
         let value = max(0, bytesPerSecond)
         let units = ["KB/s", "MB/s", "GB/s"]

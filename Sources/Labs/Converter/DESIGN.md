@@ -1,14 +1,14 @@
-# Converter tab: iLovePDF-style conversions that stay on this Mac
+# Converter tab: file conversions that stay on this Mac
 
 ## What the user asked for
 
-> "refer ilovepdf … add the conversions in here, drop here and the other format will pop up, they can drag and drop the place they want"
+> "… add the conversions in here, drop here and the other format will pop up, they can drag and drop the place they want"
 
 So the tab works like this: **drop files**, see **format buttons for what you dropped**, click one, and **drag the result out** to Finder, Mail, Slack or a browser. Nothing is uploaded. Every conversion runs on this Mac with Apple frameworks.
 
-## Research: iLovePDF's tools and how people use them
+## Research: the usual online PDF tools and how people use them
 
-iLovePDF ([ilovepdf.com](https://www.ilovepdf.com/)) groups its tools into six sections:
+Online PDF tool suites usually group their tools into six sections:
 
 - **Organize PDF:** Merge, Split, Remove pages, Extract pages, Organize, Scan to PDF.
 - **Optimize PDF:** Compress, Repair, OCR.
@@ -17,13 +17,13 @@ iLovePDF ([ilovepdf.com](https://www.ilovepdf.com/)) groups its tools into six s
 - **Edit PDF:** Rotate, Page numbers, Watermark, Crop, Edit, Forms.
 - **PDF Security:** Unlock, Protect, Sign, Redact, Compare.
 
-It also has a newer "PDF Intelligence" section: Summarize, Translate, and PDF to Markdown.
+Newer suites add an AI section: Summarize, Translate, and PDF to Markdown.
 
-On the website you choose a tool first, then upload files, then set options and download. Choosing the tool first does not fit a 508×114 pt drawer, so this tab turns that order around: **drop first, then pick from the targets that fit the input**. That is the "other formats pop up" behavior the user described. Options live in one compact "More…" menu. When an option needs text (a password, watermark text or page ranges), a small inline prompt replaces the format row.
+On those websites you choose a tool first, then upload files, then set options and download. Choosing the tool first does not fit a 508×114 pt drawer, so this tab turns that order around: **drop first, then pick from the targets that fit the input**. That is the "other formats pop up" behavior the user described. Options live in one compact "More…" menu. When an option needs text (a password, watermark text or page ranges), a small inline prompt replaces the format row.
 
 ## Mapping each tool to on-device Apple frameworks
 
-| iLovePDF tool | On device? | How it is done here |
+| PDF tool | On device? | How it is done here |
 |---|---|---|
 | Merge PDF | Yes | `PDFDocument.insert(_:at:)` with copied `PDFPage`s. Images and documents in the same drop become pages too. |
 | Split PDF | Yes | One page per file, or one file per range ("1-3, 5, 8-"). |
@@ -55,7 +55,6 @@ On the website you choose a tool first, then upload files, then set options and 
 
 ## Sources
 
-- iLovePDF tool list: https://www.ilovepdf.com/
 - PDFKit `PDFDocumentWriteOption` (owner and user password, `SaveImagesAsJPEG`, `OptimizeImagesForScreen`, `SaveTextFromOCR`) and the `"QuartzFilter"` write-option key: `PDFKit.framework/Headers/PDFDocument.h` in the macOS SDK (lines 91-105 and 199-213); https://developer.apple.com/documentation/pdfkit/pdfdocumentwriteoption
 - `QuartzFilter(properties:)`, `applyToContext:`: `Quartz.framework/Frameworks/QuartzFilters.framework/Headers/QuartzFilter.h`; the preset keys come from `/System/Library/Filters/Reduce File Size.qfilter` (`plutil -p`).
 - `NSAttributedString.DocumentType.officeOpenXML` and the other types: `AppKit.framework/Headers/NSAttributedString.h` (lines 262-271); https://developer.apple.com/documentation/foundation/nsattributedstring/documenttype/officeopenxml

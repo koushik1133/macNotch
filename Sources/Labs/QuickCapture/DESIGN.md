@@ -41,17 +41,17 @@ Turning the toggle on by hand counts as that go-ahead. If the folder later moves
 protected place without consent, a "Watch <folder> for Screenshots" button appears.
 Nothing prompts at launch.
 
-## Approaches copied from shipping products
+## Proven patterns we follow
 
-| Piece | Modelled on | Why |
+| Piece | Pattern | Why |
 |---|---|---|
-| File first, then offer Undo / Change | Gmail "Undo Send", CleanShot X quick-access overlay, Mem's "capture now, organize later" | One keystroke and no picker. Fixing a wrong guess costs one click. |
-| Fallback to the last destination | Notion Web Clipper keeps the last workspace or destination | Predictable when the agents aren't sure. Off by default (Inbox). |
-| Selection → page → screenshot order | Raycast / PopClip-style "act on what's selected" | The most specific context wins. |
+| File first, then offer Undo / Change | An "Undo" right after the action, a quick-access overlay after a capture, "capture now, organize later" | One keystroke and no picker. Fixing a wrong guess costs one click. |
+| Fallback to the last destination | Web clippers keep the last workspace or destination | Predictable when the agents aren't sure. Off by default (Inbox). |
+| Selection → page → screenshot order | "Act on what's selected" | The most specific context wins. |
 | Selection read: `AXSelectedText`, then `AXSelectedTextRange` + `AXStringForRange`, then the app's focused element, with `AXManualAccessibility` for Chromium/Electron and a short retry | Electron's accessibility docs, and the fallback order used by the selected-text crates and Tauri write-ups | Works in native, Chromium and Electron apps. The ⌘C fallback those tools use is deliberately dropped because it would change the user's clipboard. |
 | Global hotkey through Carbon `RegisterEventHotKey` | sindresorhus/KeyboardShortcuts (MIT). The approach was already in `ScreenRegionHotkey`, which is reused here. | No Accessibility prompt, and the keystroke is consumed. |
 | Interactive capture through `screencapture -i` | macOS ⌘⇧4 | Familiar crosshair, Space for a window, Esc to cancel. |
-| Copy and keep the file | CleanShot X "copy and save" after-capture action | The image can be pasted right away and the file stays. |
+| Copy and keep the file | A "copy and save" after-capture action | The image can be pasted right away and the file stays. |
 
 No third-party code is vendored. Everything reuses SparkV building blocks:
 `ScreenRegionHotkey`/`ScreenRegionShortcut`, `SpaceStore`, `SpaceConnectors`

@@ -78,9 +78,9 @@ In `tearDown()`, after `screenDistance.stop()`:
 
 `sendToSpaceHandler` defaults to `SpaceIngestCenter.file($0, userInitiated: true)` and `airDropHandler` defaults to `AirDrop.share(urls:)`, so neither needs wiring.
 
-## 4. NotchNookLayoutView.swift: the drawer page
+## 4. IslandLayoutView.swift: the drawer page
 
-In `NotchNookLayoutView`, add:
+In `IslandLayoutView`, add:
 
 ```swift
     @EnvironmentObject private var downloads: DownloadsController
@@ -102,11 +102,11 @@ Add to `agents`, after the Distance (`.screenDistance`) tile:
         Agent(tab: .downloads, title: "Downloads", systemImage: "arrow.down.circle", tint: .blue),
 ```
 
-Optionally, update the header icon's help text in `NotchNookLayoutView` (`"Agents: UI audit, jobs, screen, prompts, browser flows, clipboard"`) to end with `", downloads"`.
+Optionally, update the header icon's help text in `IslandLayoutView` (`"Agents: UI audit, jobs, screen, prompts, browser flows, clipboard"`) to end with `", downloads"`.
 
 ## 6. Settings (gear menu)
 
-In `SettingsMenu` (`NotchNookLayoutView.swift`), add:
+In `SettingsMenu` (`IslandLayoutView.swift`), add:
 
 ```swift
     @EnvironmentObject private var downloads: DownloadsController

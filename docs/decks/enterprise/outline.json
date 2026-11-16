@@ -340,13 +340,13 @@
       "table": {
         "columns": ["Tool", "Covers", "List price"],
         "rows": [
-          ["Wispr Flow Teams", "Dictation", "from $10/user/mo"],
-          ["Granola Business", "Meeting notes", "$14/user/mo"],
-          ["Raycast Pro", "Launcher with AI", "$8/mo billed yearly"],
-          ["Paste", "Clipboard", "$29.99/yr"],
-          ["CleanShot X", "Screenshots, recording", "$29 one-time"],
-          ["NotchNook", "Notch hub", "$25 one-time"],
-          ["Alcove", "Notch", "about $13.99 one-time"],
+          ["Dictation app (teams)", "Dictation", "from $10/user/mo"],
+          ["Meeting-notes app", "Meeting notes", "$14/user/mo"],
+          ["AI launcher", "Launcher with AI", "$8/mo billed yearly"],
+          ["Clipboard app", "Clipboard", "$29.99/yr"],
+          ["Screenshot app", "Screenshots, recording", "$29 one-time"],
+          ["Notch hub app", "Notch hub", "$25 one-time"],
+          ["Notch island app", "Notch", "about $13.99 one-time"],
           ["SparkV Team", "All of the above areas", "$8/seat/mo billed yearly"]
         ],
         "box_in": [0.6, 1.7, 6.9, 4.6]
@@ -355,28 +355,28 @@
         "Prices from third-party listings, Oct 2026; verify on vendor pages before external use.",
         "Overlap in areas covered, not feature parity."
       ],
-      "notes": "The point is consolidation: one vendor review, one invoice, one privacy story. Do not claim parity: Granola, Wispr and Raycast are deep products in their own lanes. Monthly prices are annualized x12 for year one. NotchNook and Alcove are left out of the stack bar because SparkV replaces them outright and they are one-time.",
+      "notes": "The point is consolidation: one vendor review, one invoice, one privacy story. Do not claim parity: dedicated meeting-notes, dictation and launcher apps are deep products in their own lanes. Monthly prices are annualized x12 for year one. One-time notch apps are left out of the stack bar because SparkV replaces them outright.",
       "images": [],
       "chart": {
         "type": "bar_stacked",
         "title": "Year-one cost per seat (USD, list)",
         "categories": ["Five-tool stack", "SparkV Team"],
         "series": [
-          {"name": "Wispr Flow Teams", "values": [120.0, 0]},
-          {"name": "Granola Business", "values": [168.0, 0]},
-          {"name": "Raycast Pro", "values": [96.0, 0]},
-          {"name": "Paste", "values": [29.99, 0]},
-          {"name": "CleanShot X", "values": [29.0, 0]},
+          {"name": "Dictation app (teams)", "values": [120.0, 0]},
+          {"name": "Meeting-notes app", "values": [168.0, 0]},
+          {"name": "AI launcher", "values": [96.0, 0]},
+          {"name": "Clipboard app", "values": [29.99, 0]},
+          {"name": "Screenshot app", "values": [29.0, 0]},
           {"name": "SparkV Team", "values": [0, 96.0]}
         ],
         "number_format": "$#,##0",
         "box_in": [7.9, 1.7, 4.8, 4.6],
         "data_table": [
-          {"item": "Wispr Flow Teams", "basis": "from $10/user/mo x 12", "usd": 120.0},
-          {"item": "Granola Business", "basis": "$14/user/mo x 12", "usd": 168.0},
-          {"item": "Raycast Pro", "basis": "$8/mo billed yearly x 12", "usd": 96.0},
-          {"item": "Paste", "basis": "$29.99/yr", "usd": 29.99},
-          {"item": "CleanShot X", "basis": "$29 one-time (year one)", "usd": 29.0},
+          {"item": "Dictation app (teams)", "basis": "from $10/user/mo x 12", "usd": 120.0},
+          {"item": "Meeting-notes app", "basis": "$14/user/mo x 12", "usd": 168.0},
+          {"item": "AI launcher", "basis": "$8/mo billed yearly x 12", "usd": 96.0},
+          {"item": "Clipboard app", "basis": "$29.99/yr", "usd": 29.99},
+          {"item": "Screenshot app", "basis": "$29 one-time (year one)", "usd": 29.0},
           {"item": "Stack total", "basis": "sum", "usd": 442.99},
           {"item": "SparkV Team", "basis": "$8/seat/mo billed yearly", "usd": 96.0}
         ],

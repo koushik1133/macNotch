@@ -10,9 +10,9 @@ struct IslandCoexistenceFinding: Identifiable, Equatable, Sendable {
     enum Kind: Equatable, Sendable {
         /// Another notch / HUD app draws where the island is.
         case notchApp
-        /// Ice, Bartender…: its bar can sit over the island.
+        /// A menu bar manager: its bar can sit over the island.
         case menuBarManager
-        /// Wispr Flow and SparkV's dictation both listen to fn.
+        /// Another dictation app and SparkV's dictation both listen to fn.
         case fnDictation
     }
 

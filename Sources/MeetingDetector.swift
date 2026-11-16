@@ -5,7 +5,7 @@ import SwiftUI
 
 // Detects a live call (Zoom, Google Meet, Microsoft Teams, Slack huddles,
 // Webex, FaceTime and other call apps) without joining it and without any
-// new permission, the way Granola and Heizen do it: a known call app (or a
+// new permission: a known call app (or a
 // browser on a meeting page) is using the microphone.
 //
 // Signals, cheapest first:
@@ -439,8 +439,7 @@ enum MeetingTabClassifier {
 // MARK: - Evaluation (pure)
 
 enum MeetingCallEvaluator {
-    /// A call joined up to this long before the event starts is that event
-    /// (Granola uses the same 15-minute window).
+    /// A call joined up to this long before the event starts is that event.
     static let calendarEarlyJoin: TimeInterval = 15 * 60
 
     static func isOwn(_ process: MeetingAudioProcess, _ signals: MeetingCallSignals) -> Bool {

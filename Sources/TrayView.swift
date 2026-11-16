@@ -1183,7 +1183,7 @@ enum TrayDragImage {
 enum TrayDragOut {
     /// Posted when a drag-out ends. userInfo: `dropped` (Bool),
     /// `count` (Int), `keepOpen` (Bool: Shift was held at the drop, the
-    /// Dropover gesture for "keep the shelf open").
+    /// the gesture for "keep the shelf open").
     static let didEndNotification = Notification.Name("SparkV.TrayDragOut.didEnd")
 
     private(set) static var activeSessions = 0
@@ -1643,7 +1643,7 @@ private func shareTrayItems(_ items: [TrayItem]) {
 
 struct TrayView: View {
     @EnvironmentObject private var tray: TrayStore
-    // Drops are handled by the whole drawer in NotchNookLayoutView.
+    // Drops are handled by the whole drawer in IslandLayoutView.
     @EnvironmentObject private var state: NotchState
     /// Off until the shelf is on screen, so the cards can fade in in turn.
     @StateObject private var appeared = ViewFlag()

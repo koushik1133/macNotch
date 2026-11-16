@@ -57,7 +57,7 @@ struct FocusSources {
 // MARK: - Controller
 
 /// Focus mode: one tap mutes notifications (Do Not Disturb through the
-/// user's Shortcuts plus SparkV's own previews), runs Pomodoro-style
+/// user's Shortcuts plus SparkV's own previews), runs timed
 /// focus/break rounds on `TimerController`, shows a "Focusing" band with the
 /// time left, watches for distractions, and ends with a recap of the apps,
 /// documents and SparkV items of the session.

@@ -109,7 +109,7 @@ enum FileDropAction: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// What dropping on one of the shelf's buckets does right away
-/// (Dropover-style "instant actions").
+/// ("instant actions").
 enum FileDropInstant: String, CaseIterable, Identifiable, Sendable {
     /// Keep the files and open the action strip.
     case actions

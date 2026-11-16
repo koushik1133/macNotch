@@ -38,7 +38,7 @@ focus.stop()
 
 `focus.stop()` saves a running session, and the next launch resumes it. It does not turn Do Not Disturb off, because the session keeps running. A session that ran out while SparkV was closed is wrapped up at the next launch: DND goes off, previews come back, and the summary shows.
 
-## 3. Header button (NotchNookLayoutView.swift › HeaderRow)
+## 3. Header button (IslandLayoutView.swift › HeaderRow)
 
 ```swift
 // HeaderRow: tighten the spacing from 5 to 2
@@ -83,7 +83,7 @@ FocusHubTile()
 - Idle, one click starts focus.
 - Running, it shows the time left. A click opens the Focus page; without step 6, it opens the same menu as the header button. A stray click never ends a session.
 
-## 5. Gear menu (NotchNookLayoutView.swift › SettingsMenu)
+## 5. Gear menu (IslandLayoutView.swift › SettingsMenu)
 
 ```swift
 // with the other environment objects, after `browserRecorder`
@@ -113,7 +113,7 @@ case focus
 // and add `.focus` to the existing `agentTabs` set (keep the entries already there), e.g.
 static let agentTabs: Set<Tab> = [.focus, .agents, .uiAudit, .jobs, .screen, .promptRefiner, .browser, .clipboard, .screenDistance]
 
-// NotchNookLayoutView tab switch, after `case .clipboard: ClipboardTabView()`
+// IslandLayoutView tab switch, after `case .clipboard: ClipboardTabView()`
 case .focus: FocusTabView()
 
 // NotchWindowController.init, directly after `super.init(window: panel)`

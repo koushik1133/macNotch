@@ -66,7 +66,7 @@ Start: add `screenRecorder.start` to the start list, and install its hotkey next
 
 Stop: add `screenRecorder.shutdown` to the stop list (`[uiAudit.stop, …, screenRecorder.shutdown]`).
 
-## 3. NotchNookLayoutView.swift: the "…" menu
+## 3. IslandLayoutView.swift: the "…" menu
 
 In the menu view that already has `@EnvironmentObject private var screenRegion: ScreenRegionController` (around line 341), add:
 

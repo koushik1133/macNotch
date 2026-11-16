@@ -1,8 +1,7 @@
 import Foundation
 
 /// "Ask" mode: answers in a few sentences from the top results, citing them
-/// as [1], [2]… (Perplexity / Raycast Quick AI / Rewind "Ask Rewind" style:
-/// retrieve first, then answer only from what was retrieved).
+/// as [1], [2]… (retrieve first, then answer only from what was retrieved).
 ///
 /// Runs on the on-device Apple Intelligence model through
 /// `MeetingAIBackend` (4k-token context, so sources are trimmed to the

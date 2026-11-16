@@ -21,7 +21,7 @@ entry.
 ✓, and after a delete an 8 s task retires Undo.
 
 All 20 edits below were applied to a fresh copy of the current sources
-(build.sh, NotchState, NotchNookLayoutView, AgentsHubView, NotchWindowController)
+(build.sh, NotchState, IslandLayoutView, AgentsHubView, NotchWindowController)
 by a script that reads this file, checks that every **Find** text occurs exactly
 once, and replaces it. That copy typechecked with no errors in Swift 5 and in
 Swift 6, and no warnings from the lab or the edited NotchWindowController.
@@ -97,9 +97,9 @@ Replace with:
     static let tallTabs: Set<NotchState.Tab> = [.tray, .converter, .clipboard, .search, .downloads, .widgets, .replyDrafter, .fans, .colorPicker]
 ```
 
-## 3. NotchNookLayoutView.swift
+## 3. IslandLayoutView.swift
 
-#### Edit 3a — `Sources/NotchNookLayoutView.swift`: environment object for the page
+#### Edit 3a — `Sources/IslandLayoutView.swift`: environment object for the page
 
 Find:
 ```swift
@@ -113,7 +113,7 @@ Replace with:
     /// Notch theme and island background (Labs/NotchThemes).
 ```
 
-#### Edit 3b — `Sources/NotchNookLayoutView.swift`: the drawer page (the switch must stay exhaustive)
+#### Edit 3b — `Sources/IslandLayoutView.swift`: the drawer page (the switch must stay exhaustive)
 
 Find:
 ```swift
@@ -125,7 +125,7 @@ Replace with:
         case .colorPicker: ColorPickerDrawerView(controller: colorPicker)
 ```
 
-#### Edit 3c — `Sources/NotchNookLayoutView.swift`: environment object for the gear menu
+#### Edit 3c — `Sources/IslandLayoutView.swift`: environment object for the gear menu
 
 Find:
 ```swift
@@ -139,7 +139,7 @@ Replace with:
     @ObservedObject private var flowCanvasSettings = FCSettingsModel.shared
 ```
 
-#### Edit 3d — `Sources/NotchNookLayoutView.swift`: gear menu submenu
+#### Edit 3d — `Sources/IslandLayoutView.swift`: gear menu submenu
 
 Find:
 ```swift

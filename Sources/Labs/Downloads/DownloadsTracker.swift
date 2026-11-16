@@ -31,7 +31,7 @@ final class DownloadsTracker {
         var progressFresh: TimeInterval = 6
         /// Minimum spacing between speed samples.
         var rateSample: TimeInterval = 0.5
-        /// Smoothing of the transfer rate (Chromium-style moving average).
+        /// Smoothing of the transfer rate (a moving average).
         var rateSmoothing: Double = 0.3
         /// Paths the tracker finished stay ignored this long (browsers keep
         /// writing attributes to the finished file for a moment).

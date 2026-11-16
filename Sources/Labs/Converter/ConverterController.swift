@@ -57,7 +57,7 @@ final class ConverterController: ObservableObject {
     /// Results whose files were just saved to Downloads (shows a checkmark).
     @Published private(set) var savedResults: Set<UUID> = []
     /// Dropped PDFs that need a password to open (Unlock asks for it only
-    /// then; owner-restricted PDFs unlock without one, as on iLovePDF).
+    /// then; owner-restricted PDFs unlock without one).
     @Published private(set) var lockedInputs: Set<URL> = []
 
     /// Wired by the app to `TrayStore.addFile` for each URL.
@@ -187,7 +187,7 @@ final class ConverterController: ObservableObject {
         refreshTargets()
     }
 
-    /// iLovePDF's "Continue": the result's files become the new inputs, so
+    /// "Continue": the result's files become the new inputs, so
     /// tools chain (Word → PDF → Compress → Protect).
     func continueWith(_ result: ConverterResult) {
         let files = result.files.filter { FileManager.default.fileExists(atPath: $0.path) }

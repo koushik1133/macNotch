@@ -85,7 +85,7 @@ Every required visual type is present: app screenshots in notch mockups (1, 3, 4
   - $395.99 in year one for five separate apps
   - $312 a year for AI dictation plus AI meeting notes
   - Five shortcuts, five windows, five bills
-- **KPI tiles:** **$395.99** year one, five separate apps · **$312/yr** Wispr Flow + Granola, recurring · **$39** SparkV Pro, once
+- **KPI tiles:** **$395.99** year one, five separate apps · **$312/yr** dictation + meeting notes, recurring · **$39** SparkV Pro, once
 - **Speaker notes:** This is the stack a busy Mac user ends up with: a notch app, a clipboard manager, a dictation app, a meeting-notes app and a screenshot tool. Using public list prices, year one costs about $396, and the two AI subscriptions alone are $312 a year, every year. Cloud AI has a cost on every request, and subscriptions are the norm for these tools. We do not have that cost; it is the core of our business model.
 - **Screenshots:** none (data slide)
 
@@ -93,16 +93,16 @@ Every required visual type is present: app screenshots in notch mockups (1, 3, 4
 
 | product | job | basis | usd_year1 | source_id |
 | --- | --- | --- | --- | --- |
-| Granola | AI meeting notes | $14 per user per month x 12 (Business) | 168.0 | granola |
-| Wispr Flow | AI dictation | $144 per year (Pro, yearly) | 144.0 | wispr |
-| Paste | Clipboard manager | $29.99 per year | 29.99 | paste |
-| CleanShot X | Screenshots and recording | $29 one-time (1 year of updates) | 29.0 | cleanshot |
-| NotchNook | Notch hub | $25 one-time | 25.0 | notchnook |
+| Meeting-notes app | AI meeting notes | $14 per user per month x 12 (Business) | 168.0 | meeting_notes |
+| Dictation app | AI dictation | $144 per year (Pro, yearly) | 144.0 | dictation |
+| Clipboard app | Clipboard manager | $29.99 per year | 29.99 | clipboard |
+| Screenshot app | Screenshots and recording | $29 one-time (1 year of updates) | 29.0 | screenshots |
+| Notch hub app | Notch hub | $25 one-time | 25.0 | notch_hub |
 | Five apps total |  | sum | 395.99 | bp |
 | SparkV Pro | All five jobs | $39 one-time, 12 months of updates (launch week $29) | 39.0 | bp |
 
-- Annotation: Wispr Flow + Granola alone: $312 per year
-- Sources: [Granola pricing, Granola blog](https://granola.ai/blog/granola-pricing-plans-features-roi); [Wispr Flow pricing, via getvoibe](https://www.getvoibe.com/resources/wispr-flow-pricing/); [Paste on the App Store](https://apps.apple.com/app/id967805235); [CleanShot X pricing, via toolradar](https://toolradar.com/tools/cleanshot/pricing); [NotchNook price, via iMore](https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny); SparkV Business Plan (docs/SparkV-Business-Plan.md), researched 22 Oct 2026
+- Annotation: Dictation + meeting notes alone: $312 per year
+- Sources: Meeting-notes app, public list price; Dictation app, public list price; Clipboard app, public list price; Screenshot app, public list price; Notch hub app, public list price; SparkV Business Plan (docs/SparkV-Business-Plan.md), researched 22 Oct 2026
 - Footnote on slide: "Prices from third-party listings cited in the SparkV business plan (section 3), Oct 2026. Re-check vendor pages before sending."
 
 #### Slide 3: Solution
@@ -153,7 +153,7 @@ Every required visual type is present: app screenshots in notch mockups (1, 3, 4
   - Suggested answers when someone asks you a question
   - Live translated captions, with the original underneath
   - Filed into Spaces and searchable later
-- **Speaker notes:** This is the feature people pay Granola $14 per user per month for. In SparkV it is part of Pro at one price, because transcription and summaries run on the Mac. No bot joins the call, and audio does not leave the machine unless the user turns on their own Groq key. Status: the notes and answers views render from saved meetings; live audio capture is on our pre-launch live-check list.
+- **Speaker notes:** This is the feature people pay meeting-notes apps $14 per user per month for. In SparkV it is part of Pro at one price, because transcription and summaries run on the Mac. No bot joins the call, and audio does not leave the machine unless the user turns on their own Groq key. Status: the notes and answers views render from saved meetings; live audio capture is on our pre-launch live-check list.
 - **Screenshots:**
   - `docs/screenshots/36-meeting-notes.png`: hero_window, frame `window`, at x 1660, y 560, w 1960, h 1320; scale 1.0x; 4K replacement `media/stills/I04-meetings-0024.png`
   - `docs/screenshots/37-meeting-live-answers.png`: build_step_2, frame `window`, at x 1660, y 560, w 1960, h 1320; scale 1.0x; 4K replacement `media/stills/I04-meetings-0029.png`; crossfade on click 1
@@ -238,7 +238,7 @@ Every required visual type is present: app screenshots in notch mockups (1, 3, 4
   - Breadth: 20+ tools behind one hover
   - Pay once: no AI bill to pass on
   - Private by default: on-device models
-- **Speaker notes:** Read the matrix by column: every competitor is excellent at one job. Notch apps such as NotchNook are built around media and a file tray, and the free open-source one is not notarized. The AI tools, Wispr Flow, Granola and Raycast Pro, are sold as subscriptions. SparkV is the only one in this set that combines the notch with the AI jobs and charges once. The honest risk: any of them can add features. Our answer is breadth plus integration, because Spaces and Search tie meetings, dictation, clipboard and captures together, and the cost structure lets us stay one-time. Prices are from third-party listings; we re-check them before every send.
+- **Speaker notes:** Read the matrix by column: every competitor is excellent at one job. Notch apps are built around media and a file tray, and the free open-source one is not notarized. The AI dictation, meeting-notes and launcher tools are sold as subscriptions. SparkV is the only one in this set that combines the notch with the AI jobs and charges once. The honest risk: any of them can add features. Our answer is breadth plus integration, because Spaces and Search tie meetings, dictation, clipboard and captures together, and the cost structure lets us stay one-time. Prices are from third-party listings; we re-check them before every send.
 - **Screenshots:** none (data slide)
 
 **Chart P9: Positioning (qualitative)** (`scatter_2x2`, qualitative; y position from each product's price model (cited), x from its main job). Placement: x 2832, y 560, w 816, h 816 px.
@@ -246,19 +246,19 @@ Every required visual type is present: app screenshots in notch mockups (1, 3, 4
 | Product | x (point tool 0 → suite 1) | y (subscription 0 → pay once 1) |
 | --- | --- | --- |
 | SparkV | 0.9 | 0.9 |
-| NotchNook | 0.25 | 0.7 |
-| Alcove | 0.15 | 0.85 |
-| boring.notch | 0.2 | 0.95 |
-| CleanShot X | 0.3 | 0.6 |
-| Paste | 0.15 | 0.35 |
-| Raycast Pro | 0.6 | 0.15 |
-| Wispr Flow | 0.2 | 0.1 |
-| Granola | 0.3 | 0.1 |
+| Notch hub app | 0.25 | 0.7 |
+| Notch island app | 0.15 | 0.85 |
+| Open-source notch app | 0.2 | 0.95 |
+| Screenshot app | 0.3 | 0.6 |
+| Clipboard app | 0.15 | 0.35 |
+| AI launcher | 0.6 | 0.15 |
+| Dictation app | 0.2 | 0.1 |
+| Meeting-notes app | 0.3 | 0.1 |
 
 
 **Table T9: Jobs covered and price model** Placement: x 192, y 560, w 2496, h 1280 px.
 
-| Job | SparkV | NotchNook | Alcove | boring.notch | Paste | Wispr Flow | Granola | CleanShot X | Raycast Pro |
+| Job | SparkV | Notch hub app | Notch island app | Open-source notch app | Clipboard app | Dictation app | Meeting-notes app | Screenshot app | AI launcher |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Notch drawer and live activities | ● | ● | ● | ● |  |  |  |  |  |
 | Clipboard history | ● |  |  |  | ● |  |  |  |  |
@@ -279,7 +279,7 @@ Legend (on slide, caption size): "● = the product's main job per the cited lis
   - Free hooks users away from free notch apps
   - Pro is one price for every feature
   - Team adds recurring revenue from companies
-- **Speaker notes:** Three plans. Free is a useful notch app at zero, which competes with the free open-source option and gives reviewers something to try. Pro is $39 once, $29 in launch week, and includes every feature; buyers on r/macapps prefer one-time prices and CleanShot X shows the model works. Team is $8 per seat per month, billed yearly, minimum three seats, for companies that need invoices, seat management and an MDM package. We are not on the Mac App Store because SparkV needs Accessibility and other APIs the sandbox does not allow; Lemon Squeezy handles VAT, GST and sales tax worldwide. Shared Spaces for Team is a file package today, not live sync.
+- **Speaker notes:** Three plans. Free is a useful notch app at zero, which competes with the free open-source option and gives reviewers something to try. Pro is $39 once, $29 in launch week, and includes every feature; buyers on r/macapps prefer one-time prices and established screenshot tools show the model works. Team is $8 per seat per month, billed yearly, minimum three seats, for companies that need invoices, seat management and an MDM package. We are not on the Mac App Store because SparkV needs Accessibility and other APIs the sandbox does not allow; Lemon Squeezy handles VAT, GST and sales tax worldwide. Shared Spaces for Team is a file package today, not live sync.
 - **Screenshots:** none (data slide)
 
 | | Free | Pro (Recommended) | Team |
@@ -351,7 +351,7 @@ Basis: Lemon Squeezy 5% + $0.50 per order; +1.5% non-US; +0.5% on subscriptions 
 - **Body (exact):**
   - Product Hunt, r/macapps App Pile, Show HN
   - YouTube: one 2-4 min demo plus a 30 s Short per feature
-  - Comparison pages: SparkV vs NotchNook, Alcove, boring.notch
+  - Comparison pages: SparkV vs each app category
 - **Timeline nodes:** **Days 1-3** Apple Developer ID, Lemon Squeezy products, domain → **Days 4-7** Legal pages; Face Unlock out of the sold build → **Days 8-12** Licensing, trial, Sparkle updates, notarization → **Days 13-15** Clean-Mac install and update test → **Days 16-18** Landing page, pricing, waitlist → **Days 19-22** Demo video, 5 Shorts, keys to 10-15 creators → **Days 23-25** Private beta, 30-50 users, 5 testimonials → **Day 26** Ship 1.0 at the launch price → **Day 27** Product Hunt (Tue/Wed), r/macapps, X, LinkedIn, waitlist email → **Days 28-30** Show HN, affiliates open, retrospective
 - **Channel chips:** Product Hunt · r/macapps · YouTube creators (20k-300k subs) · Lemon Squeezy affiliates (30%, 30-day cookie) · Show HN / Indie Hackers · Setapp (month 3+)
 - **Target chips:** [TBD: waitlist target] · [TBD: trial-to-paid target] · [TBD: CAC by channel] · [TBD: creator reach]
@@ -740,14 +740,14 @@ Take each still with the clip state above, export a PNG frame at 3840 × 2160, t
 | `fm_2025` | [Apple Foundation Models framework, WWDC 2025, via TechCrunch (9 Jun 2025)](https://techcrunch.com/2025/06/09/apple-lets-developers-tap-into-its-offline-ai-models/) | Federighi: on-device models run 'without cloud API costs' and work offline |
 | `as_2023` | [Mac Pro with M2 Ultra completes Apple silicon transition, via MobileSyrup (5 Jun 2023)](https://mobilesyrup.com/2023/06/05/apple-completes-its-transition-to-in-house-chips-with-m2-ultra-mac-pro/) | Every Mac Apple sells since June 2023 is Apple silicon |
 | `mbp_2021` | [14- and 16-inch MacBook Pro with notch, 18 Oct 2021, via Macworld](https://www.macworld.com/article/677726/everything-apple-announced-at-its-18-october-event.html) | Notch introduced on MacBook Pro; 16-inch panel 3456x2234 |
-| `notchnook` | [NotchNook price, via iMore](https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny) | $25 one-time or $3/month (business plan section 3) |
-| `alcove` | [Alcove price, via appgefahren](https://www.appgefahren.de/alcove-bringt-die-dynamic-island-auf-den-mac-394469.html) | about $13.99 one-time |
-| `boringnotch` | [boring.notch on GitHub](https://github.com/TheBoredTeam/boring.notch) | Free, GPL-3.0, not notarized |
-| `raycast` | [Raycast Pro pricing, Raycast blog](https://www.raycast.com/blog/changing-how-raycast-ai-is-priced) | $10/month or $8/month billed yearly |
-| `cleanshot` | [CleanShot X pricing, via toolradar](https://toolradar.com/tools/cleanshot/pricing) | $29 one-time with 1 year of updates, then $19/year optional |
-| `wispr` | [Wispr Flow pricing, via getvoibe](https://www.getvoibe.com/resources/wispr-flow-pricing/) | Pro $15/month or $144/year |
-| `granola` | [Granola pricing, Granola blog](https://granola.ai/blog/granola-pricing-plans-features-roi) | Business $14/user/month |
-| `paste` | [Paste on the App Store](https://apps.apple.com/app/id967805235) | $3.99/month, $29.99/year or $89.99 lifetime |
+| `notch_hub` | Notch hub app, public list price | $25 one-time or $3/month (business plan section 3) |
+| `notch_island` | Notch island app, public list price | about $13.99 one-time |
+| `open_source_notch` | Open-source notch app, public repository | Free, GPL-3.0, not notarized |
+| `ai_launcher` | AI launcher, public list price | $10/month or $8/month billed yearly |
+| `screenshots` | Screenshot app, public list price | $29 one-time with 1 year of updates, then $19/year optional |
+| `dictation` | Dictation app, public list price | Pro $15/month or $144/year |
+| `meeting_notes` | Meeting-notes app, public list price | Business $14/user/month |
+| `clipboard` | Clipboard app, public list price | $3.99/month, $29.99/year or $89.99 lifetime |
 | `lemonsqueezy` | [Lemon Squeezy fees, via Dodo Payments review](https://dodopayments.com/blogs/lemonsqueezy-review) | 5% + 50c; about +1.5% non-US orders, +0.5% subscriptions |
 | `sparkv_site` | [sparkv.si (company site), read 22 Oct 2026](https://www.sparkv.si) | Software studio in Telangana, India; colour tokens |
 

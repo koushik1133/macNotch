@@ -6,7 +6,7 @@ import Foundation
 /// forward + backward scan to find a short span, and an exact-substring
 /// pass that keeps the best-scoring occurrence. Reimplemented in Swift for
 /// short fields (titles, keywords); long bodies use word-prefix matching in
-/// `UniversalSearchEngine` instead, as Raycast and Alfred do.
+/// `UniversalSearchEngine` instead.
 enum UniversalSearchFuzzy {
     struct Match: Equatable, Sendable {
         var score: Int

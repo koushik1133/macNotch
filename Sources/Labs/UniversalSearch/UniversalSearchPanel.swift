@@ -10,8 +10,7 @@ enum UniversalSearchPanelMetrics {
     }
 }
 
-/// Spotlight/Raycast-style launcher window: a non-activating floating panel
-/// (the pattern of Cindori's FloatingPanel and of Alfred/Raycast), so it
+/// Spotlight-style launcher window: a non-activating floating panel, so it
 /// takes keystrokes without activating SparkV and the app you were in stays
 /// frontmost — ⌘↩ "Paste" lands there. Clicking elsewhere closes it.
 final class UniversalSearchPanel: NSPanel {
@@ -37,7 +36,7 @@ final class UniversalSearchPanel: NSPanel {
         hidesOnDeactivate = false
         becomesKeyOnlyIfNeeded = false
         isReleasedWhenClosed = false
-        // ⌥Space opens and closes it instantly, like Raycast: a shortcut used
+        // ⌥Space opens and closes it instantly: a shortcut used
         // dozens of times a day must not wait on a fade.
         animationBehavior = .none
         title = "SparkV Search"
@@ -92,7 +91,7 @@ final class UniversalSearchPanelController: NSObject {
         if !panel.isVisible {
             panel.setFrame(initialFrame(), display: false)
         }
-        // No fade: keyboard-opened, so it appears at once (Raycast).
+        // No fade: keyboard-opened, so it appears at once.
         panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
         installRecordMonitor()
@@ -245,7 +244,7 @@ struct UniversalSearchKeyPress: Sendable {
 /// An NSTextField so arrow keys, Return, Tab and Esc can drive the list
 /// through the field editor's commands (`control(_:textView:doCommandBy:)`,
 /// the standard way Spotlight-style fields do it; ⌃N/⌃P map to moveDown:/
-/// moveUp: in the Cocoa key bindings, as Raycast's Emacs keys do).
+/// moveUp: in the Cocoa key bindings, the Emacs keys).
 struct UniversalSearchField: NSViewRepresentable {
     @ObservedObject var controller: UniversalSearchController
     var fontSize: CGFloat = 19

@@ -4,8 +4,7 @@ import Foundation
 import os
 
 // Ambient Light: car-style mood lighting for the notch (and optionally the
-// screen edges) that follows the music, like the "Groove Me" light show of
-// the Mahindra BE 6, Mercedes ambient light sync or a Hue / DreamView bar.
+// screen edges) that follows the music, like a car's ambient light show.
 // This file holds the contract: modes, settings and the audio feature
 // snapshot shared by the analyzer and the renderers.
 // See INTEGRATION.md in this folder.

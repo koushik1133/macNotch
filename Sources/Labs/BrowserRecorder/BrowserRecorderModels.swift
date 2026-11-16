@@ -125,7 +125,7 @@ enum BRStepKind: String, CaseIterable, Sendable {
         }
     }
 
-    /// Group used to color graph cards (Automa-style categories).
+    /// Group used to color graph cards (by category).
     var group: BRStepGroup {
         switch self {
         case .navigate: .browser
