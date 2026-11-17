@@ -1,8 +1,8 @@
 import Foundation
 import IOKit
 
-// Shared by SparkV and the privileged helper (sparkv-fanhelper): Foundation
-// and IOKit only, no SwiftUI, no top-level code.
+// Read-only SMC access for Fans & Temperatures: Foundation and IOKit only,
+// no SwiftUI, no top-level code. SparkV never writes to the SMC.
 //
 // The System Management Controller is reached through the AppleSMC kernel
 // user client. Every request is one 80-byte parameter block passed to
@@ -229,7 +229,6 @@ enum FanSMCError: Error, Equatable, CustomStringConvertible {
 protocol FanSMCBackend: AnyObject {
     func keyInfo(_ key: FanSMCCode) throws -> FanSMCKeyInfo
     func read(_ key: FanSMCCode) throws -> FanSMCValue
-    func write(_ key: FanSMCCode, bytes: [UInt8]) throws
     func key(at index: Int) throws -> FanSMCCode
 }
 
@@ -237,15 +236,6 @@ extension FanSMCBackend {
     func number(_ key: FanSMCCode) -> Double? { try? read(key).number }
     func number(_ key: String) -> Double? { FanSMCCode(key).flatMap { number($0) } }
     func has(_ key: FanSMCCode) -> Bool { (try? keyInfo(key)) != nil }
-
-    /// Encodes `value` in the key's own type and size, then writes it.
-    func writeNumber(_ key: FanSMCCode, _ value: Double) throws {
-        let info = try keyInfo(key)
-        guard let bytes = FanSMCCodec.encode(value, type: info.type, size: info.size) else {
-            throw FanSMCError.badValue("\(value) does not fit \(key) (\(info.type))")
-        }
-        try write(key, bytes: bytes)
-    }
 
     /// Number of keys the SMC exposes ("#KEY").
     func keyCount() -> Int { Int(number("#KEY") ?? 0) }
@@ -378,18 +368,6 @@ final class FanAppleSMC: FanSMCBackend, @unchecked Sendable {
         block.command = FanSMCParamBlock.Command.read.rawValue
         let out = try call(block)
         return FanSMCValue(key: key, type: info.type, bytes: Array(out.bytes.prefix(info.size)))
-    }
-
-    func write(_ key: FanSMCCode, bytes: [UInt8]) throws {
-        lock.lock(); defer { lock.unlock() }
-        let info = try keyInfoLocked(key)
-        guard bytes.count == info.size else { throw FanSMCError.badValue("\(bytes.count) bytes for \(key) (needs \(info.size))") }
-        var block = FanSMCParamBlock()
-        block.key = key
-        block.dataSize = info.size
-        block.command = FanSMCParamBlock.Command.write.rawValue
-        block.bytes = bytes
-        _ = try call(block)
     }
 
     func key(at index: Int) throws -> FanSMCCode {

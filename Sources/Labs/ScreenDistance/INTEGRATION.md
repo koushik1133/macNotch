@@ -61,7 +61,7 @@ was switched on earlier; with it off it only registers lock/sleep observers.
 ## 4. Camera hand-off
 
 Before SparkV's own camera starts, let a Screen Distance burst go at once.
-In `NotchNookLayoutView.swift`, the mirror button (currently `camera.toggle()`
+In `IslandLayoutView.swift`, the mirror button (currently `camera.toggle()`
 around line 774), with `@EnvironmentObject private var screenDistance: ScreenDistanceController`
 added to that view:
 
@@ -76,7 +76,7 @@ has the notch; on screen lock (when glance scans) it pauses on its own.
 
 ## 5. Drawer page and Agents hub tile
 
-`NotchNookLayoutView.swift`, the tab switch:
+`IslandLayoutView.swift`, the tab switch:
 
 ```swift
 case .screenDistance: ScreenDistanceDrawerView()
@@ -90,7 +90,7 @@ Agent(tab: .screenDistance, title: "Distance", systemImage: "eye", tint: .mint),
 
 ## 6. Gear menu
 
-In the gear `Menu` of `NotchNookLayoutView.swift` (the view that already has
+In the gear `Menu` of `IslandLayoutView.swift` (the view that already has
 `@EnvironmentObject` for the other controllers), e.g. after `Menu("Agents")`:
 
 ```swift

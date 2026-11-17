@@ -100,8 +100,8 @@ final class UniversalSearchController: ObservableObject {
     var requestOpen: (() -> Void)?
     /// Test seam for Ask (instructions, prompt) -> reply.
     var askModelOverride: (@Sendable (String, String) async throws -> String)?
-    /// Seconds after which reopening starts with an empty box (Raycast's
-    /// "pop to root").
+    /// Seconds after which reopening starts with an empty box
+    /// ("pop to root").
     var resetAfter: TimeInterval = 90
     var now: () -> Date = Date.init
 
@@ -131,7 +131,7 @@ final class UniversalSearchController: ObservableObject {
         static let allowGroq = "UniversalSearch.allowGroq"
     }
 
-    /// ⌥Space, as Alfred ships (and Raycast suggests).
+    /// ⌥Space, the common launcher shortcut.
     static let defaultShortcut = ScreenRegionShortcut(keyCode: UInt32(kVK_Space), carbonModifiers: UInt32(optionKey))
     static let shortcutPresets: [ScreenRegionShortcut] = [
         defaultShortcut,
@@ -465,7 +465,7 @@ final class UniversalSearchController: ObservableObject {
         }
         guard let r = selected else {
             if !query.trimmingCharacters(in: .whitespaces).isEmpty {
-                // Nothing matched: Enter asks, like Raycast's "Ask AI" fallback.
+                // Nothing matched: Enter asks (the "Ask AI" fallback).
                 setMode(.ask)
                 runAsk()
             }

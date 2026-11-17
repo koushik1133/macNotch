@@ -253,8 +253,7 @@ enum FileDropOps {
         return out
     }
 
-    /// Clean, cross-platform archives (what Keka/BetterZip call "exclude Mac
-    /// resource forks"): no __MACOSX folder, no quarantine or extended
+    /// Clean, cross-platform archives (Mac resource forks excluded): no __MACOSX folder, no quarantine or extended
     /// attributes, so the zip opens tidily on Windows and Linux too.
     static let zipFlags = ["--norsrc", "--noextattr", "--noqtn", "--noacl"]
 

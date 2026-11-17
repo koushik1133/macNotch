@@ -52,7 +52,7 @@ In `tearDown()`, after `screenDistance.stop()`:
         screenshotClipboard.stop()
 ```
 
-## 3. Gear menu (NotchNookLayoutView.swift, `SettingsMenu`)
+## 3. Gear menu (IslandLayoutView.swift, `SettingsMenu`)
 
 Environment objects (next to the others):
 

@@ -896,7 +896,7 @@ struct MetricKitSummary: Equatable, Sendable {
 /// macOS's own crash, hang and resource reports in
 /// ~/Library/Logs/DiagnosticReports (.ips, .diag, .hang, .spin, .crash).
 enum SystemReportFiles {
-    static let processNames = ["SparkV", "NotchIsland", "com.sparkv.fanhelper"]
+    static let processNames = ["SparkV", "NotchIsland"]
 
     /// True for SparkV's reports ("SparkV-2026-10-20-102211.ips").
     static func isOwnReport(_ name: String) -> Bool {

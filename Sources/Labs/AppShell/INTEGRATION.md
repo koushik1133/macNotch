@@ -116,7 +116,7 @@ cp Info.plist "$STAGED/Contents/Info.plist"
 cp Packaging/PrivacyInfo.xcprivacy "$STAGED/Contents/Resources/PrivacyInfo.xcprivacy"
 ```
 
-## 4. build.sh: the fan helper's symbols
+## 4. build.sh: the fan helper's symbols (obsolete: the fan helper was removed; Fans & Temperatures is read-only)
 
 File: `build.sh`
 
@@ -467,9 +467,9 @@ Replace with:
 
 The right-click monitor goes into `eventMonitors`, so `tearDown()` already removes it.
 
-## 11. NotchNookLayoutView: gear menu and right-click on the open island
+## 11. IslandLayoutView: gear menu and right-click on the open island
 
-File: `Sources/NotchNookLayoutView.swift`
+File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift
@@ -483,7 +483,7 @@ Replace with:
 
 This puts Settings…, Check for Updates… (or "Update Available: SparkV x…"), Troubleshooting › (Crash & Hang Reports…, Export Diagnostics…, Automation Guide…, Reset SparkV…, Uninstall SparkV…), About SparkV and Quit SparkV at the bottom of the gear menu. Quit still goes through `applicationShouldTerminate`.
 
-File: `Sources/NotchNookLayoutView.swift`
+File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```swift

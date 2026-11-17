@@ -33,28 +33,23 @@ final class ResetController {
     /// Options the confirmation shows (no @State).
     final class Options: ObservableObject {
         @Published var removeICloudFolder = false
-        @Published var removeFanHelper: Bool
         @Published var exportSpacesFirst: Bool
         let mode: Mode
         let items: [ResetPlan.Item]
         let iCloudFolder: URL?
-        let fanHelperInstalled: Bool
         /// Top-level Spaces (their folders and items go with them).
         let spaceCount: Int
         /// False when SparkV runs from Downloads (App Translocation) or a
         /// disk image: Uninstall can't move the app itself.
         let canTrashApp: Bool
 
-        init(mode: Mode, items: [ResetPlan.Item], iCloudFolder: URL?, fanHelperInstalled: Bool,
+        init(mode: Mode, items: [ResetPlan.Item], iCloudFolder: URL?,
              spaceCount: Int = 0, canTrashApp: Bool = true) {
             self.mode = mode
             self.items = items
             self.iCloudFolder = iCloudFolder
-            self.fanHelperInstalled = fanHelperInstalled
             self.spaceCount = spaceCount
             self.canTrashApp = canTrashApp
-            // A root helper must not outlive an uninstall; a reset keeps it.
-            removeFanHelper = fanHelperInstalled && mode == .uninstall
             exportSpacesFirst = spaceCount > 0
         }
     }
@@ -64,11 +59,6 @@ final class ResetController {
     static var iCloudFolder: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/SparkV", isDirectory: true)
-    }
-
-    static var fanHelperInstalled: Bool {
-        FileManager.default.fileExists(atPath: FanHelperConstants.launchdPlist)
-            || FileManager.default.fileExists(atPath: FanHelperConstants.installedBinary)
     }
 
     /// Existing items only, plus the preference files.
@@ -84,7 +74,6 @@ final class ResetController {
             mode: mode,
             items: Self.currentItems(),
             iCloudFolder: FileManager.default.fileExists(atPath: iCloud.path) ? iCloud : nil,
-            fanHelperInstalled: Self.fanHelperInstalled,
             spaceCount: Self.rootSpaces().count,
             canTrashApp: Self.canTrashApp
         )
@@ -128,7 +117,7 @@ final class ResetController {
         let alert = Self.makeAlert(options)
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        AppLog.log("Reset: \(mode.title) confirmed (iCloud \(options.removeICloudFolder), fan helper \(options.removeFanHelper))")
+        AppLog.log("Reset: \(mode.title) confirmed (iCloud \(options.removeICloudFolder))")
         isRunning = true
         Task { await perform(mode, options: options) }
     }
@@ -182,21 +171,10 @@ final class ResetController {
         // 2. Login item.
         do { try await SMAppService.mainApp.unregister() } catch { AppLog.log("Reset: login item: \(error.localizedDescription)") }
 
-        // 3. Fan helper (its own administrator prompt).
-        if options.removeFanHelper, Self.fanHelperInstalled {
-            FanController.shared.stop()
-            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-                FanHelperInstaller.run(install: false) { result in
-                    if case .failure(let error) = result { AppLog.log("Reset: fan helper not removed: \(error.localizedDescription)") }
-                    done.resume()
-                }
-            }
-        }
-
-        // 4. Keychain.
+        // 3. Keychain.
         let removedKeys = Self.deleteOwnKeychainItems()
 
-        // 5. Files to the Trash (the log last, so this run is still logged).
+        // 4. Files to the Trash (the log last, so this run is still logged).
         AppLog.log("Reset: removed \(removedKeys) keychain item(s); moving files to the Trash")
         try? await Task.sleep(for: .milliseconds(300))
         var targets = Self.currentItems().map(\.url).filter { $0.pathExtension != "plist" }
@@ -208,16 +186,16 @@ final class ResetController {
             }
         }
 
-        // 6. Privacy permissions for SparkV's own bundle id.
+        // 5. Privacy permissions for SparkV's own bundle id.
         for id in ResetPlan.bundleIDs { Self.run("/usr/bin/tccutil", ["reset", "All", id]) }
 
-        // 7. Preferences. Nothing may write a default after this point.
+        // 6. Preferences. Nothing may write a default after this point.
         for id in ResetPlan.bundleIDs {
             UserDefaults.standard.removePersistentDomain(forName: id)
             CFPreferencesAppSynchronize(id as CFString)
         }
 
-        // 8. Relaunch or remove the app.
+        // 7. Relaunch or remove the app.
         let bundle = Bundle.main.bundleURL
         switch mode {
         case .reset:
@@ -342,11 +320,6 @@ struct ResetConfirmationView: View {
             }
             if options.iCloudFolder != nil {
                 Toggle("Also move iCloud Drive › SparkV to the Trash (on every device)", isOn: $options.removeICloudFolder)
-                    .toggleStyle(.checkbox)
-                    .font(.system(size: 11.5))
-            }
-            if options.fanHelperInstalled {
-                Toggle("Remove the Fan Control helper (asks for your administrator password)", isOn: $options.removeFanHelper)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11.5))
             }

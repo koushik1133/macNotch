@@ -11,7 +11,7 @@ cask "sparkv" do
 
   url "https://github.com/koushik1133/macNotch/releases/download/v#{version}/SparkV.zip"
   name "SparkV"
-  desc "Dynamic Island-style drawer around the MacBook notch"
+  desc "Live island drawer around the MacBook notch"
   homepage "https://github.com/koushik1133/macNotch"
 
   livecheck do

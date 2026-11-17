@@ -133,8 +133,8 @@ final class MediaEngine: ObservableObject {
     /// seek or a play/pause, never per frame: views read the live position
     /// with `elapsedTime(at:)` inside a `TimelineView`.
     @Published private(set) var timing: PlaybackTiming = .unknown
-    /// Vibrant color pulled from the artwork, for the island's glow
-    /// (boring.notch style). Nil without artwork.
+    /// Vibrant color pulled from the artwork, for the island's glow.
+    /// Nil without artwork.
     @Published private(set) var artworkTint: NSColor?
     /// Album of the current track, when the player reports one (lyrics
     /// lookups use it to pick the right version).
@@ -1431,7 +1431,7 @@ final class MediaEngine: ObservableObject {
 
 /// A playback position as players report it: `elapsed` seconds at `anchor`,
 /// advancing at `rate` (0 while paused). The live position is extrapolated
-/// on demand, the way MediaRemote clients (boring.notch, NotchNook) do it.
+/// on demand, the way MediaRemote clients do it.
 struct PlaybackTiming: Equatable, Sendable {
     var elapsed: TimeInterval
     var anchor: Date
@@ -1470,7 +1470,7 @@ struct PlaybackTiming: Equatable, Sendable {
 /// Picks the color the island glows with from album art: the most
 /// prominent *vibrant* hue rather than the plain average (which turns most
 /// covers into mud). Hue-bucketed and saturation-weighted over a 32x32
-/// thumbnail, like Android's Palette "vibrant" swatch; covers without any
+/// thumbnail (a "vibrant" swatch); covers without any
 /// color fall back to a soft neutral of their average brightness.
 enum ArtworkPalette {
     static func glowColor(for image: NSImage) -> NSColor? {

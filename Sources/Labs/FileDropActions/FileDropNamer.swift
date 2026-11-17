@@ -3,8 +3,8 @@ import Foundation
 import UniformTypeIdentifiers
 import Vision
 
-/// Descriptive file names from a file's content, the way AI renamers
-/// (Hazel-style rules + an LLM pass) do it: read the content (Vision OCR and
+/// Descriptive file names from a file's content, with rules plus an
+/// LLM pass: read the content (Vision OCR and
 /// scene labels for images, the text layer or OCR for PDFs, the text of
 /// documents), ask the on-device model for a short name, then normalise it.
 /// Without Apple Intelligence a heuristic picks the title line and any date.

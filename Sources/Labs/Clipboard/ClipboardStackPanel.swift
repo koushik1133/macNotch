@@ -4,7 +4,7 @@ import SwiftUI
 
 // The clipboard stack (⌘⇧V): a floating, non-activating panel at the text
 // caret (or the pointer) listing the history newest first with number
-// badges 1–9, like Paste's stack and Maccy's popup. It takes keystrokes
+// badges 1–9. It takes keystrokes
 // without activating SparkV, so the app you were typing in stays frontmost
 // and ↩ pastes straight back into it.
 
@@ -132,6 +132,8 @@ final class ClipboardStackPanelController {
         guard !isOpen, !opening else { return }
         opening = true
         let ownPID = ProcessInfo.processInfo.processIdentifier
+        // Never paste into an app from an earlier opening.
+        targetApp = nil
         if let front = NSWorkspace.shared.frontmostApplication, front.processIdentifier != ownPID {
             targetApp = front
         }
@@ -210,11 +212,11 @@ final class ClipboardStackPanelController {
                 guard let self else { return false }
                 // Over the preview column the wheel scrolls the preview (long
                 // text or code); everywhere else it moves the selection.
-                if ClipboardStackPanelController.scrollsPreview(pointerX: x, previewing: self.model.isPreviewing) {
-                    return false
-                }
-                self.model.scroll(deltaY: delta, precise: precise)
-                return true
+                // The wheel scrolls the list (or the preview) like any list. The
+                // rows sliding under a still pointer must not grab the selection.
+                _ = (x, delta, precise)
+                self.model.pointerMoved = false
+                return false
             }
         }
         panel.onPointerMoved = { [weak self] in
@@ -361,18 +363,20 @@ struct ClipboardStackView: View {
                             .id(item.id)
                             .contentShape(Rectangle())
                             .onHover { inside in
-                                if inside, model.pointerMoved { model.select(index) }
+                                if inside, model.pointerMoved { model.select(index, fromPointer: true) }
                             }
                             .gesture(
                                 TapGesture(count: 2).onEnded { onCommand(.paste(item, plainText: false)) }
-                                    .exclusively(before: TapGesture().onEnded { model.select(index) })
+                                    .exclusively(before: TapGesture().onEnded { model.select(index, fromPointer: true) })
                             )
                         }
                     }
                     .padding(4)
                 }
                 .onChange(of: model.selection) { _, newValue in
-                    guard items.indices.contains(newValue) else { return }
+                    // Only keyboard moves scroll the list; the pointer already
+                    // points at a visible row.
+                    guard !model.lastSelectFromPointer, items.indices.contains(newValue) else { return }
                     proxy.scrollTo(items[newValue].id)
                 }
             }
@@ -537,7 +541,7 @@ struct ClipboardStackRow: View {
     static func kindLabel(_ item: ClipboardItem) -> String {
         switch item.kind {
         case .text: "Text"
-        case .richText: "Formatted text"
+        case .richText: "Text"
         case .url: "Link"
         case .image: "Image"
         case .file: (item.fileURLs?.count ?? 0) > 1 ? "\(item.fileURLs?.count ?? 0) files" : "File"

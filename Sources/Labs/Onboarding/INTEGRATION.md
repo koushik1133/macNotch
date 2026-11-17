@@ -47,7 +47,7 @@ In `applicationDidFinishLaunching`, right after `notchController = controller`:
 - terms were never accepted, or `OnboardingTerms.version` was raised, or
 - Accessibility worked for an earlier build (its cdhash is remembered) and doesn't work for this one. This opens straight to Permissions with the fix card, at most once per build.
 
-## 3. NotchNookLayoutView.swift: menu items
+## 3. IslandLayoutView.swift: menu items
 
 In `SettingsMenu`, just above `Button(FaceUnlock.isSetUp ? …`:
 

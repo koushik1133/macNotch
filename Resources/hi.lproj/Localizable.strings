@@ -6909,259 +6909,259 @@
 /* MeetingsView.swift */
 "Show All-Day Events" = "पूरे दिन के इवेंट दिखाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "AI Formatting" = "AI फ़ॉर्मेटिंग";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Agents" = "एजेंट";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Accessibility for ⌘+Number+V…" = "⌘+नंबर+V के लिए एक्सेसिबिलिटी की अनुमति दें…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Flow Canvas to Use My Groq Key" = "फ़्लो कैनवास को मेरी Groq API कुंजी इस्तेमाल करने दें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Meeting Notes to Use My Groq Key" = "मीटिंग नोट्स को मेरी Groq API कुंजी इस्तेमाल करने दें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Reply Drafter to Use My Groq Key" = "जवाब ड्राफ़्टर को मेरी Groq API कुंजी इस्तेमाल करने दें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Ambient Light" = "एम्बिएंट लाइट";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Ask About Screen…  %@" = "स्क्रीन के बारे में पूछें…  %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Battery & AirPods" = "बैटरी और AirPods";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Browser Flows…" = "ब्राउज़र फ़्लो…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Button %lld: %@" = "बटन %lld: %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Capture Job Page  fn⌃" = "जॉब पेज कैप्चर करें  fn⌃";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Confetti When a Session Ends" = "सेशन ख़त्म होने पर कॉन्फ़ेटी";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Couldn’t change Launch at Login: %@" = "लॉगिन पर खोलें बदला नहीं जा सका: %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Dictation" = "डिक्टेशन";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Draft Reply…  %@" = "जवाब ड्राफ़्ट करें…  %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Enable AirPods Battery…" = "AirPods बैटरी चालू करें…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "End Focus" = "फ़ोकस ख़त्म करें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Face Unlock Settings…" = "Face Unlock सेटिंग्स…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "File New Screenshots Automatically" = "नए स्क्रीनशॉट अपने-आप रखें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Fill an Empty Email Subject" = "ख़ाली ईमेल विषय भरें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Flow Canvas…" = "फ़्लो कैनवास…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Focus Settings…" = "फ़ोकस सेटिंग्स…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Hide Message Text" = "संदेश का टेक्स्ट छिपाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Hide macOS Volume/Brightness Pop-up" = "macOS का वॉल्यूम/ब्राइटनेस पॉप-अप छिपाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Hold to Talk" = "बोलने के लिए दबाए रखें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Island" = "आइलैंड";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Job Agent…" = "जॉब एजेंट…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Launch at Login" = "लॉगिन पर खोलें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Launch at Login (Needs Approval…)" = "लॉगिन पर खोलें (मंज़ूरी चाहिए…)";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Live Activities" = "लाइव गतिविधियाँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Live Captions for This Meeting" = "इस मीटिंग के लिए लाइव कैप्शन";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Meeting Notes…" = "मीटिंग नोट्स…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Meetings" = "मीटिंग";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "No shortcuts found" = "कोई शॉर्टकट नहीं मिला";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Notch Theme" = "नॉच थीम";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Notifications" = "सूचनाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Now Playing Beside the Notch" = "नॉच के पास अभी चल रहा";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Open Clipboard Stack  ⌘⇧V" = "क्लिपबोर्ड स्टैक खोलें  ⌘⇧V";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Open Shortcuts…" = "Shortcuts खोलें…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Open Spaces…" = "Spaces खोलें…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Paste / Copy Last Dictation  ⌃⌘V ⌃⌘C" = "आख़िरी डिक्टेशन पेस्ट / कॉपी करें  ⌃⌘V ⌃⌘C";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Pause" = "रोकें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Pick a Window to Ask About…" = "पूछने के लिए विंडो चुनें…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Preview Screen Glow" = "स्क्रीन ग्लो प्रीव्यू";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Prompt Refiner…" = "प्रॉम्प्ट रिफ़ाइनर…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Quick Capture" = "क्विक कैप्चर";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Quick Capture  %@" = "क्विक कैप्चर  %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Quit SparkV" = "SparkV बंद करें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Read the Window When Text Is Hidden" = "टेक्स्ट छिपा हो तो विंडो पढ़ें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Record Meeting" = "मीटिंग रिकॉर्ड करें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Remind Me About Distractions" = "ध्यान भटकाने वाली चीज़ों की याद दिलाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Remove from This Button" = "इस बटन से हटाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Reply Drafter" = "जवाब ड्राफ़्टर";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Restart SparkV" = "SparkV रीस्टार्ट करें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Resume" = "रिज़्यूमे";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Save Current Web Page" = "मौजूदा वेब पेज सहेजें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Save Selected Mail" = "चुना गया मेल सहेजें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Screen Glow" = "स्क्रीन ग्लो";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Screen Tools" = "स्क्रीन टूल";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Send Tray to Flow Canvas" = "ट्रे को फ़्लो कैनवास पर भेजें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Set Up Face Unlock…" = "Face Unlock सेट अप करें…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Shake on Start and Breaks" = "शुरुआत और ब्रेक पर हिलाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Shortcut %@" = "शॉर्टकट %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Shortcuts" = "शॉर्टकट";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Show Download Progress Under the Notch" = "नॉच के नीचे डाउनलोड प्रगति दिखाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Sorting Rules…" = "छँटाई के नियम…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "SparkV" = "SparkV";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Start Focus (%lld min)" = "फ़ोकस शुरू करें (%lld मिनट)";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Stop Recording" = "रिकॉर्डिंग रोकें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Suggest Answers to Questions" = "सवालों के जवाब सुझाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Suggest Folders with Apple Intelligence" = "Apple Intelligence से फ़ोल्डर सुझाएँ";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Sync to iPhone…" = "iPhone से सिंक करें…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Timer" = "टाइमर";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Toggle camera mirror" = "कैमरा मिरर चालू/बंद करें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Tone & Name…" = "लहजा और नाम…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Turn On Do Not Disturb" = "'परेशान न करें' चालू करें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "UI Audit…" = "UI ऑडिट…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Use Spaces as Context" = "Spaces को संदर्भ के रूप में इस्तेमाल करें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Volume & Brightness" = "वॉल्यूम और ब्राइटनेस";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Watch Downloads Folder" = "डाउनलोड फ़ोल्डर पर नज़र रखें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Write Recap On Device" = "रीकैप डिवाइस पर लिखें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Write Reply into the Message Box" = "जवाब संदेश बॉक्स में लिखें";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "⌘ + Number + V Pastes From History" = "⌘ + नंबर + V इतिहास से पेस्ट करता है";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "⌘⇧V Opens the Clipboard Stack" = "⌘⇧V क्लिपबोर्ड स्टैक खोलता है";
 
 /* NotificationActivityView.swift */

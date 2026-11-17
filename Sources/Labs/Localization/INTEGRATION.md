@@ -88,7 +88,7 @@ share sheets) follow the user's language even where SparkV has no table.
 
 ## 4. Gear menu: Language submenu
 
-File: `Sources/NotchNookLayoutView.swift`
+File: `Sources/IslandLayoutView.swift`
 
 Find:
 ```

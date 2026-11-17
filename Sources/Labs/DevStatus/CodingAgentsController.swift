@@ -67,6 +67,9 @@ final class CodingAgentsController: ObservableObject {
     @Published var decisionTimeout: Int { didSet { save(decisionTimeout, "decisionTimeout") } }
     @Published var playsSounds: Bool { didSet { save(playsSounds, "sounds") } }
     @Published var showsFinishedBand: Bool { didSet { save(showsFinishedBand, "finishedBand") } }
+    /// On: one sound and band when every running agent is done (several
+    /// agents at once). Off: one per agent as each finishes.
+    @Published var finishedOnlyWhenAllDone: Bool { didSet { save(finishedOnlyWhenAllDone, "finishedAllDone") } }
     @Published var showsWings: Bool { didSet { save(showsWings, "wings"); postSummaryActivity() } }
     @Published var longCommandsEnabled: Bool { didSet { save(longCommandsEnabled, "longCommands") } }
     @Published var longCommandSeconds: Int { didSet { save(longCommandSeconds, "longCommandSeconds") } }
@@ -98,6 +101,7 @@ final class CodingAgentsController: ObservableObject {
 
     static let defaultPorts: [UInt16] = Array(47821...47830)
     private static let prefix = "SparkV.agents."
+    private static let scriptQueue = ModeAppleScriptQueue()
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -117,6 +121,7 @@ final class CodingAgentsController: ObservableObject {
         decisionTimeout = min(max(int("decisionTimeout", 30), 10), 55)
         playsSounds = bool("sounds", true)
         showsFinishedBand = bool("finishedBand", true)
+        finishedOnlyWhenAllDone = bool("finishedAllDone", true)
         showsWings = bool("wings", true)
         longCommandsEnabled = bool("longCommands", false)
         longCommandSeconds = min(max(int("longCommandSeconds", 30), 5), 3600)
@@ -457,15 +462,35 @@ final class CodingAgentsController: ObservableObject {
             states[session.id] = session.state
             guard let before = previousStates[session.id], before != session.state else { continue }
             if session.state == .finished, before == .working {
-                if playsSounds { NSSound(named: "Ping")?.play() }
-                if showsFinishedBand { postFinished(session) }
+                if !finishedBatch.contains(where: { $0.id == session.id }) { finishedBatch.append(session) }
+                if !finishedOnlyWhenAllDone {
+                    if playsSounds { NSSound(named: "Ping")?.play() }
+                    if showsFinishedBand { postFinished(session) }
+                }
             } else if session.state == .waiting, before != .waiting, approvals.isEmpty {
                 if playsSounds { NSSound(named: "Glass")?.play() }
                 postWaiting(session)
             }
         }
         previousStates = states
+        // All-done mode: speak up once nothing is working any more.
+        if next.contains(where: { $0.state == .working }) { return }
+        let batch = finishedBatch
+        finishedBatch = []
+        guard finishedOnlyWhenAllDone, !batch.isEmpty else { return }
+        if playsSounds { NSSound(named: "Ping")?.play() }
+        guard showsFinishedBand else { return }
+        if batch.count == 1 { postFinished(batch[0]); return }
+        let projects = Array(Set(batch.map { CodingAgentsController.redacted($0.project) })).sorted().prefix(3).joined(separator: ", ")
+        activities?.post(LiveActivity(id: Self.finishedID, kind: .notification, priority: 64, duration: 5, opensTab: opensTab,
+                                      symbol: "checkmark.circle.fill", tint: SparkVTheme.success) {
+            CodingAgentEventBand(symbol: "checkmark.circle.fill", tint: SparkVTheme.success,
+                                 title: "All \(batch.count) agents finished", detail: projects)
+        })
     }
+
+    /// Agents that finished since the last time none were working.
+    private var finishedBatch: [CodingAgentSession] = []
 
     var runningCount: Int { sessions.filter { $0.state == .working }.count }
     var waitingCount: Int { sessions.filter { $0.state == .waiting }.count + max(0, approvals.count - sessions.filter { $0.state == .waiting }.count) }
@@ -620,9 +645,8 @@ final class CodingAgentsController: ObservableObject {
         // own prompt); otherwise activating the app is enough.
         Task { @MainActor in
             guard await PermissionCenter.shared.ensure(.automation(bundleID: bundle), from: "Coding Agents: jump to tab") else { return }
-            var error: NSDictionary?
-            NSAppleScript(source: script)?.executeAndReturnError(&error)
-            if error != nil { AppLog.log("Agents: couldn't select the terminal tab") }
+            // Off the main actor: a busy terminal app would hold the UI.
+            do { _ = try await Self.scriptQueue.run(script) } catch { AppLog.log("Agents: couldn't select the terminal tab") }
         }
     }
 

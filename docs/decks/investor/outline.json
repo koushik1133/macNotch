@@ -244,11 +244,11 @@
     "type": "bar_horizontal",
     "title": "Year-one cost of five separate apps vs SparkV Pro (USD)",
     "categories": [
-     "Granola (Business)",
-     "Wispr Flow (Pro, yearly)",
-     "Paste (yearly)",
-     "CleanShot X",
-     "NotchNook",
+     "Meeting-notes app (business)",
+     "Dictation app (yearly)",
+     "Clipboard app (yearly)",
+     "Screenshot app",
+     "Notch hub app",
      "Five apps total",
      "SparkV Pro"
     ],
@@ -285,39 +285,39 @@
     ],
     "data_table": [
      {
-      "product": "Granola",
+      "product": "Meeting-notes app",
       "job": "AI meeting notes",
       "basis": "$14 per user per month x 12 (Business)",
       "usd_year1": 168.0,
-      "source_id": "granola"
+      "source_id": "meeting_notes"
      },
      {
-      "product": "Wispr Flow",
+      "product": "Dictation app",
       "job": "AI dictation",
       "basis": "$144 per year (Pro, yearly)",
       "usd_year1": 144.0,
-      "source_id": "wispr"
+      "source_id": "dictation"
      },
      {
-      "product": "Paste",
+      "product": "Clipboard app",
       "job": "Clipboard manager",
       "basis": "$29.99 per year",
       "usd_year1": 29.99,
-      "source_id": "paste"
+      "source_id": "clipboard"
      },
      {
-      "product": "CleanShot X",
+      "product": "Screenshot app",
       "job": "Screenshots and recording",
       "basis": "$29 one-time (1 year of updates)",
       "usd_year1": 29.0,
-      "source_id": "cleanshot"
+      "source_id": "screenshots"
      },
      {
-      "product": "NotchNook",
+      "product": "Notch hub app",
       "job": "Notch hub",
       "basis": "$25 one-time",
       "usd_year1": 25.0,
-      "source_id": "notchnook"
+      "source_id": "notch_hub"
      },
      {
       "product": "Five apps total",
@@ -335,14 +335,14 @@
      }
     ],
     "annotations": [
-     "Wispr Flow + Granola alone: $312 per year"
+     "Dictation + meeting notes alone: $312 per year"
     ],
     "source_ids": [
-     "granola",
-     "wispr",
-     "paste",
-     "cleanshot",
-     "notchnook",
+     "meeting_notes",
+     "dictation",
+     "clipboard",
+     "screenshots",
+     "notch_hub",
      "bp"
     ],
     "source_line": "Prices from third-party listings cited in the SparkV business plan (section 3), Oct 2026. Re-check vendor pages before sending.",
@@ -362,7 +362,7 @@
     },
     {
      "value": "$312/yr",
-     "label": "Wispr Flow + Granola, recurring",
+     "label": "dictation + meeting notes, recurring",
      "placement_px": {
       "x": 2496,
       "y": 1050,
@@ -624,7 +624,7 @@
     "Live translated captions, with the original underneath",
     "Filed into Spaces and searchable later"
    ],
-   "notes": "This is the feature people pay Granola $14 per user per month for. In SparkV it is part of Pro at one price, because transcription and summaries run on the Mac. No bot joins the call, and audio does not leave the machine unless the user turns on their own Groq key. Status: the notes and answers views render from saved meetings; live audio capture is on our pre-launch live-check list.",
+   "notes": "This is the feature people pay meeting-notes apps $14 per user per month for. In SparkV it is part of Pro at one price, because transcription and summaries run on the Mac. No bot joins the call, and audio does not leave the machine unless the user turns on their own Groq key. Status: the notes and answers views render from saved meetings; live audio capture is on our pre-launch live-check list.",
    "images": [
     {
      "file": "36-meeting-notes.png",
@@ -1033,7 +1033,7 @@
     "Pay once: no AI bill to pass on",
     "Private by default: on-device models"
    ],
-   "notes": "Read the matrix by column: every competitor is excellent at one job. Notch apps such as NotchNook are built around media and a file tray, and the free open-source one is not notarized. The AI tools, Wispr Flow, Granola and Raycast Pro, are sold as subscriptions. SparkV is the only one in this set that combines the notch with the AI jobs and charges once. The honest risk: any of them can add features. Our answer is breadth plus integration, because Spaces and Search tie meetings, dictation, clipboard and captures together, and the cost structure lets us stay one-time. Prices are from third-party listings; we re-check them before every send.",
+   "notes": "Read the matrix by column: every competitor is excellent at one job. Notch apps are built around media and a file tray, and the free open-source one is not notarized. The AI dictation, meeting-notes and launcher tools are sold as subscriptions. SparkV is the only one in this set that combines the notch with the AI jobs and charges once. The honest risk: any of them can add features. Our answer is breadth plus integration, because Spaces and Search tie meetings, dictation, clipboard and captures together, and the cost structure lets us stay one-time. Prices are from third-party listings; we re-check them before every send.",
    "images": [],
    "chart": {
     "id": "P9",
@@ -1055,43 +1055,43 @@
       "accent": true
      },
      {
-      "label": "NotchNook",
+      "label": "Notch hub app",
       "x": 0.25,
       "y": 0.7
      },
      {
-      "label": "Alcove",
+      "label": "Notch island app",
       "x": 0.15,
       "y": 0.85
      },
      {
-      "label": "boring.notch",
+      "label": "Open-source notch app",
       "x": 0.2,
       "y": 0.95,
       "note": "free"
      },
      {
-      "label": "CleanShot X",
+      "label": "Screenshot app",
       "x": 0.3,
       "y": 0.6
      },
      {
-      "label": "Paste",
+      "label": "Clipboard app",
       "x": 0.15,
       "y": 0.35
      },
      {
-      "label": "Raycast Pro",
+      "label": "AI launcher",
       "x": 0.6,
       "y": 0.15
      },
      {
-      "label": "Wispr Flow",
+      "label": "Dictation app",
       "x": 0.2,
       "y": 0.1
      },
      {
-      "label": "Granola",
+      "label": "Meeting-notes app",
       "x": 0.3,
       "y": 0.1
      }
@@ -1110,14 +1110,14 @@
     "columns": [
      "Job",
      "SparkV",
-     "NotchNook",
-     "Alcove",
-     "boring.notch",
-     "Paste",
-     "Wispr Flow",
-     "Granola",
-     "CleanShot X",
-     "Raycast Pro"
+     "Notch hub app",
+     "Notch island app",
+     "Open-source notch app",
+     "Clipboard app",
+     "Dictation app",
+     "Meeting-notes app",
+     "Screenshot app",
+     "AI launcher"
     ],
     "rows": [
      [
@@ -1208,14 +1208,14 @@
     "highlight_column": "SparkV",
     "legend": "● = the product's main job per the cited listing. ◐ = SparkV Universal Search with cited answers; not a full app launcher. Blank = not that product's main job; this is not a full feature audit.",
     "source_ids": [
-     "notchnook",
-     "alcove",
-     "boringnotch",
-     "paste",
-     "wispr",
-     "granola",
-     "cleanshot",
-     "raycast",
+     "notch_hub",
+     "notch_island",
+     "open_source_notch",
+     "clipboard",
+     "dictation",
+     "meeting_notes",
+     "screenshots",
+     "ai_launcher",
      "bp"
     ]
    }
@@ -1231,7 +1231,7 @@
     "Pro is one price for every feature",
     "Team adds recurring revenue from companies"
    ],
-   "notes": "Three plans. Free is a useful notch app at zero, which competes with the free open-source option and gives reviewers something to try. Pro is $39 once, $29 in launch week, and includes every feature; buyers on r/macapps prefer one-time prices and CleanShot X shows the model works. Team is $8 per seat per month, billed yearly, minimum three seats, for companies that need invoices, seat management and an MDM package. We are not on the Mac App Store because SparkV needs Accessibility and other APIs the sandbox does not allow; Lemon Squeezy handles VAT, GST and sales tax worldwide. Shared Spaces for Team is a file package today, not live sync.",
+   "notes": "Three plans. Free is a useful notch app at zero, which competes with the free open-source option and gives reviewers something to try. Pro is $39 once, $29 in launch week, and includes every feature; buyers on r/macapps prefer one-time prices and established screenshot tools show the model works. Team is $8 per seat per month, billed yearly, minimum three seats, for companies that need invoices, seat management and an MDM package. We are not on the Mac App Store because SparkV needs Accessibility and other APIs the sandbox does not allow; Lemon Squeezy handles VAT, GST and sales tax worldwide. Shared Spaces for Team is a file package today, not live sync.",
    "images": [],
    "chart": null,
    "table": {
@@ -1538,7 +1538,7 @@
    "body": [
     "Product Hunt, r/macapps App Pile, Show HN",
     "YouTube: one 2-4 min demo plus a 30 s Short per feature",
-    "Comparison pages: SparkV vs NotchNook, Alcove, boring.notch"
+    "Comparison pages: SparkV vs each app category"
    ],
    "timeline": [
     {
@@ -2047,51 +2047,51 @@
    "note": "Notch introduced on MacBook Pro; 16-inch panel 3456x2234"
   },
   {
-   "id": "notchnook",
-   "title": "NotchNook price, via iMore",
-   "url": "https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny",
+   "id": "notch_hub",
+   "title": "Notch hub app, public list price",
+   "url": "public list price, checked Oct 2026",
    "note": "$25 one-time or $3/month (business plan section 3)"
   },
   {
-   "id": "alcove",
-   "title": "Alcove price, via appgefahren",
-   "url": "https://www.appgefahren.de/alcove-bringt-die-dynamic-island-auf-den-mac-394469.html",
+   "id": "notch_island",
+   "title": "Notch island app, public list price",
+   "url": "public list price, checked Oct 2026",
    "note": "about $13.99 one-time"
   },
   {
-   "id": "boringnotch",
-   "title": "boring.notch on GitHub",
-   "url": "https://github.com/TheBoredTeam/boring.notch",
+   "id": "open_source_notch",
+   "title": "Open-source notch app, public repository",
+   "url": "public list price, checked Oct 2026",
    "note": "Free, GPL-3.0, not notarized"
   },
   {
-   "id": "raycast",
-   "title": "Raycast Pro pricing, Raycast blog",
-   "url": "https://www.raycast.com/blog/changing-how-raycast-ai-is-priced",
+   "id": "ai_launcher",
+   "title": "AI launcher, public list price",
+   "url": "public list price, checked Oct 2026",
    "note": "$10/month or $8/month billed yearly"
   },
   {
-   "id": "cleanshot",
-   "title": "CleanShot X pricing, via toolradar",
-   "url": "https://toolradar.com/tools/cleanshot/pricing",
+   "id": "screenshots",
+   "title": "Screenshot app, public list price",
+   "url": "public list price, checked Oct 2026",
    "note": "$29 one-time with 1 year of updates, then $19/year optional"
   },
   {
-   "id": "wispr",
-   "title": "Wispr Flow pricing, via getvoibe",
-   "url": "https://www.getvoibe.com/resources/wispr-flow-pricing/",
+   "id": "dictation",
+   "title": "Dictation app, public list price",
+   "url": "public list price, checked Oct 2026",
    "note": "Pro $15/month or $144/year"
   },
   {
-   "id": "granola",
-   "title": "Granola pricing, Granola blog",
-   "url": "https://granola.ai/blog/granola-pricing-plans-features-roi",
+   "id": "meeting_notes",
+   "title": "Meeting-notes app, public list price",
+   "url": "public list price, checked Oct 2026",
    "note": "Business $14/user/month"
   },
   {
-   "id": "paste",
-   "title": "Paste on the App Store",
-   "url": "https://apps.apple.com/app/id967805235",
+   "id": "clipboard",
+   "title": "Clipboard app, public list price",
+   "url": "public list price, checked Oct 2026",
    "note": "$3.99/month, $29.99/year or $89.99 lifetime"
   },
   {

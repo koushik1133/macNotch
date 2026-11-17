@@ -4,7 +4,7 @@ import IOKit.ps
 import IOKit.pwr_mgt
 import SwiftUI
 
-/// One-tap keep-awake (Caffeine / Amphetamine style) through a public
+/// One-tap keep-awake through a public
 /// IOKit power assertion, with a duration, a battery cutoff and "while
 /// these apps run".
 ///

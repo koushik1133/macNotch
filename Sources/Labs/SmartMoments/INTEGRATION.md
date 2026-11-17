@@ -102,7 +102,7 @@ and in `finishWorkBeforeQuit(timeout:)`, right after
         await smartMoments?.prepareForQuit()
 ```
 
-## 3. Gear menu (NotchNookLayoutView.swift)
+## 3. Gear menu (IslandLayoutView.swift)
 
 After the line `Menu("Modes") { ModesMenuItems() }` add:
 

@@ -67,7 +67,7 @@ enum ShelfDragFilter {
 }
 
 /// The open drawer's drop target, replacing `.onDrop(of:isTargeted:)` in
-/// NotchNookLayoutView (see INTEGRATION.md). Same routing as before (Converter,
+/// IslandLayoutView (see INTEGRATION.md). Same routing as before (Converter,
 /// Spaces and File Drop keep their drops; everything else lands in the
 /// Tray), plus the drag filter and real file-promise support.
 struct ShelfDrawerDrop: DropDelegate {

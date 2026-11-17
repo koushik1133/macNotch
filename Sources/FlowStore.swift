@@ -77,8 +77,7 @@ struct FlowVocabulary: Sendable {
     var recognitionHints: [String] { Array(words.map(\.term).prefix(100)) }
 }
 
-/// Dictation history, notes, dictionary and snippets behind the Flow panel,
-/// Wispr Flow-style.
+/// Dictation history, notes, dictionary and snippets behind the Flow panel.
 ///
 /// Stored as JSON in ~/Library/Application Support/SparkV/Flow/
 /// (`history.json`, `notes.json`, `dictionary.json`, `snippets.json`).

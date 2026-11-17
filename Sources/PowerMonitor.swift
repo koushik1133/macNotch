@@ -496,7 +496,7 @@ final class PowerMonitor: ObservableObject {
             return
         }
         lastConnect = (device.address, Date(), !device.batteries.isEmpty)
-        AppLog.log("Power: Bluetooth audio connected: \(device.name) \(device.batteries.summary)")
+        AppLog.log("Power: Bluetooth audio connected \(device.batteries.summary)")
         let connectedAt = Date()
         postAirPods(device, duration: Self.airPodsDuration)
 
@@ -517,7 +517,7 @@ final class PowerMonitor: ObservableObject {
             guard let self, self.isEnabled, !batteries.isEmpty,
                   self.shownAudioAddress == device.address
             else { return }
-            AppLog.log("Power: \(device.name) battery \(batteries.summary)")
+            AppLog.log("Power: Bluetooth audio battery \(batteries.summary)")
             var updated = device
             updated.batteries = batteries
             let remaining = Self.airPodsDuration - Date().timeIntervalSince(connectedAt)

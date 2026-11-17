@@ -20,7 +20,7 @@ import Foundation
 enum IslandStylePreset: String, CaseIterable, Codable, Sendable, Identifiable {
     /// The black notch silhouette, flaring into the menu bar.
     case notch
-    /// A detached Dynamic Island capsule.
+    /// A detached floating capsule.
     case pill
     /// Nothing at rest: the island appears for live activities and when
     /// the pointer reaches it.
@@ -39,7 +39,7 @@ enum IslandStylePreset: String, CaseIterable, Codable, Sendable, Identifiable {
     var summary: String {
         switch self {
         case .notch: "Grows out of the camera notch"
-        case .pill: "A floating Dynamic Island capsule"
+        case .pill: "A floating capsule below the menu bar"
         case .minimal: "Hidden until something happens"
         }
     }

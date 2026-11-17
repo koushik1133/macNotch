@@ -189,7 +189,7 @@ Replace with:
 ```
 
 ### Step 7 — gear menu: the HUD's submenu
-File: Sources/NotchNookLayoutView.swift
+File: Sources/IslandLayoutView.swift
 
 Find:
 ```

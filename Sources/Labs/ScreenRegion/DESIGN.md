@@ -6,14 +6,14 @@ by default.
 
 ## How shipping tools do it (research)
 
-| Tool | Trigger | Selection | Answer surface | Notes we copy |
+| Tool or pattern | Trigger | Selection | Answer surface | Notes we copy |
 |---|---|---|---|---|
 | macOS `screencapture -i` (man screencapture(1), local man page) | ⌘⇧4 | drag a rect; **Space toggles window mode**; **Esc cancels** | file/clipboard | Exactly the interaction model users already know: crosshair, dimmed outside, size readout, Space = window pick, Esc = cancel. |
-| Gemini in Chrome "Select from screen" ([Android Authority](https://androidauthority.com/chrome-select-from-screen-3681130), [Digital Trends](https://www.digitaltrends.com/computing/gemini-in-chrome-can-now-see-exactly-what-youre-looking-at-on-screen/)) | side panel → Add → Select from screen | draw boxes over the page | side panel chat | Selection becomes an *attachment* to a free-form prompt; the panel stays next to the content. |
-| Google Circle to Search ([Android Central](https://www.androidcentral.com/apps-software/how-use-circle-to-search)) | long-press home | circle/scribble/tap | bottom sheet over the app | Tap selects a whole object (we: a click with no drag picks the window under the pointer); results appear over the app, dismiss returns you exactly where you were. |
+| Browser AI "select from screen" | side panel → Add → Select from screen | draw boxes over the page | side panel chat | Selection becomes an *attachment* to a free-form prompt; the panel stays next to the content. |
+| Phone "draw around it to search" gestures | long-press home | circle/scribble/tap | bottom sheet over the app | Tap selects a whole object (we: a click with no drag picks the window under the pointer); results appear over the app, dismiss returns you exactly where you were. |
 | Apple Visual Intelligence on Mac ([MacRumors guide](https://www.macrumors.com/guide/ios-26-visual-intelligence), [Apple framework docs](https://developer.apple.com/documentation/visualintelligence)) | ⌘⇧6 / screenshot toolbar | area of the screen | small window with **contextual buttons** ("Ask", "Image Search", data-detector actions such as dates, links) | Quick-action chips + data-detector chips (links, emails, phones, dates) under the answer. |
-| ChatGPT for macOS ([MacRumors how-to](https://macrumors.com/how-to/use-chatgpt-app-for-macos-mac)) | ⌥Space companion | active window or whole desktop | floating companion window | Window capture of a *specific* window even if occluded → we use `SCContentFilter(desktopIndependentWindow:)` in window mode. |
-| Raycast Screen Awareness ([manual](https://manual.raycast.com/ai/screen-awareness)) | hotkey | focused window / **Selected Area** / entire screen | AI chat with an attachment card | Privacy rules we follow: capture only on explicit request, nothing stored, show what was captured (thumbnail + app name), Screen Recording optional/checked first. |
+| Desktop AI chat companions | ⌥Space companion | active window or whole desktop | floating companion window | Window capture of a *specific* window even if occluded → we use `SCContentFilter(desktopIndependentWindow:)` in window mode. |
+| Launcher AI screen awareness | hotkey | focused window / **Selected Area** / entire screen | AI chat with an attachment card | Privacy rules we follow: capture only on explicit request, nothing stored, show what was captured (thumbnail + app name), Screen Recording optional/checked first. |
 
 ## Platform facts (from the macOS 27 SDK headers, CLT)
 

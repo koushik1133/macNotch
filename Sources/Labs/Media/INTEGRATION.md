@@ -10,7 +10,7 @@ The three steps below were applied by script to a snapshot of the current app (`
 
 | Piece | Where | What it does |
 |---|---|---|
-| `PlaybackTiming`, `MediaEngine.timing` / `elapsedTime` / `duration` / `canSeek` / `seek(to:)` / `skip(by:)` | MediaEngine.swift | Position is anchored as elapsed-at-timestamp plus rate, the MediaRemote model that boring.notch also uses. The adapter stream now runs with `--micros` so timestamps are exact. `seek` calls `mediaremote-adapter.pl seek <µs>` (MRMediaRemoteSetElapsedTime). If that fails, or when the adapter is down, it falls back to Apple Events `set player position` for Music and Spotify. It never asks for permission on its own. The scrubber moves at once, and stale reports are ignored for up to 2.5 s until the player confirms. |
+| `PlaybackTiming`, `MediaEngine.timing` / `elapsedTime` / `duration` / `canSeek` / `seek(to:)` / `skip(by:)` | MediaEngine.swift | Position is anchored as elapsed-at-timestamp plus rate, the MediaRemote model. The adapter stream now runs with `--micros` so timestamps are exact. `seek` calls `mediaremote-adapter.pl seek <µs>` (MRMediaRemoteSetElapsedTime). If that fails, or when the adapter is down, it falls back to Apple Events `set player position` for Music and Spotify. It never asks for permission on its own. The scrubber moves at once, and stale reports are ignored for up to 2.5 s until the player confirms. |
 | `MediaEngine.artworkTint` | MediaEngine.swift (`ArtworkPalette`) | A vibrant color taken from the artwork: hue buckets over a 32x32 thumbnail, weighted by saturation. Monochrome covers fall back to a soft neutral. |
 | `MediaEngine.trackKey`, `sourceBundleID` | MediaEngine.swift | The bookmark identity: app, title and artist, normalized. |
 | `MediaColumnV2` | Labs/Media/MediaColumnV2.swift | A drop-in replacement for `MediaColumn`. It shows the artwork with the app badge (click opens the app), a scrolling title and artist, ◀◀ ▶/❚❚ ▶▶ (one play/pause toggle) and a bookmark menu, with the scrubber underneath. It is sized for 170–180 x 69 pt. |
@@ -36,7 +36,7 @@ Add this next to the other `Labs` copies:
 cp Sources/Labs/Media/*.swift "$WORK/src/"
 ```
 
-## 2. NotchNookLayoutView.swift: swap the column
+## 2. IslandLayoutView.swift: swap the column
 
 In `FeaturesGrid`, replace this:
 
@@ -54,15 +54,15 @@ with this:
 
 The old `MediaColumn` and `MediaButton` become unused private types. Delete them whenever convenient; leaving them produces no warning.
 
-## 3. NotchNookLayoutView.swift: the glow
+## 3. IslandLayoutView.swift: the glow
 
-In `NotchNookLayoutView.body`, insert the glow directly after `shape.fill(Color.black)`. That puts it above the black fill and below all content, and the existing `.clipShape(shape)` keeps it inside the island:
+In `IslandLayoutView.body`, insert the glow directly after `shape.fill(Color.black)`. That puts it above the black fill and below all content, and the existing `.clipShape(shape)` keeps it inside the island:
 
 ```swift
         ZStack(alignment: .top) {
             shape.fill(Color.black)
 
-            // Album-art glow (boring.notch style), under all content.
+            // Album-art glow, under all content.
             if state.isExpanded, state.tab == .nook {
                 MediaGlowBackground(center: UnitPoint(
                     x: (16 + radii.top + MediaColumnV2.artworkSide / 2) / (size.width + 2 * radii.top),

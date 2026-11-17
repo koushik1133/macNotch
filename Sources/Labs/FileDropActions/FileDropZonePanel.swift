@@ -72,7 +72,7 @@ private final class FileDropZoneHostingView<Content: View>: NSHostingView<Conten
 // MARK: - Shelf view
 
 /// The drop target that appears under the collapsed notch while a file
-/// drag nears it (or at the pointer after a shake): Dropover-style
+/// drag nears it (or at the pointer after a shake):
 /// instant-action buckets. "Actions" keeps the files and opens the strip;
 /// "Tray" keeps them on the shelf; the others run right away.
 struct FileDropTargetView: View {

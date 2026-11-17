@@ -2,9 +2,9 @@ import Foundation
 
 // SparkV Modes: one tap sets up the Mac for a kind of work (wallpaper,
 // music, Do Not Disturb, apps, appearance, a Pomodoro), and ending the mode
-// puts everything back. Same idea as Apple's Focus filters (settings that
-// apply while a Focus is on and revert when it ends), Keyboard Maestro macro
-// groups and Bartender presets, but with SparkV doing the revert itself.
+// puts everything back. Same idea as macOS Focus filters (settings that
+// apply while a Focus is on and revert when it ends), with SparkV doing the
+// revert itself.
 //
 // Value types only: no AppKit, no singletons, so the headless harness can
 // encode, decode and compare them.

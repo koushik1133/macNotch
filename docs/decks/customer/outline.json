@@ -1441,43 +1441,43 @@
         "rows": [
           [
             "Notch hub",
-            "NotchNook",
+            "Notch hub app",
             "$25 one-time (or $3/mo)",
             "Free plan"
           ],
           [
             "Notch island",
-            "Alcove",
+            "Notch island app",
             "about $13.99 one-time",
             "Free plan"
           ],
           [
             "Launcher with AI",
-            "Raycast Pro",
+            "AI launcher",
             "$8/mo billed yearly ($10 monthly)",
             "Pro: ⌥Space Universal Search + agents"
           ],
           [
             "AI dictation",
-            "Wispr Flow",
+            "Dictation app",
             "$15/mo ($144/yr)",
             "Pro: AI dictation"
           ],
           [
             "AI meeting notes",
-            "Granola Business",
+            "Meeting-notes app",
             "$14/user/mo",
             "Pro: Meetings"
           ],
           [
             "Clipboard manager",
-            "Paste",
+            "Clipboard app",
             "$29.99/yr",
             "Pro: unlimited history + Paste Stack"
           ],
           [
             "Screenshots and recording",
-            "CleanShot X",
+            "Screenshot app",
             "$29 one-time, then $19/yr updates (optional)",
             "Pro: Copy Text, Quick Capture, Screen Recorder"
           ],
@@ -1510,42 +1510,42 @@
             "stacked": true,
             "series": [
               {
-                "name": "NotchNook",
+                "name": "Notch hub app",
                 "values": [
                   25.0,
                   0.0
                 ]
               },
               {
-                "name": "Raycast Pro (yearly)",
+                "name": "AI launcher (yearly)",
                 "values": [
                   96.0,
                   96.0
                 ]
               },
               {
-                "name": "Wispr Flow (yearly)",
+                "name": "Dictation app (yearly)",
                 "values": [
                   144.0,
                   144.0
                 ]
               },
               {
-                "name": "Granola Business",
+                "name": "Meeting-notes app",
                 "values": [
                   168.0,
                   168.0
                 ]
               },
               {
-                "name": "Paste (yearly)",
+                "name": "Clipboard app (yearly)",
                 "values": [
                   29.99,
                   29.99
                 ]
               },
               {
-                "name": "CleanShot X",
+                "name": "Screenshot app",
                 "values": [
                   29.0,
                   19.0
@@ -1581,40 +1581,40 @@
         ],
         "data_table": [
           {
-            "item": "NotchNook",
+            "item": "Notch hub app",
             "year1": 25.0,
             "year2": 0.0,
-            "source": "iMore; Lowyat (Business Plan §3)"
+            "source": "Public list price (Business Plan §3)"
           },
           {
-            "item": "Raycast Pro (yearly)",
+            "item": "AI launcher (yearly)",
             "year1": 96.0,
             "year2": 96.0,
-            "source": "Raycast blog; tech-insider (Business Plan §3)"
+            "source": "Public list price (Business Plan §3)"
           },
           {
-            "item": "Wispr Flow (yearly)",
+            "item": "Dictation app (yearly)",
             "year1": 144.0,
             "year2": 144.0,
-            "source": "getvoibe; spokenly (Business Plan §3)"
+            "source": "Public list price (Business Plan §3)"
           },
           {
-            "item": "Granola Business",
+            "item": "Meeting-notes app",
             "year1": 168.0,
             "year2": 168.0,
-            "source": "granola.ai (Business Plan §3)"
+            "source": "Public list price (Business Plan §3)"
           },
           {
-            "item": "Paste (yearly)",
+            "item": "Clipboard app (yearly)",
             "year1": 29.99,
             "year2": 29.99,
-            "source": "App Store (Business Plan §3)"
+            "source": "Public list price (Business Plan §3)"
           },
           {
-            "item": "CleanShot X",
+            "item": "Screenshot app",
             "year1": 29.0,
             "year2": 19.0,
-            "source": "toolradar; TrustRadius (Business Plan §3)"
+            "source": "Public list price (Business Plan §3)"
           },
           {
             "item": "Separate apps total",
@@ -1629,7 +1629,7 @@
             "source": "Business Plan §6a (optional $19/yr renewal)"
           }
         ],
-        "excluded": "Alcove (same job as NotchNook)",
+        "excluded": "the notch island app (same job as the notch hub app)",
         "source": "Public prices collected in SparkV Business Plan §3, 22 Oct 2026; third-party listings.",
         "placement": {
           "x": 2244,

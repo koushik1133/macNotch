@@ -132,9 +132,7 @@ final class MeetingAssistant: ObservableObject {
     /// The user's first name ("Koushik"), used to find their tasks and the
     /// questions aimed at them.
     nonisolated static var userName: String {
-        let full = NSFullUserName().trimmingCharacters(in: .whitespacesAndNewlines)
-        let first = full.split(separator: " ").first.map(String.init) ?? ""
-        return first.isEmpty ? NSUserName() : first
+        SparkVProfile.firstName
     }
 
     var isRecording: Bool { phase == .recording }
@@ -210,7 +208,8 @@ final class MeetingAssistant: ObservableObject {
             calendarEventID: calendarEventID,
             segments: [],
             notes: nil,
-            answers: []
+            answers: [],
+            language: MeetingLanguage.effectiveID
         )
         current = record
         segmentIndex = [:]
@@ -275,7 +274,8 @@ final class MeetingAssistant: ObservableObject {
                 presentation: .expanded, symbol: "speaker.slash.fill", tint: SparkVTheme.warning
             ) {
                 MeetingSystemAudioNoticeBand(needsRelaunch: relaunch)
-            })
+            }
+            .interactive())
         }
     }
 
@@ -308,6 +308,9 @@ final class MeetingAssistant: ObservableObject {
                     segment.isFinal = true
                     return segment
                 }
+                // Both sides in time order: each side's phrases arrive on
+                // their own, so your lines could land after later ones.
+                .sorted { $0.start < $1.start }
             current = record
             upsertLibrary(record)
             await store.saveAndWait(record)
@@ -573,6 +576,9 @@ final class MeetingAssistant: ObservableObject {
         if current?.id == meetingID { current = nil }
         store.delete(id: meetingID)
         Task { await MeetingIntelSidecarStore.shared.remove(meetingID) }
+        // The Live Translation captions of this meeting go too.
+        let captions = LiveTranslationTranscript.url(for: meetingID)
+        Task.detached(priority: .utility) { try? FileManager.default.removeItem(at: captions) }
     }
 
     /// Writes fresh notes for a saved meeting.
@@ -769,7 +775,8 @@ final class MeetingAssistant: ObservableObject {
             id: ActivityID.recording, kind: .meeting, priority: Self.recordingPriority, duration: nil
         ) {
             MeetingRecordingBand(recorder: recorder, startedAt: started)
-        })
+        }
+        .interactive())
     }
 
     private func postSummarizingActivity() {
@@ -908,6 +915,10 @@ enum MeetingFormat {
         out.append("# \(record.title)")
         let date = record.startedAt.formatted(date: .complete, time: .shortened)
         out.append("_\(date) · \(duration(duration(of: record)))_")
+        if let language = record.language {
+            out.append("")
+            out.append("_Transcribed in \(MeetingLanguage.name(language)). Speech in other languages may be transcribed wrongly, and the notes with it._")
+        }
         out.append("")
 
         if let notes = record.notes {
@@ -954,7 +965,8 @@ enum MeetingFormat {
 
         if !record.segments.isEmpty {
             out.append("## Transcript")
-            for segment in record.segments {
+            // Both sides in time order (each side's phrases arrive separately).
+            for segment in record.segments.sorted(by: { $0.start < $1.start }) {
                 let who = segment.speaker == .me ? MeetingAssistant.userName : "Others"
                 out.append("**[\(clock(segment.start))] \(who):** \(segment.text)")
                 out.append("")

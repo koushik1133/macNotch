@@ -264,13 +264,21 @@ final class AmbientEdgeMetalRenderer {
                                     height: max(1, (size.height * scale).rounded()))
         CATransaction.commit()
         uniforms.screen = SIMD4(Float(size.width), Float(size.height), Float(cornerRadius), Float(scale))
-        if let notch, notch.x1 > notch.x0, notch.height > 0 {
-            uniforms.notch = SIMD4(Float(notch.x0), Float(notch.x1), Float(notch.height), 9)
-        } else {
-            uniforms.notch = .zero
-        }
+        setNotchTarget(notch, radius: 9)
+        uniforms.notch = notchTarget
         self.edgeWidth = Float(edgeWidth)
         invalidate()
+    }
+
+    /// Where the cut-out around the island should be; the drawn one glides there.
+    private var notchTarget = SIMD4<Float>(repeating: 0)
+
+    func setNotchTarget(_ notch: (x0: CGFloat, x1: CGFloat, height: CGFloat)?, radius: CGFloat) {
+        if let notch, notch.x1 > notch.x0, notch.height > 0 {
+            notchTarget = SIMD4(Float(notch.x0), Float(notch.x1), Float(notch.height), Float(max(4, min(radius, 24))))
+        } else {
+            notchTarget = .zero
+        }
     }
 
     func invalidate() {
@@ -303,6 +311,18 @@ final class AmbientEdgeMetalRenderer {
             }
             flowPhase += dt * lapsPerSecond * (0.6 + 0.8 * frame.bloom)
             flowPhase -= floor(flowPhase)
+        }
+
+        // Glide the cut-out with the island's spring (no jump when it resizes).
+        if uniforms.notch != notchTarget {
+            if uniforms.notch.z < 0.5 || notchTarget.z < 0.5 || reduceMotion {
+                uniforms.notch = notchTarget
+            } else {
+                let k = Float(1 - exp(-dt * 16))
+                var next = uniforms.notch + (notchTarget - uniforms.notch) * k
+                if simd_reduce_max(abs(notchTarget - next)) < 0.25 { next = notchTarget }
+                uniforms.notch = next
+            }
         }
 
         let width = edgeWidth * Float(0.55 + 0.45 * min(1, max(0.2, intensity))) * Float(0.85 + 0.9 * frame.bloom)

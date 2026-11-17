@@ -8,10 +8,9 @@ import UniformTypeIdentifiers
 /// while a file drag nears it (or on the File Drop tab of the drawer), then
 /// Rename / Compress / Convert / Send to a Space / AirDrop / Tray / Reveal.
 ///
-/// Flow modelled on Dropover (instant-action buckets that run on drop, a
-/// shelf whose results drag out anywhere), Yoink (a shelf that appears only
-/// while dragging, files kept by reference, never moved) and NotchNook (the
-/// drop zone grows out of the notch). See DESIGN.md.
+/// Flow: instant-action buckets that run on drop, a shelf whose results
+/// drag out anywhere and that appears only while dragging (files kept by
+/// reference, never moved), and a drop zone that grows out of the notch. See DESIGN.md.
 @MainActor
 final class FileDropController: ObservableObject {
     // MARK: Wiring (set by NotchWindowController; see INTEGRATION.md)

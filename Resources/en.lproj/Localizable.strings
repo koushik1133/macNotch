@@ -2893,7 +2893,7 @@
 "Scripts & Tickers" = "Scripts & Tickers";
 
 /* Labs/DevStatus/ScriptWidgetViews.swift */
-"Scripts: your shell commands' output, xbar-style" = "Scripts: your shell commands' output, xbar-style";
+"Scripts: your shell commands' output as widgets" = "Scripts: your shell commands' output as widgets";
 
 /* Labs/DevStatus/ScriptWidgetViews.swift */
 "See the command before it runs for the first time" = "See the command before it runs for the first time";
@@ -2905,7 +2905,7 @@
 "Show Beside the Notch" = "Show Beside the Notch";
 
 /* Labs/DevStatus/ScriptWidgetViews.swift */
-"Show a command's output here, xbar-style: the first line big, the rest below. Presets include crypto prices, disk space and git status." = "Show a command's output here, xbar-style: the first line big, the rest below. Presets include crypto prices, disk space and git status.";
+"Show a command's output here: the first line big, the rest below. Presets include crypto prices, disk space and git status." = "Show a command's output here: the first line big, the rest below. Presets include crypto prices, disk space and git status.";
 
 /* Labs/DevStatus/ScriptWidgetViews.swift */
 "Shown beside the notch" = "Shown beside the notch";
@@ -9288,265 +9288,265 @@
 /* MeetingsView.swift */
 "Show All-Day Events" = "Show All-Day Events";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "AI Formatting" = "AI Formatting";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Agents" = "Agents";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Agents: search, focus, capture, reply, screen, prompts, clipboard, files, downloads and more" = "Agents: search, focus, capture, reply, screen, prompts, clipboard, files, downloads and more";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Accessibility for ⌘+Number+V…" = "Allow Accessibility for ⌘+Number+V…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Flow Canvas to Use My Groq Key" = "Allow Flow Canvas to Use My Groq Key";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Meeting Notes to Use My Groq Key" = "Allow Meeting Notes to Use My Groq Key";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Allow Reply Drafter to Use My Groq Key" = "Allow Reply Drafter to Use My Groq Key";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Ambient Light" = "Ambient Light";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Ask About Screen…  %@" = "Ask About Screen…  %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Battery & AirPods" = "Battery & AirPods";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Browser Flows…" = "Browser Flows…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Button %lld: %@" = "Button %lld: %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Capture Job Page  fn⌃" = "Capture Job Page  fn⌃";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Confetti When a Session Ends" = "Confetti When a Session Ends";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Couldn’t change Launch at Login: %@" = "Couldn’t change Launch at Login: %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Dictation" = "Dictation";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Draft Reply…  %@" = "Draft Reply…  %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Enable AirPods Battery…" = "Enable AirPods Battery…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "End Focus" = "End Focus";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Face Unlock Settings…" = "Face Unlock Settings…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "File New Screenshots Automatically" = "File New Screenshots Automatically";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Fill an Empty Email Subject" = "Fill an Empty Email Subject";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Flow Canvas…" = "Flow Canvas…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Focus Settings…" = "Focus Settings…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Hide Message Text" = "Hide Message Text";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Hide macOS Volume/Brightness Pop-up" = "Hide macOS Volume/Brightness Pop-up";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Hold to Talk" = "Hold to Talk";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Island" = "Island";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Job Agent…" = "Job Agent…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Launch at Login" = "Launch at Login";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Launch at Login (Needs Approval…)" = "Launch at Login (Needs Approval…)";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Live Activities" = "Live Activities";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Live Captions for This Meeting" = "Live Captions for This Meeting";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Meeting Notes…" = "Meeting Notes…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Meetings" = "Meetings";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "No shortcuts found" = "No shortcuts found";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Notch Theme" = "Notch Theme";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Notifications" = "Notifications";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Now Playing Beside the Notch" = "Now Playing Beside the Notch";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Open Clipboard Stack  ⌘⇧V" = "Open Clipboard Stack  ⌘⇧V";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Open Shortcuts…" = "Open Shortcuts…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Open Spaces…" = "Open Spaces…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Paste / Copy Last Dictation  ⌃⌘V ⌃⌘C" = "Paste / Copy Last Dictation  ⌃⌘V ⌃⌘C";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Pause" = "Pause";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Pick a Window to Ask About…" = "Pick a Window to Ask About…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Preview Screen Glow" = "Preview Screen Glow";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Prompt Refiner…" = "Prompt Refiner…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Quick Capture" = "Quick Capture";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Quick Capture  %@" = "Quick Capture  %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Quit SparkV" = "Quit SparkV";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Read the Window When Text Is Hidden" = "Read the Window When Text Is Hidden";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Record Meeting" = "Record Meeting";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Remind Me About Distractions" = "Remind Me About Distractions";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Remove from This Button" = "Remove from This Button";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Reply Drafter" = "Reply Drafter";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Restart SparkV" = "Restart SparkV";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Resume" = "Resume";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Save Current Web Page" = "Save Current Web Page";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Save Selected Mail" = "Save Selected Mail";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Screen Glow" = "Screen Glow";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Screen Tools" = "Screen Tools";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Send Tray to Flow Canvas" = "Send Tray to Flow Canvas";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Set Up Face Unlock…" = "Set Up Face Unlock…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Shake on Start and Breaks" = "Shake on Start and Breaks";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Shortcut %@" = "Shortcut %@";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Shortcuts" = "Shortcuts";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Show Download Progress Under the Notch" = "Show Download Progress Under the Notch";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Sorting Rules…" = "Sorting Rules…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "SparkV" = "SparkV";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Start Focus (%lld min)" = "Start Focus (%lld min)";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Stop Recording" = "Stop Recording";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Suggest Answers to Questions" = "Suggest Answers to Questions";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Suggest Folders with Apple Intelligence" = "Suggest Folders with Apple Intelligence";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Sync to iPhone…" = "Sync to iPhone…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Timer" = "Timer";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Toggle camera mirror" = "Toggle camera mirror";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Tone & Name…" = "Tone & Name…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Turn On Do Not Disturb" = "Turn On Do Not Disturb";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "UI Audit…" = "UI Audit…";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Use Spaces as Context" = "Use Spaces as Context";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Volume & Brightness" = "Volume & Brightness";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Watch Downloads Folder" = "Watch Downloads Folder";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Widgets: world clocks, volume, habits, system and network" = "Widgets: world clocks, volume, habits, system and network";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Write Recap On Device" = "Write Recap On Device";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "Write Reply into the Message Box" = "Write Reply into the Message Box";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "⌘ + Number + V Pastes From History" = "⌘ + Number + V Pastes From History";
 
-/* NotchNookLayoutView.swift */
+/* IslandLayoutView.swift */
 "⌘⇧V Opens the Clipboard Stack" = "⌘⇧V Opens the Clipboard Stack";
 
 /* NotificationActivityView.swift */

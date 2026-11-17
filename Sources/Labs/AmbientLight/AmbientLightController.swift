@@ -1,4 +1,5 @@
 import AppKit
+import CoreAudio
 import Combine
 import QuartzCore
 
@@ -47,10 +48,6 @@ final class AmbientLightController: NSObject, ObservableObject {
     private let notchViews = NSHashTable<AmbientNotchGlowView>.weakObjects()
     private var link: CADisplayLink?
     /// Last beat that tapped the trackpad (Music Haptics).
-    private var lastFeltBeat: UInt64 = 0
-    private var lastTapTime: Double = 0
-    /// Running average of the bass on beats: a tap needs a kick above it.
-    private var beatBassAverage: Float = 0.4
     private var cancellables: Set<AnyCancellable> = []
     private var mediaCancellables: Set<AnyCancellable> = []
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
@@ -111,6 +108,14 @@ final class AmbientLightController: NSObject, ObservableObject {
         engine.onDigitalSilenceChange = { [weak self] silent in self?.digitalSilenceChanged(silent) }
         engine.onRouteChange = { [weak self] in self?.restartCapture() }
         engine.onAudibleChange = { [weak self] _ in self?.evaluate(userInitiated: false) }
+        engine.onKick = { [weak self] strength, captured in
+            // Felt when it is heard: the tap waits out the output device's
+            // delay (large on AirPods and other Bluetooth speakers).
+            let delay = max(0, captured + AmbientOutputLatency.current - CACurrentMediaTime())
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                MainActor.assumeIsolated { self?.feelKick(strength) }
+            }
+        }
         outputActivity.onChange = { [weak self] running in self?.outputActivityChanged(running) }
         outputActivity.onServiceRestart = { [weak self] in self?.audioServiceRestarted() }
         engine.onHALRecovered = { [weak self] in self?.halRecovered() }
@@ -211,6 +216,10 @@ final class AmbientLightController: NSObject, ObservableObject {
     /// Seconds a probe may run before it must have heard something.
     private static let probeWindow: Double = 6
     private static let probeCooldown: Double = 20
+    /// Probes in a row that heard nothing: the wait doubles (20, 40, 80,
+    /// 160 s) so a silent app holding the speakers costs almost nothing.
+    private var fruitlessProbes = 0
+    private var probeCooldownNow: Double { Self.probeCooldown * pow(2, Double(max(0, fruitlessProbes - 1))) }
     /// Capture keeps running this long after music stops (Now Playing
     /// paused / nil and nothing heard). Gaps between YouTube videos or
     /// tracks, ads and short pauses used to stop and restart the tap every
@@ -247,7 +256,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         guard running, settings.isActive, !suspended, !isPlaying,
               !engine.isRunning, startTask == nil, !engineStarting else { return }
         let now = CACurrentMediaTime()
-        guard now - lastFruitlessProbe >= Self.probeCooldown else { return }
+        guard now - lastFruitlessProbe >= probeCooldownNow else { return }
         beginProbe(now: now)
     }
 
@@ -258,7 +267,12 @@ final class AmbientLightController: NSObject, ObservableObject {
             try? await Task.sleep(for: .seconds(Self.probeWindow + 0.1))
             guard let self, !Task.isCancelled else { return }
             self.probeTask = nil
-            if !self.engine.isHearingAudio, !self.isPlaying { self.lastFruitlessProbe = CACurrentMediaTime() }
+            if !self.engine.isHearingAudio, !self.isPlaying {
+                self.lastFruitlessProbe = CACurrentMediaTime()
+                self.fruitlessProbes = min(self.fruitlessProbes + 1, 4)
+            } else {
+                self.fruitlessProbes = 0
+            }
             self.evaluate(userInitiated: false)
         }
         evaluate(userInitiated: false)
@@ -465,7 +479,11 @@ final class AmbientLightController: NSObject, ObservableObject {
     private var watchdogShouldWatch: Bool {
         guard settings.isActive, !suspended else { return false }
         if isPlaying { return true }
-        return outputActivity.isOutputRunning && CACurrentMediaTime() - lastLiveAt < 60
+        // Any app playing (Chrome videos often never report Now Playing):
+        // the device may already have been running when the light was
+        // turned on or after a pause, so no "started" event comes. Probes
+        // back off (`probeCooldownNow`) when it is only a silent app.
+        return outputActivity.isOutputRunning
     }
 
     /// Event-driven: armed from `evaluate` / output activity, one sleeping
@@ -490,9 +508,10 @@ final class AmbientLightController: NSObject, ObservableObject {
         guard watchdogShouldWatch else { return }
         let now = CACurrentMediaTime()
         if engine.isRunning {
-            // A tap whose IO stopped (device gone, daemon reset) delivers
-            // nothing at all, not even silence.
-            if backend == .processTap, isPlaying,
+            // A capture whose IO stopped (a tap's device gone, a daemon
+            // reset, a ScreenCaptureKit stream that died) delivers nothing
+            // at all, not even silence. Both backends.
+            if isPlaying,
                now - engine.startedAt > Self.watchdogInterval,
                let age = engine.secondsSinceAudio, age > Self.watchdogInterval {
                 watchdogLog("capture running but no audio for \(Int(age)) s; restarting")
@@ -513,8 +532,8 @@ final class AmbientLightController: NSObject, ObservableObject {
         if isPlaying {
             watchdogLog("Now Playing says playing for \(Int(Self.watchdogInterval)) s but capture isn't running; starting it")
             evaluate(userInitiated: false)
-        } else if now - lastFruitlessProbe >= Self.probeCooldown {
-            watchdogLog("output running after recent music but capture isn't; probing")
+        } else if outputActivity.isOutputRunning, now - lastFruitlessProbe >= probeCooldownNow {
+            watchdogLog("output running but capture isn't; probing")
             beginProbe(now: now)
         }
     }
@@ -660,6 +679,7 @@ final class AmbientLightController: NSObject, ObservableObject {
     private func stopLink() {
         link?.invalidate()
         link = nil
+        hapticsLive = false
         edges.setShown(false)
     }
 
@@ -692,6 +712,7 @@ final class AmbientLightController: NSObject, ObservableObject {
         let musicLive = isMusicLive
         if musicLive {
             lastLiveAt = now
+            fruitlessProbes = 0
             if !loggedLive {
                 loggedLive = true
                 let why = isPlaying ? (engine.isHearingAudio ? "Now Playing + audio" : "Now Playing") : "audio heard, no Now Playing"
@@ -725,8 +746,13 @@ final class AmbientLightController: NSObject, ObservableObject {
             }
         }
         edges.setShown(settings.scope == .notchAndEdges && frame.presence > 0.001)
+        if edges.isShown, let view = notchViews.allObjects.first(where: { $0.islandScreenRect != nil }) {
+            edges.setIsland(view.islandScreenRect, radius: view.outlineRadius)
+        } else {
+            edges.setIsland(nil, radius: 0)
+        }
         edges.render(frame, palette: palette)
-        if live, settings.beatHaptics { feelBeat(features) }
+        hapticsLive = live
 
         if choreographer.isDark, !live {
             logIdle()
@@ -746,30 +772,16 @@ final class AmbientLightController: NSObject, ObservableObject {
         }
     }
 
-    /// Music Haptics, after Apple's guidance (HIG › Playing haptics; Music
-    /// Haptics on iPhone): sparing, tied to the rhythm you hear, stronger
-    /// for stronger hits, never a buzz. Only real kicks tap: a beat whose
-    /// bass stands out from the song's own average. Fast songs are felt
-    /// on every other beat; downbeats get the firm tap. Nothing plays when
-    /// no hand is on the Mac (an unfelt tap is wasted power), in Low Power
-    /// Mode or when the Mac is hot.
-    private func feelBeat(_ features: AmbientAudioFeatures) {
-        guard features.beatCount != lastFeltBeat else { return }
-        let isNewBeat = lastFeltBeat != 0
-        lastFeltBeat = features.beatCount
-        let now = CACurrentMediaTime()
-        guard isNewBeat, !features.isSilent, now - features.lastBeatTime < 0.12 else { return }
-        let bass = features.bass
-        defer { beatBassAverage += (bass - beatBassAverage) * 0.15 }
-        guard !lowPower, !thermalHot,
-              CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0) ?? .mouseMoved) < 20,
-              bass > 0.3, bass > beatBassAverage * 1.15 else { return }
-        let period = features.bpm > 40 && features.tempoConfidence > 0.4 ? 60 / Double(features.bpm) : 0.5
-        let gap = period < 0.4 ? period * 1.9 : period * 0.9
-        guard now - lastTapTime >= max(0.28, gap) else { return }
-        lastTapTime = now
-        let downbeat = features.tempoConfidence > 0.6 && features.beatCount % 4 == 0
-        SparkVHaptics.play(downbeat || bass > beatBassAverage * 1.6 ? .boundary : .detent)
+    /// Music Haptics: one tap per kick drum, from a kick-only detector
+    /// running at the analyzer's ~90 Hz hop rate (not the light's frame
+    /// rate), timed to when the kick comes out of the speakers. Harder kicks
+    /// get the firm tap. Paused only when the Mac is hot.
+    private var hapticsLive = false
+
+    private func feelKick(_ strength: Float) {
+        guard hapticsLive, settings.beatHaptics, !thermalHot, SparkVHaptics.isEnabled else { return }
+        let pattern: NSHapticFeedbackManager.FeedbackPattern = strength > 0.45 ? .levelChange : .generic
+        NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     }
 
     /// A synthetic 120 BPM groove for the Settings preview.
@@ -899,5 +911,56 @@ final class AmbientLightStats: ObservableObject {
         if abs(self.frameMicros - frameMicros) > 2 { self.frameMicros = frameMicros.rounded() }
         if abs(self.fps - fps) > 1.5 { self.fps = fps.rounded() }
         if roundedBPM != self.bpm { self.bpm = roundedBPM }
+    }
+}
+
+/// How long audio takes from the system mix to the speakers or headphones:
+/// device + stream latency, safety offset and buffer, read once per output
+/// change (cached; Bluetooth reports 100-250 ms).
+enum AmbientOutputLatency {
+    nonisolated(unsafe) private static var cached: (device: AudioObjectID, seconds: Double)?
+
+    static var current: Double {
+        let device = defaultOutput()
+        if let cached, cached.device == device { return cached.seconds }
+        let seconds = measure(device)
+        cached = (device, seconds)
+        return seconds
+    }
+
+    private static func defaultOutput() -> AudioObjectID {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var device = AudioObjectID(0)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
+        return device
+    }
+
+    private static func measure(_ device: AudioObjectID) -> Double {
+        func value(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector) -> UInt32 {
+            var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeOutput,
+                                                     mElement: kAudioObjectPropertyElementMain)
+            var result: UInt32 = 0
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            return AudioObjectGetPropertyData(object, &address, 0, nil, &size, &result) == noErr ? result : 0
+        }
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyNominalSampleRate,
+                                                 mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var rate: Float64 = 0
+        var size = UInt32(MemoryLayout<Float64>.size)
+        guard device != 0, AudioObjectGetPropertyData(device, &address, 0, nil, &size, &rate) == noErr, rate > 0 else { return 0 }
+        var frames = value(device, kAudioDevicePropertyLatency) + value(device, kAudioDevicePropertySafetyOffset)
+            + value(device, kAudioDevicePropertyBufferFrameSize)
+        var streamsAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioObjectPropertyScopeOutput,
+                                                        mElement: kAudioObjectPropertyElementMain)
+        var streamsSize: UInt32 = 0
+        if AudioObjectGetPropertyDataSize(device, &streamsAddress, 0, nil, &streamsSize) == noErr, streamsSize > 0 {
+            var streams = [AudioStreamID](repeating: 0, count: Int(streamsSize) / MemoryLayout<AudioStreamID>.size)
+            if AudioObjectGetPropertyData(device, &streamsAddress, 0, nil, &streamsSize, &streams) == noErr, let first = streams.first {
+                frames += value(first, kAudioStreamPropertyLatency)
+            }
+        }
+        return min(0.4, Double(frames) / rate)
     }
 }

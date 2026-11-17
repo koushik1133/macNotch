@@ -308,7 +308,7 @@ final class AppGainRoute: @unchecked Sendable {
 
     /// kAudioDevicePropertyIOProcStreamUsage: marks every input stream but
     /// the last (the tap) unused for this IO proc. Best effort.
-    private static func useOnlyLastInputStream(of device: AudioObjectID, proc: AudioDeviceIOProcID) {
+    static func useOnlyLastInputStream(of device: AudioObjectID, proc: AudioDeviceIOProcID) {
         let streams = MPAudioHAL.objects(device, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput)
         guard streams.count > 1 else { return }
         var address = MPAudioHAL.address(kAudioDevicePropertyIOProcStreamUsage, kAudioObjectPropertyScopeInput)

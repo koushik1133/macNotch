@@ -36,6 +36,8 @@ enum MediaPlus {
     /// Synchronous where it matters: app-volume taps are gone when it returns.
     static func stop() {
         likesWatch = nil
+        // SparkV DJ's tap first: the Mac plays untouched when it returns.
+        DJController.shared.stopNow()
         AppVolumeController.shared.stop()
         MediaVisualizerController.shared.stop()
         LyricsController.shared.detach()

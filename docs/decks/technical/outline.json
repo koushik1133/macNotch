@@ -331,7 +331,7 @@
           },
           {
             "id": "layout",
-            "label": "NotchNookLayoutView",
+            "label": "IslandLayoutView",
             "detail": "header icons · 21 drawer pages (NotchState.Tab)"
           },
           {
@@ -423,7 +423,7 @@
       "number": 4,
       "id": "live-activities",
       "layout": "feature_showcase",
-      "header": "Live activities with Dynamic Island rules",
+      "header": "Live activities with compact-island rules",
       "subtitle": "A priority queue that never covers your work",
       "body": [
         "Compact wings grow sideways inside the menu bar, 30–112 pt per side",
@@ -432,7 +432,7 @@
         "Persistent activities peek for 4 s, then rest in the wings"
       ],
       "status": "Bands render from source; key interception, banners and Bluetooth need a live check.",
-      "notes": "The closed island follows Dynamic Island rules. Compact activities grow sideways inside the menu-bar height, so nothing below the menu bar is covered. Short alerts go into a priority queue whose clock only runs while they're visible, so a notification can't eat the charging alert. Volume and brightness are live feedback: newest wins and they're never replayed. Long-running things like a timer, a meeting or a recording peek in the band for four seconds and then tuck into the wings. All of this is one ActivityCenter, and every feature posts a LiveActivity with a priority, an optional compact form and a tab to open on hover. Honest status: the bands render from source, but key interception, banners and AirPods need the running app to confirm.",
+      "notes": "The closed island follows strict compact-activity rules. Compact activities grow sideways inside the menu-bar height, so nothing below the menu bar is covered. Short alerts go into a priority queue whose clock only runs while they're visible, so a notification can't eat the charging alert. Volume and brightness are live feedback: newest wins and they're never replayed. Long-running things like a timer, a meeting or a recording peek in the band for four seconds and then tuck into the wings. All of this is one ActivityCenter, and every feature posts a LiveActivity with a priority, an optional compact form and a tab to open on hover. Honest status: the bands render from source, but key interception, banners and AirPods need the running app to confirm.",
       "images": [
         {
           "file": "46-compact-wings.png",
@@ -990,7 +990,7 @@
         "Why not the App Store: Accessibility, event taps, private frameworks, child processes",
         "Developer ID pipeline: cert, sign with timestamp, notarize, staple, Sparkle 2, License API"
       ],
-      "notes": "SparkV can't be sandboxed. Apple's DTS says Accessibility APIs aren't compatible with the App Sandbox, and we also need event taps for the fn key, posted key events for paste, private DisplayServices for the HUD, the MediaRemote adapter for Now Playing, and child processes for Node and Shortcuts. NotchNook stays off the App Store for the same MediaRemote reason. So we ship direct: a Developer ID certificate replaces today's local identity, every nested binary is signed with the Hardened Runtime and a secure timestamp, the DMG is notarized and stapled, and Sparkle 2 delivers updates from a signed appcast. Since Sequoia, an un-notarized app can't be opened with right-click Open, so notarization isn't optional for a paid product. The local identity stays for development builds. Sources for the sandbox constraints are in the business plan, section 5.",
+      "notes": "SparkV can't be sandboxed. Apple's DTS says Accessibility APIs aren't compatible with the App Sandbox, and we also need event taps for the fn key, posted key events for paste, private DisplayServices for the HUD, the MediaRemote adapter for Now Playing, and child processes for Node and Shortcuts. Other notch apps stay off the App Store for the same MediaRemote reason. So we ship direct: a Developer ID certificate replaces today's local identity, every nested binary is signed with the Hardened Runtime and a secure timestamp, the DMG is notarized and stapled, and Sparkle 2 delivers updates from a signed appcast. Since Sequoia, an un-notarized app can't be opened with right-click Open, so notarization isn't optional for a paid product. The local identity stays for development builds. Sources for the sandbox constraints are in the business plan, section 5.",
       "images": [],
       "chart": null,
       "table": null
@@ -1164,12 +1164,12 @@
         "type": "bar_horizontal",
         "title": "First-year cost of comparable tools (USD)",
         "categories": [
-          "Granola Business",
-          "Wispr Flow Pro",
-          "Raycast Pro",
-          "Paste",
-          "CleanShot X",
-          "NotchNook",
+          "Meeting-notes app",
+          "Dictation app",
+          "AI launcher",
+          "Clipboard app",
+          "Screenshot app",
+          "Notch hub app",
           "SparkV Pro"
         ],
         "series": [
@@ -1188,46 +1188,46 @@
         ],
         "data_table": [
           {
-            "product": "Granola Business",
+            "product": "Meeting-notes app",
             "category": "Meeting notes",
             "cost": 168.0,
             "basis": "$14/user/mo x 12",
-            "source": "https://granola.ai/blog/granola-pricing-plans-features-roi"
+            "source": "public list price, checked Oct 2026"
           },
           {
-            "product": "Wispr Flow Pro",
+            "product": "Dictation app",
             "category": "Dictation",
             "cost": 144.0,
             "basis": "$144/yr",
-            "source": "https://www.getvoibe.com/resources/wispr-flow-pricing/"
+            "source": "public list price, checked Oct 2026"
           },
           {
-            "product": "Raycast Pro",
+            "product": "AI launcher",
             "category": "Launcher + AI",
             "cost": 96.0,
             "basis": "$8/mo billed yearly",
-            "source": "https://www.raycast.com/blog/changing-how-raycast-ai-is-priced"
+            "source": "public list price, checked Oct 2026"
           },
           {
-            "product": "Paste",
+            "product": "Clipboard app",
             "category": "Clipboard",
             "cost": 29.99,
             "basis": "$29.99/yr",
-            "source": "https://apps.apple.com/app/id967805235"
+            "source": "public list price, checked Oct 2026"
           },
           {
-            "product": "CleanShot X",
+            "product": "Screenshot app",
             "category": "Screenshots",
             "cost": 29.0,
             "basis": "one-time, 1 yr updates",
-            "source": "https://toolradar.com/tools/cleanshot/pricing"
+            "source": "public list price, checked Oct 2026"
           },
           {
-            "product": "NotchNook",
+            "product": "Notch hub app",
             "category": "Notch hub",
             "cost": 25.0,
             "basis": "one-time",
-            "source": "https://www.imore.com/apps/mac-apps/this-dollar25-app-gives-my-macbook-pro-a-dynamic-island-and-it-was-worth-every-penny"
+            "source": "public list price, checked Oct 2026"
           },
           {
             "product": "SparkV Pro",

@@ -3,8 +3,7 @@ import SwiftUI
 
 // MARK: - Rules (pure)
 
-/// Which apps and sites count as distractions. Like Raycast Focus and
-/// Session, a match doesn't kill anything: a calm overlay asks whether to go
+/// Which apps and sites count as distractions. A match doesn't kill anything: a calm overlay asks whether to go
 /// back to work, with a snooze for when the user really needs the app.
 enum FocusBlockRules {
     /// "https://www.YouTube.com/watch?v=1" → "youtube.com"; "*.reddit.com" → "reddit.com".
@@ -76,7 +75,7 @@ final class FocusDistractionGuard {
     private var snoozedUntil: [String: Date] = [:]
     private var browserPoll: Task<Void, Never>?
     /// Looks at the front app again when a snooze runs out, so a snoozed app
-    /// that is still in front gets the reminder again (like Raycast Focus).
+    /// that is still in front gets the reminder again.
     private var snoozeRecheck: Task<Void, Never>?
     private(set) var isActive = false
     /// Last non-blocked app the user worked in, to return to.

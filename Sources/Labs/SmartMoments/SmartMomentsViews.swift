@@ -100,6 +100,14 @@ final class SmartMomentsBandModel: ObservableObject {
         guard let offer else { return }
         if offer.blocked[action] != nil {
             engine.requestPermission(for: action, offerID: offer.id)
+        } else if action == .joinMeeting, offer.autoRan.isEmpty {
+            // Join means join: one tap, not a tick waiting for "Do it".
+            guard !isWorking else { return }
+            isWorking = true
+            Task {
+                await engine.accept(offer.id, actions: [action])
+                isWorking = false
+            }
         } else if runNow || !offer.autoRan.isEmpty {
             Task { _ = await engine.run(action, offerID: offer.id) }
         } else {
@@ -168,6 +176,7 @@ final class SmartMomentsPresenter {
         ) {
             SmartMomentBandRoot(model: model)
         }
+        .interactive()
     }
 }
 

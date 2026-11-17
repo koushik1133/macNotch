@@ -617,7 +617,8 @@ final class MeetingStartCoordinator: ObservableObject {
         }
         .minimal {
             MeetingProviderBadge(provider: provider, appIcon: icon, calendarColor: SparkVTheme.recording, size: 14)
-        })
+        }
+        .interactive())
         // A new call announces itself for a while, then rests in the
         // wings until it ends or is answered (the Today tab has it too).
         if isNew { activities.peek(id: MeetingIntelActivity.startPrompt, for: Self.promptPeek) }
@@ -640,7 +641,8 @@ final class MeetingStartCoordinator: ObservableObject {
         ) { [weak self] in
             MeetingCountdownBand(call: call, icon: icon, plan: plan, secondsLeft: secondsLeft, total: total,
                                  onCancel: { self?.cancelCountdown() })
-        })
+        }
+        .interactive())
     }
 
     private func postConsentToast(_ plan: MeetingStartPlan) {

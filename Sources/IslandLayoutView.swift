@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Root view: one continuous black shape that grows out of the hardware notch.
-struct NotchNookLayoutView: View {
+struct IslandLayoutView: View {
     @EnvironmentObject private var state: NotchState
     @EnvironmentObject private var tray: TrayStore
     @EnvironmentObject private var dictation: DictationController
@@ -86,7 +86,7 @@ struct NotchNookLayoutView: View {
 
             Group {
 
-            // Album-art glow (boring.notch style), under all content; the
+            // Album-art glow, under all content; the
             // clip shape below keeps it inside the island.
             // Only with the Album Glow background; Black keeps the island pure black.
             if themeSettings.effectiveBackground == .albumGlow, state.isExpanded, state.tab == .nook {
@@ -197,6 +197,10 @@ struct NotchNookLayoutView: View {
         }
         // Uneven wings shift the body so the housing stays over the camera.
         .offset(x: closed?.xOffset ?? 0)
+        // Opening: the drawer grows straight out of the camera housing. The
+        // uneven-wing shift snaps to center at once instead of sliding the
+        // growing drawer sideways (it only springs while closed).
+        .animation(state.isExpanded ? nil : NotchMetrics.hoverAnimation, value: closed?.xOffset ?? 0)
         .padding(.top, gap - fill)
         .animation(NotchMetrics.hoverAnimation, value: closed)
         .animation(NotchMetrics.hoverAnimation, value: state.tab)
@@ -244,6 +248,7 @@ struct NotchNookLayoutView: View {
         case .widgets: WidgetsTabView()
         case .fans: FanTabView()
         case .colorPicker: ColorPickerDrawerView(controller: colorPicker)
+        case .dj: DJDrawerView()
         case .devStatus: DevStatusDrawerView()
         case .menuBar: MenuBarOverflowDrawerView()
         case .status: SystemStatusTabView()
@@ -317,7 +322,7 @@ private struct HeaderRow: View {
             IconTab(systemImage: "square.grid.2x2.fill", tab: .agents, help: HeaderCatalog.info(id)?.help ?? "Agents",
                     activeFor: HubCatalog.agentsActiveTabs(pins: headerLayout.header.pins), pill: pill)
         default:
-            // Original SF Symbols, not the Wispr Flow or Clicky logos.
+            // Original SF Symbols.
             if let tab = HeaderTabs.tab(for: id), let item = HeaderCatalog.info(id) {
                 IconTab(systemImage: item.systemImage, tab: tab, help: item.help, pill: pill)
             } else {
@@ -386,7 +391,7 @@ private struct RecordMeetingButton: View {
                 assistant.stop()
             } else {
                 assistant.start(title: nil, calendarEventID: nil)
-                // Like Granola: the notepad opens with the recording.
+                // The notepad opens with the recording.
                 assistant.openNotesWindow()
             }
         } label: {
@@ -558,6 +563,12 @@ private struct SettingsMenu: View {
                     }
                     Toggle("AI Formatting", isOn: $dictation.formattingEnabled)
                     Toggle("Paste / Copy Last Dictation  ⌃⌘V ⌃⌘C", isOn: $dictation.historyShortcutsEnabled)
+                    Text("Hold to talk · double-tap for hands-free · Esc cancels")
+                    if dictation.hotkey == .fn, DictationController.fnKeyHasSystemAction {
+                        Divider()
+                        Text("macOS also uses the 🌐 key: set “Press 🌐 key to” to Do Nothing")
+                        Button("Open Keyboard Settings…") { DictationController.openKeyboardSettings() }
+                    }
                 }
                 Menu("Focus") {
                     Button(focus.isActive ? "End Focus" : "Start Focus (\(focus.settings.focusMinutes) min)") { focus.toggle() }

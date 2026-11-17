@@ -85,6 +85,10 @@ final class ClipboardController: ObservableObject {
     private var pollTask: Task<Void, Never>?
     /// Serialises ingest, copy-back and saving.
     private var chain: Task<Void, Never>?
+    /// The pasteboard read in progress. Off the main actor (an image comes
+    /// from the app that copied it and can take seconds), one at a time so
+    /// copies stay in order.
+    private var readTask: Task<Void, Never>?
     private var lastChangeCount = -1
     /// Change count at which `history.latest` was recorded or written back.
     /// When the pasteboard's count differs, the clipboard holds something the
@@ -349,7 +353,7 @@ final class ClipboardController: ObservableObject {
     }
 
     /// Copies `item` with every representation, then pastes it into the
-    /// frontmost app with ⌘V (as Maccy does), so rich text, images and files
+    /// frontmost app with ⌘V, so rich text, images and files
     /// paste as themselves. Without Accessibility the item is left on the
     /// clipboard with a hint.
     /// `target`: the app to paste into (the stack panel's). `keepCommand`:
@@ -424,7 +428,7 @@ final class ClipboardController: ObservableObject {
         publishAndSave()
     }
 
-    /// Menu "Clear History": asks first, as Maccy and Raycast do.
+    /// Menu "Clear History": asks first.
     func confirmAndClear(includingPinned: Bool = false) {
         let count = includingPinned ? history.items.count : history.unpinned.count
         guard count > 0 else { return }
@@ -603,7 +607,7 @@ final class ClipboardController: ObservableObject {
 
     private func beginPolling(readNow: Bool) {
         pollTask?.cancel()
-        // Like Maccy: what was on the clipboard before launch isn't recorded,
+        // What was on the clipboard before launch isn't recorded,
         // unless the user just turned history on.
         lastChangeCount = readNow ? -1 : pasteboard.changeCount
         status = isPaused ? .paused : .running
@@ -654,7 +658,25 @@ final class ClipboardController: ObservableObject {
         }
 
         let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        switch ClipboardReader.read(pasteboard, policy: policy, frontmostBundleID: frontmost) {
+        nonisolated(unsafe) let board = pasteboard
+        let policy = policy
+        let previous = readTask
+        readTask = Task { @MainActor [weak self] in
+            await previous?.value
+            let result = await Task.detached(priority: .userInitiated) {
+                ClipboardReader.read(board, policy: policy, frontmostBundleID: frontmost)
+            }.value
+            self?.finishRead(result)
+        }
+    }
+
+    private func finishRead(_ result: ClipboardReader.Result) {
+        guard isEnabled else { return }
+        if isPaused {
+            hasUnrecordedCopy = true
+            return
+        }
+        switch result {
         case .skipped(let reason):
             // Our own write-back is already the newest item.
             if reason != .ownWrite { hasUnrecordedCopy = true }
@@ -716,6 +738,7 @@ final class ClipboardController: ObservableObject {
             return false
         }
         let payload = await store.payload(for: item)
+        await readTask?.value
         if item.kind == .image, payload.data.isEmpty {
             postNotice(symbol: "photo", title: "Image no longer stored", detail: item.displayTitle)
             return false
@@ -766,7 +789,7 @@ final class ClipboardController: ObservableObject {
     }
 
     /// Reads the text in a copied image on this Mac (Vision) so the search
-    /// field finds screenshots by their words, as Raycast does. Runs beside
+    /// field finds screenshots by their words. Runs beside
     /// the ingest queue, so a slow recognition never delays later copies.
     private func recognizeText(in item: ClipboardItem) {
         guard let url = store.imageFileURL(for: item) else { return }

@@ -123,7 +123,7 @@ final class ClickyOverlay {
             guard !Task.isCancelled, let self, self.generation == current else { return }
             self.dismiss()
         }
-        AppLog.log("Clicky: pointing at \(label)")
+        AppLog.log("Clicky: pointing")
     }
 
     func dismiss(animated: Bool = true) {

@@ -207,7 +207,7 @@ final class QuickTogglesController: ObservableObject {
         Task { [weak self, shortcuts] in
             do {
                 _ = try await shortcuts.run(name)
-                AppLog.log("Quick Toggles: ran “\(name)”")
+                AppLog.log("Quick Toggles: ran the Night Shift shortcut")
             } catch {
                 AppLog.log("Quick Toggles: Night Shift shortcut failed: \(error.localizedDescription)")
                 self?.show(.init(text: "Add a shortcut named “\(name)” that runs Set Night Shift → Toggle.", action: .openShortcuts))

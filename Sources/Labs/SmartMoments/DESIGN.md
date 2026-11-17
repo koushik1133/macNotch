@@ -9,27 +9,21 @@ Contracts live in `SmartMomentsModels.swift`. Wiring is in `INTEGRATION.md`.
 
 ## Research notes (what we borrowed, what we avoided)
 
-| Product | Idea it gives Smart Moments | What we do differently |
+| Pattern | Idea it gives Smart Moments | What we do differently |
 |---|---|---|
 | Apple Shortcuts personal automations (macOS Tahoe) | Event triggers: app open/quit, Focus on/off, Wi-Fi/Bluetooth/display connected, battery level, charger, file added to a folder. Each one can **Run Immediately** or **Run After Confirmation**. | Same two modes per moment (`ask` / `automatic`), but with a bundle of actions instead of a script, and every action has its own checkbox. |
 | Focus filters | A Focus changes what apps show (only work calendars, a work Safari tab group). | Moments call `FocusController` and `ModeEngine` (DND, notification previews, modes) and **put back** only what they changed. |
-| Raycast (My Schedule, Focus) | Next meeting at the top with Enter to join. Auto-join is **off by default** and shows a confirmation alert even when on. Focus sessions start from deeplinks or shortcuts. | Join is always a tap. Auto mode never joins, records or opens a call. |
-| MeetingBar | Next meeting in the menu bar, one-click join, a shortcut to join the next meeting, an AppleScript hook to e.g. pause music when a meeting starts. | "Pause music on meeting start" is a built-in action with an automatic resume on meeting end. |
-| Granola | A pop-up 1 minute before a calendar meeting (only events with 2+ attendees). Clicking it opens the call and notes and starts transcribing. Spots calls that aren't on the calendar from microphone use (Slack huddles, FaceTime). Notifications can be turned off per app. | MeetingDetector does the call detection. Smart Moments asks before any recording starts, and keeps the recording indicator visible. Per-app opt-out = per-moment toggle. |
-| Krisp | Noise cancellation on during calls. | Out of scope (no audio processing). We check the mic, camera and AirPods battery before the call instead. |
-| Muzzle / Zoom "block notifications while sharing" | Silences notifications only during screen sharing, zero cost when not sharing. Muzzle's known gap: no per-app control. | The screen-sharing moment hides notification previews **and** SparkV's own clipboard band, pauses music, and puts everything back when sharing stops. |
-| Hazel / Keyboard Maestro Folder trigger | Watch Downloads. Wait until the download or copy completes. Sort by file type and leave unmatched files tagged for review. | Uses `DownloadsController`'s finished items and its suggested folder. Never moves a file without a tap unless the user turned on auto-sort there already. |
-| Keyboard Maestro / BetterTouchTool | Triggers on app activation, device attach, clipboard change, named triggers. | Clipboard moment reads `ClipboardController`'s detected kind (link, code). App activation feeds the deep-work and presentation moments. |
-| Fantastical | Join button on the upcoming-meeting alert. | The 2-minute moment has Join as its first chip. |
+| Calendar "next meeting" views | Next meeting at the top with Enter to join. Auto-join is **off by default** and shows a confirmation alert even when on. Focus sessions start from deeplinks or shortcuts. | Join is always a tap. Auto mode never joins, records or opens a call. |
+| Menu bar meeting reminders | Next meeting in the menu bar, one-click join, a shortcut to join the next meeting, a script hook to e.g. pause music when a meeting starts. | "Pause music on meeting start" is a built-in action with an automatic resume on meeting end. |
+| Meeting-notes pop-ups | A pop-up 1 minute before a calendar meeting (only events with 2+ attendees). Clicking it opens the call and notes and starts transcribing. Spots calls that aren't on the calendar from microphone use (Slack huddles, FaceTime). Notifications can be turned off per app. | MeetingDetector does the call detection. Smart Moments asks before any recording starts, and keeps the recording indicator visible. Per-app opt-out = per-moment toggle. |
+| Call noise cancellation | Noise cancellation on during calls. | Out of scope (no audio processing). We check the mic, camera and AirPods battery before the call instead. |
+| "Block notifications while sharing" | Silences notifications only during screen sharing, zero cost when not sharing. A common gap: no per-app control. | The screen-sharing moment hides notification previews **and** SparkV's own clipboard band, pauses music, and puts everything back when sharing stops. |
+| Folder-watch automations | Watch Downloads. Wait until the download or copy completes. Sort by file type and leave unmatched files tagged for review. | Uses `DownloadsController`'s finished items and its suggested folder. Never moves a file without a tap unless the user turned on auto-sort there already. |
+| Event-trigger automation tools | Triggers on app activation, device attach, clipboard change, named triggers. | Clipboard moment reads `ClipboardController`'s detected kind (link, code). App activation feeds the deep-work and presentation moments. |
+| Calendar alerts with Join | Join button on the upcoming-meeting alert. | The 2-minute moment has Join as its first chip. |
 
 Sources: [MacMost: Shortcuts automation in macOS Tahoe](https://macmost.com/an-introduction-to-shortcuts-automation-in-macos-tahoe.html),
-[Granola notifications](https://docs.granola.ai/help-center/taking-notes/notifications),
-[Raycast calendar manual](https://manual.raycast.com/calendar),
-[Raycast 1.94 changelog](https://www.raycast.com/changelog/1-94-0),
-[MeetingBar README](https://github.com/leits/meetingbar),
-[How-To Geek: hide notifications while screen sharing](https://www.howtogeek.com/714118/how-to-hide-notifications-while-sharing-your-screen-in-a-video-call/),
-[Keyboard Maestro Folder trigger](https://wiki.keyboardmaestro.com/_export/raw/trigger/Folder),
-[MPU: Hazel rule examples](https://talk.macpowerusers.com/t/hazel-rule-examples/3308/18).
+[How-To Geek: hide notifications while screen sharing](https://www.howtogeek.com/714118/how-to-hide-notifications-while-sharing-your-screen-in-a-video-call/).
 
 ## Engine rules (apply to every moment)
 
@@ -146,7 +140,7 @@ first** unless noted), its actions (each a toggle, ☑ = on by default,
 - **Actions:** ☑ Hide notification previews · ☑ Hide clipboard band
   (pauses `ClipboardController` banners, not history) · ☑ Pause music ·
   ☐ Do Not Disturb.
-- **Safeguards:** **Auto by default** (the Muzzle pattern; hiding is the safe
+- **Safeguards:** **Auto by default** (hiding is the safe
   side). All of it is reversed when sharing ends. While sharing, every
   content-showing moment (clipboard, screenshot, download preview) is
   suppressed.

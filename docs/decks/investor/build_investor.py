@@ -540,7 +540,7 @@ class InvestorDeck(Deck):
         inner = size - 2 * pad
         padx_ = 1.0
         inner_x = mw - 2 * padx_
-        side = {"Wispr Flow": "l", "SparkV": "b"}
+        side = {"Dictation app": "l", "SparkV": "b"}
         for p in chart["points"]:
             px_, py_ = mx + padx_ + p["x"] * inner_x, my + pad + (1 - p["y"]) * inner
             d = 0.16 if p.get("accent") else 0.1

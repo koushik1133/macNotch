@@ -22,6 +22,11 @@ final class AmbientAudioEngine {
     /// Called on the main queue when `isHearingAudio` changes (transitions
     /// only, never per hop).
     var onAudibleChange: ((Bool) -> Void)?
+    /// A kick in the audio: strength 0...1 and when it was captured (host
+    /// time). Called on the analysis queue, at the analyzer's hop rate.
+    var onKick: (@Sendable (Float, Double) -> Void)? {
+        didSet { pump?.onKick = onKick }
+    }
     /// Called on the main queue when the output device changed and capture
     /// should be restarted.
     var onRouteChange: (() -> Void)?
@@ -102,6 +107,7 @@ final class AmbientAudioEngine {
                 self.onAudibleChange?(audible)
             }
         }
+        pump.onKick = onKick
         pump.start()
         self.pump = pump
         isRunning = true
@@ -214,6 +220,8 @@ final class AmbientStartRace: @unchecked Sendable {
 /// The analysis loop on its own queue.
 final class AmbientAnalysisPump: @unchecked Sendable {
     var onDigitalSilenceChange: (@Sendable (Bool) -> Void)?
+    var onKick: (@Sendable (Float, Double) -> Void)?
+    private var lastKick: UInt64 = 0
     var onAudibleChange: (@Sendable (Bool) -> Void)?
     /// Continuous sound needed before the input counts as audible.
     static let audibleAfter: Double = 0.3
@@ -269,6 +277,11 @@ final class AmbientAnalysisPump: @unchecked Sendable {
             let delay = Double(ring.available) / sampleRate
             let time = CACurrentMediaTime() - delay
             latest = analyzer.process(hop: UnsafeBufferPointer(start: hop, count: hopSize), at: time)
+            if analyzer.kickCount != lastKick {
+                let first = lastKick == 0
+                lastKick = analyzer.kickCount
+                if !first, let latest, !latest.isSilent { onKick?(analyzer.kickStrength, analyzer.kickTime) }
+            }
         }
         guard let latest else { return }
         mailbox.store(latest)

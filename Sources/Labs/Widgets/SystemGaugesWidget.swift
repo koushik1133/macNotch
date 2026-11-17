@@ -16,7 +16,7 @@ struct CPUTicks: Equatable, Sendable {
 }
 
 enum SystemGaugeMath {
-    /// Busy fraction across all CPUs between two samples (iStat Menus' "CPU
+    /// Busy fraction across all CPUs between two samples ("CPU
     /// total"). 32-bit kernel counters can wrap, so each delta wraps too.
     static func cpuLoad(previous: [CPUTicks], current: [CPUTicks]) -> Double? {
         guard !previous.isEmpty, previous.count == current.count else { return nil }

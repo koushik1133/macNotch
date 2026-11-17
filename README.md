@@ -1,6 +1,6 @@
 # NotchIsland
 
-A "Dynamic Island" for the MacBook Pro notch. Hover the notch and it springs open into a 540×115
+A live island for the MacBook Pro notch. Hover the notch and it springs open into a 540×115
 drawer with media controls, two action capsules, a camera mirror, a tray, a dictation hub and a
 voice assistant. It runs as an agent app (no Dock icon) in a non-activating panel, so opening it
 never steals focus from the app you are in.
@@ -23,7 +23,7 @@ never steals focus from the app you are in.
 
   To change a capsule, right-click it, or open the gear menu and pick **Button 1** or **Button 2**.
   See [SHORTCUTS.md](SHORTCUTS.md) for ten shortcuts worth putting on them.
-- **Wispr-style dictation.** Hold **fn** to talk and let go to finish. Double-tap fn for hands-free,
+- **Hold-to-talk dictation.** Hold **fn** to talk and let go to finish. Double-tap fn for hands-free,
   then press fn again to stop. **Esc** cancels. Your words appear live in a band under the notch,
   and its hint names the key that stops a hands-free session. The text is formatted on-device and
   inserted where your cursor is. The hold key and the **AI Formatting** switch are in gear › Dictation.
@@ -62,13 +62,62 @@ never steals focus from the app you are in.
   > where a look-alike or a determined attacker with physical access is a concern.
 - Launch at Login and Quit are in the gear menu.
 
+## SparkV DJ (Sound FX)
+
+Agents hub › Media › **DJ** opens a page in the notch with:
+
+- **A turntable synced to Now Playing.** The album art is the record label. The record spins at 33⅓ rpm
+  only while something plays, and the tonearm drops onto the record. Drag around the record to scrub
+  (one turn is 10 s). Previous, play/pause and next go through the normal media controls.
+- **Sound FX for everything the Mac plays.** Presets: Flat, Bass Boost, Vocal, Spatial (a wider stage
+  from a virtualizer), **Concert** (hall reverb, a wide stage and a little extra bass)
+  and Club. There's a 10-band EQ (32 Hz–16 kHz, ±12 dB; dragging a band turns the preset into Custom,
+  double-click resets a band) and an Intensity slider. **A/B** crossfades to the untouched sound so you
+  can compare, and the power button turns it all off.
+- **Live stats.** 28 spectrum bars spike on each detected beat and carry falling peak caps. You also get
+  a beat light, a BPM estimate, low/mid/high levels and a level meter. They use Ambient Light's analyzer
+  and work even while Sound FX is off (a listen-only tap runs while the page is open).
+
+Sound FX is **off at every launch**; only your click turns it on. It needs System Audio Recording
+(asked from that click). Right-click the hub tile for on/off and presets.
+
+How it works: SparkV DJ installs no virtual audio device, driver or helper. It uses only public
+Core Audio API (macOS 14.4+):
+
+1. a private global **process tap** of everything except SparkV, with `mutedWhenTapped`. macOS mutes
+   the original sound only while SparkV reads the tap, so if SparkV quits, crashes or the tap fails,
+   the Mac plays normally again on its own;
+2. a private aggregate device made of the current default output plus the tap, so input and output
+   arrive in the same IO cycle (lowest latency);
+3. in that IO block, an `AVAudioEngine` in realtime manual-rendering mode (`AVAudioUnitEQ` →
+   `AVAudioUnitReverb`), then mid/side width, the A/B crossfade, fades and a no-lookahead peak
+   limiter. All of it is realtime-safe: atomics and preallocated buffers only.
+
+It follows the default output (speakers ↔ AirPods), rebuilding on a device or sample-rate change and
+after wake. A watchdog rebuilds a stalled route, and SparkV gives up and restores normal audio after
+repeated failures. Preset changes ramp, so they don't click. Turning it off fades to the dry signal
+and then removes the tap. Apps whose level App Volumes changes are left out of the tap so they aren't
+heard twice. Audio stays in memory and is never logged or saved.
+
+`open SparkV.app --args --dj-selftest` runs DJ live for about 20 s on whatever is playing. It logs
+counts and levels only (IO cycles, render failures, peaks, beats, BPM) to `~/Library/Logs/SparkV.log`.
+
+If DJ and Ambient Light both report that they have no system audio, look for a leftover copy of the
+app, such as an iCloud `SparkV 2.app` next to `SparkV.app`. macOS gives System Audio Recording to the
+copy Launch Services has registered for `com.sparkv.app`, and System Settings then lists it as
+"SparkV 2". Move the extra copies away; the DJ page's permission link names the copy it finds.
+
+`Sources/Labs/DJ/Tests/run-tests.sh` runs the signal path offline on test tones. It checks that Flat
+and A/B are transparent, that each preset shapes the tone, that Concert leaves a hall tail and that
+the limiter holds peaks under full scale.
+
 ## Header
 
 The header shares the band beside the camera cutout. **Nook** and **Tray** are on the left. On the
 right are **Flow** (waveform), **Clicky** (cursor with rays) and the gear. The selected tab is white
 and the others are gray. The drawer remembers the tab you picked when it closes. The exception is a
 Tray that opened because you dragged a file over the drawer: it goes back to the tab you were on.
-The Flow and Clicky icons are SF Symbols, not the Wispr Flow or Clicky logos.
+The Flow and Clicky icons are SF Symbols.
 
 The drawer also closes by itself when Face Unlock needs the notch, for example after gear › Set Up
 Face Unlock…, so it never sits under glance's overlay.
@@ -81,9 +130,9 @@ change or turn off the macOS dictation shortcut if it uses fn. Otherwise every p
 emoji picker or Apple's dictation. To avoid fn altogether, pick **Right Option** in gear › Dictation ›
 Hold to Talk.
 
-**Wispr Flow** is installed on this Mac and also uses fn. With both running, one fn press starts two
-dictations. Quit Wispr Flow, or change its hotkey in its own settings, before you dictate with
-NotchIsland.
+If another dictation app that uses fn is installed (SparkV names it when it detects one), one fn
+press starts two dictations while both run. Quit that app, or change its hotkey in its own settings,
+before you dictate with NotchIsland.
 
 ## Build
 
@@ -135,7 +184,7 @@ Developer ID, or a team in Xcode, to make the grants stick. To see what the app 
 | `Sources/NotchPanel.swift` | Borderless, non-activating `NSPanel` at status-bar level |
 | `Sources/NotchWindowController.swift` | Positions the panel over the notch. Hover expands it; it collapses 0.5 s after you leave, on sleep and lock, or when Face Unlock takes the notch. Creates the dictation, Flow and Clicky objects and wires up the built-in actions. |
 | `Sources/NotchState.swift` | Geometry (`NotchMetrics`), tab state (Nook, Tray, Flow, Clicky) and `ViewFlag` |
-| `Sources/NotchNookLayoutView.swift` | The island: header and its tab icons, gear menu, media, capsules, mirror |
+| `Sources/IslandLayoutView.swift` | The island: header and its tab icons, gear menu, media, capsules, mirror |
 | `Sources/MediaEngine.swift` | Now Playing through the adapter, plus the Apple Events and media-key fallbacks |
 | `Sources/MacroController.swift` | Capsule assignments (saved in UserDefaults) and the built-in actions |
 | `Sources/ShortcutRunner.swift` | `shortcuts run` and `shortcuts list` via `Process`, with a timeout |
@@ -169,5 +218,5 @@ Upstream commits are recorded in each vendor folder's `UPSTREAM_COMMIT`.
 
 ## Not in this repository
 
-- **Face Unlock** (`Vendor/glance`, the GlanceKit module and its ArcFace model) is not published here. `build.sh` expects it at `Vendor/glance`; without it, the Face Unlock code in `AppDelegate.swift`, `NotchWindowController.swift` and `NotchNookLayoutView.swift` must be removed before building.
+- **Face Unlock** (`Vendor/glance`, the GlanceKit module and its ArcFace model) is not published here. `build.sh` expects it at `Vendor/glance`; without it, the Face Unlock code in `AppDelegate.swift`, `NotchWindowController.swift` and `IslandLayoutView.swift` must be removed before building.
 - **Node packages** for the UI audit and browser recorder runners: run `npm install` in `Vendor/ui-audit` and `Vendor/browser-recorder`.

@@ -2,14 +2,13 @@
 
 ## What production tools do (research summary)
 
-| Tool | How it captures jobs | How "applied" is inferred | Fit / match |
+| Approach | How it captures jobs | How "applied" is inferred | Fit / match |
 |---|---|---|---|
-| Simplify Copilot | Browser extension reads the posting it already knows (its own job DB) or the user saves it from the popup | After autofill + submit, Copilot asks to add the job to the tracker; jobs in its DB are tracked automatically ([help: Job Tracker](https://help.simplify.jobs/en/articles/2140179-using-the-job-tracker), [Copilot autofill](https://help.simplify.jobs/articles/2415391-using-copilot-to-autofill-applications), [custom applications](https://help.simplify.jobs/en/articles/9861158-adding-custom-applications)) | Match score in the extension |
-| Huntr | Chrome extension "Save to Board" from career pages and hundreds of job sites ([Huntr extension](https://help.huntr.co/en/articles/9859408-the-huntr-chrome-extension)) | Manual stage moves; CSV import/export | Resume keyword check |
-| Teal | Extension saves from LinkedIn/Indeed/Glassdoor; tracker with status, follow-up dates, salary ([review](https://www.unite.ai/tealhq-review)) | Manual status | Keyword "match" vs JD |
-| Jobright | Job feed with a 0–100 match score from skills, experience/seniority, industry, salary; report: overall fit, skills alignment, keyword gaps, "why it fits" ([AI Job Matcher](https://jobright.ai/ai-job-match), [resume matcher](https://jobright.ai/tools/resume-job-matcher)) | Tracks applications made through it | Weights not published |
-| Jobscan | Paste resume + JD | n/a | Match rate 0–100 weighted by priority: hard skills (weighted much higher) > education (if advanced degree required) > job title > soft skills > other keywords; repeated JD terms count more; exact wording matters; target ~75–80 % ([Jobscan tutorial](https://jobscan.co/jobscan-tutorial), [match rate](https://www.jobscan.co/blog/what-jobscan-match-rate-should-i-aim-for/)) |
-| Resume-Matcher (OSS, Apache-2.0) | Paste | n/a | Keyword extraction (spaCy/NLTK/textacy) + embedding cosine similarity ([summary](https://www.sourcepulse.org/projects/1896362)) |
+| Autofill browser extensions | The extension reads the posting it already knows (its own job DB) or the user saves it from the popup | After autofill + submit, it asks to add the job to the tracker; jobs in its DB are tracked automatically | Match score in the extension |
+| Board-style trackers | A browser extension saves from career pages and job sites; tracker with status, follow-up dates, salary | Manual stage moves; CSV import/export | Resume keyword check vs JD |
+| Match-score job feeds | Job feed with a 0–100 match score from skills, experience/seniority, industry, salary; report: overall fit, skills alignment, keyword gaps, "why it fits" | Tracks applications made through it | Weights not published |
+| Resume/JD match checkers | Paste resume + JD | n/a | Match rate 0–100 weighted by priority: hard skills (weighted much higher) > education (if advanced degree required) > job title > soft skills > other keywords; repeated JD terms count more; exact wording matters; target ~75–80 % |
+| Open-source matchers | Paste | n/a | Keyword extraction (spaCy/NLTK/textacy) + embedding cosine similarity |
 | ESCO research | n/a | n/a | Skill extraction = match spans to a skills taxonomy (ESCO, ~13.9k skills) via embeddings/LLM re-ranking ([arXiv 2307.03539](https://arxiv.org/pdf/2307.03539), [arXiv 2209.08071](https://arxiv.org/pdf/2209.08071)) |
 
 Key takeaways that shaped the build:
@@ -17,8 +16,7 @@ Key takeaways that shaped the build:
 1. Every production tracker relies on *seeing the page* (extension DOM access). We have no extension, so we do the
    equivalent from the OS: a window screenshot (ScreenCaptureKit) + Vision OCR + the browser's URL/title over Apple
    Events (`URL of active tab of front window` for Chrome/Arc/Edge/Brave, `URL of front document` for Safari;
-   Firefox has no scripting) ([leancrew](https://leancrew.com/all-this/2017/04/getting-urls-from-safari/),
-   [KM forum](https://forum.keyboardmaestro.com/t/get-current-window-url-from-chrome-or-safari/7518)).
+   Firefox has no scripting) ([leancrew](https://leancrew.com/all-this/2017/04/getting-urls-from-safari/)).
 2. "Applied" is inferred from the **confirmation page** (or the confirmation email), never from clicking "Submit":
    - Greenhouse: `job-boards.greenhouse.io/<board>/jobs/<id>/confirmation`, "Thank you for applying… Your application
      has been received" ([example](https://job-boards.greenhouse.io/alma/jobs/8104666002/confirmation)).
@@ -33,7 +31,7 @@ Key takeaways that shaped the build:
 3. Same-job verification: compare URL (same host + same job id / path prefix; Greenhouse/Lever confirmation URLs
    extend the posting URL), normalised company (token containment + edit-distance ratio, legal suffixes stripped), and
    title token similarity. LinkedIn's "sent to <Company>" gives the company.
-4. Fit = Jobscan-style weighted priorities, made explainable like Jobright's breakdown:
+4. Fit = weighted priorities, with an explainable per-component breakdown:
    hard skills 45 % (required count double vs preferred, frequency-weighted), experience 20 %, keyword coverage 15 %,
    education 10 %, title 10 %. Components without data (e.g. no years stated) are dropped and the weights
    renormalised instead of being scored as a pass; the explanation says so.

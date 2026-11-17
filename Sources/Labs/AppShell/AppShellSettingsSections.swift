@@ -481,20 +481,16 @@ struct AppShellResetSettingsSection: View {
     }
 }
 
-/// What to remove by hand (or with Homebrew), in order: the helper first,
-/// while SparkV (and its Fans pane) still runs, the app itself last.
+/// What to remove by hand (or with Homebrew), in order: the app itself last.
 struct UninstallGuideView: View {
     /// Where this copy of SparkV runs from (not always /Applications).
     var appPath: String = Bundle.main.bundlePath
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            step(1, "Remove the Fan Control helper, if you installed it", "While SparkV still runs: Fans › Uninstall Helper. Or in Terminal:")
-            AppShellCopyRow(text: "sudo \"\(appPath)/Contents/Resources/FanHelper/uninstall-fanhelper.sh\"")
-                .padding(.leading, 26)
-            step(2, "Quit SparkV", "Gear menu › Quit SparkV. A screen recording or mode finishes first.")
-            step(3, "Remove the login item", "System Settings › General › Login Items: select SparkV and click −.")
-            step(4, "Move SparkV’s files to the Trash", "In Finder › Go › Go to Folder…. Application Support › SparkV holds your meeting notes, transcripts, Spaces and Flow notes: export Spaces first if you want to keep them.")
+            step(1, "Quit SparkV", "Gear menu › Quit SparkV. A screen recording or mode finishes first.")
+            step(2, "Remove the login item", "System Settings › General › Login Items: select SparkV and click −.")
+            step(3, "Move SparkV’s files to the Trash", "In Finder › Go › Go to Folder…. Application Support › SparkV holds your meeting notes, transcripts, Spaces and Flow notes: export Spaces first if you want to keep them.")
             VStack(alignment: .leading, spacing: 6) {
                 AppShellCopyRow(text: "~/Library/Application Support/SparkV")
                 AppShellCopyRow(text: "~/Library/Preferences/com.sparkv.app.plist")
@@ -502,13 +498,13 @@ struct UninstallGuideView: View {
                 AppShellCopyRow(text: "~/Library/Logs/SparkV.log")
             }
             .padding(.leading, 26)
-            step(5, "Remove privacy permissions", "In Terminal (no password needed), then delete SparkV from Accessibility and Screen Recording with −:")
+            step(4, "Remove privacy permissions", "In Terminal (no password needed), then delete SparkV from Accessibility and Screen Recording with −:")
             AppShellCopyRow(text: "tccutil reset All com.sparkv.app")
                 .padding(.leading, 26)
-            step(6, "Move SparkV.app to the Trash", "Drag it from Finder to the Trash:")
+            step(5, "Move SparkV.app to the Trash", "Drag it from Finder to the Trash:")
             AppShellCopyRow(text: appPath)
                 .padding(.leading, 26)
-            Text("Installed with Homebrew? Instead of steps 1 and 4 to 6, quit SparkV and run this; it removes the app, the Fan helper and the files of step 4:")
+            Text("Installed with Homebrew? Instead of steps 1, 3 and 5, quit SparkV and run this; it removes the app and the files of step 3:")
                 .font(.system(size: 11.5))
                 .foregroundStyle(SparkVTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -592,7 +588,7 @@ struct AppShellExtrasLinksSettingsSection: View {
             AppShellLinkRow(title: "Sync to iPhone", detail: "Keeps iCloud Drive › SparkV up to date.", symbol: "iphone.and.arrow.forward") {
                 CloudSyncWindowController.shared.show()
             }
-            AppShellLinkRow(title: "Fan Control", detail: "Fan speeds, temperatures and presets.", symbol: "fan.fill") {
+            AppShellLinkRow(title: "Fans & Temperatures", detail: "Fan speeds and temperatures (read-only).", symbol: "fan.fill") {
                 FanControlWindowController.shared.show()
             }
             AppShellLinkRow(title: FaceUnlock.isSetUp ? "Face Unlock" : "Set Up Face Unlock",

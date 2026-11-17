@@ -473,7 +473,8 @@ final class CloudSyncController: ObservableObject {
             watchInbox(at: CloudSyncInbox.inboxURL(in: dest))
             deliver(arrivals)
             if report.changedCount > 0 { log(summary(report)) }
-            for error in report.errors.prefix(3) { log(error) }
+            // File names and paths stay in the in-app list, not the log.
+            for error in report.errors.prefix(3) { log(error, appLog: "a sync item failed (\(report.errors.count) errors)") }
             if report.permissionDenied {
                 blockForPrivacy()
             } else if heldRemovals > 0 {

@@ -217,30 +217,30 @@ Screenshot paths are relative to `docs/screenshots/`. Native sizes are in pixels
 
   | Tool | Covers | List price |
   | --- | --- | --- |
-  | Wispr Flow Teams | Dictation | from $10/user/mo |
-  | Granola Business | Meeting notes | $14/user/mo |
-  | Raycast Pro | Launcher with AI | $8/mo billed yearly |
-  | Paste | Clipboard | $29.99/yr |
-  | CleanShot X | Screenshots, recording | $29 one-time |
-  | NotchNook | Notch hub | $25 one-time |
-  | Alcove | Notch | about $13.99 one-time |
+  | Dictation app (teams) | Dictation | from $10/user/mo |
+  | Meeting-notes app | Meeting notes | $14/user/mo |
+  | AI launcher | Launcher with AI | $8/mo billed yearly |
+  | Clipboard app | Clipboard | $29.99/yr |
+  | Screenshot app | Screenshots, recording | $29 one-time |
+  | Notch hub app | Notch hub | $25 one-time |
+  | Notch island app | Notch | about $13.99 one-time |
   | **SparkV Team** | **All of the above areas** | **$8/seat/mo billed yearly** |
 
 - **Right: Chart C3 (stacked bar):** Year-one cost per seat, USD list
 
   | Item | Basis | USD |
   | --- | --- | --- |
-  | Wispr Flow Teams | from $10/user/mo x 12 | 120.00 |
-  | Granola Business | $14/user/mo x 12 | 168.00 |
-  | Raycast Pro | $8/mo billed yearly x 12 | 96.00 |
-  | Paste | $29.99/yr | 29.99 |
-  | CleanShot X | $29 one-time (year one) | 29.00 |
+  | Dictation app (teams) | from $10/user/mo x 12 | 120.00 |
+  | Meeting-notes app | $14/user/mo x 12 | 168.00 |
+  | AI launcher | $8/mo billed yearly x 12 | 96.00 |
+  | Clipboard app | $29.99/yr | 29.99 |
+  | Screenshot app | $29 one-time (year one) | 29.00 |
   | **Five-tool stack** | sum | **442.99** |
   | **SparkV Team** | $8/seat/mo billed yearly | **96.00** |
 
 - **Footer:** Prices from third-party listings, Oct 2026; verify on vendor pages before external use. Overlap in areas covered, not feature parity.
 - **Screenshots:** none.
-- **Speaker notes:** The point is consolidation: one vendor review, one invoice, one privacy story. Do not claim parity: Granola, Wispr and Raycast are deep products in their own lanes. Monthly prices are annualized x12. NotchNook and Alcove stay out of the stack bar because they are one-time notch apps SparkV replaces outright.
+- **Speaker notes:** The point is consolidation: one vendor review, one invoice, one privacy story. Do not claim parity: dedicated meeting-notes, dictation and launcher apps are deep products in their own lanes. Monthly prices are annualized x12. One-time notch apps stay out of the stack bar because SparkV replaces them outright.
 
 ### Slide 14 · Pricing table with revenue chart · Simple per-seat pricing
 

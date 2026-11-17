@@ -232,7 +232,7 @@ final class UIAuditController: ObservableObject {
         allowSubmission = false
         allowRiskyClicks = false
         postActivity()
-        AppLog.log("UI audit: started \(url.host ?? "?") mode=\(mode.rawValue) pages=\(maxPages)")
+        AppLog.log("UI audit: started (\(["localhost", "127.0.0.1", "::1"].contains(url.host ?? "") ? "local" : "remote")) mode=\(mode.rawValue) pages=\(maxPages)")
     }
 
     /// Stop button: the runner writes a partial report, then exits.

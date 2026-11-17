@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Script widgets: shell commands you add yourself, run with /bin/zsh -lc,
-/// their output shown as text (xbar conventions). A command runs only after
+/// their output shown as text. A command runs only after
 /// you saw it and chose Run; it runs while its widget is on screen, at most
 /// once per interval (60 s floor), with a timeout (30 s ceiling). A script you
 /// pin to the island wings also refreshes while the drawer is closed, still
@@ -201,7 +201,9 @@ final class ScriptWidgetsController: ObservableObject {
     private func due(_ config: ScriptWidgetConfig, now: Date) -> Bool {
         guard config.isApproved else { return false }
         guard let last = states[config.id]?.lastRun else { return true }
-        return now.timeIntervalSince(last) >= TimeInterval(config.intervalSeconds)
+        // A few seconds of slack: lastRun is stamped when a run ends, so a
+        // loop that slept exactly one interval would otherwise skip a turn.
+        return now.timeIntervalSince(last) >= TimeInterval(config.intervalSeconds) - 5
     }
 
     /// Reference-counted: the Scripts page and widget cells call these.
@@ -252,7 +254,10 @@ final class ScriptWidgetsController: ObservableObject {
         wingLoop = Task { [weak self] in
             while !Task.isCancelled, let self, self.mayRun, let current = self.configs.first(where: { $0.id == id }), current.showsInWings {
                 if self.due(current, now: Date()) { self.runNow(id) }
-                try? await Task.sleep(for: .seconds(max(ScriptWidgetConfig.minimumInterval, current.intervalSeconds)))
+                // Sleep until it is next due (lastRun is stamped when a run ends).
+                let elapsed = self.states[id]?.lastRun.map { Date().timeIntervalSince($0) } ?? 0
+                let wait = TimeInterval(current.intervalSeconds) - elapsed
+                try? await Task.sleep(for: .seconds(max(TimeInterval(ScriptWidgetConfig.minimumInterval), wait > 0 ? wait : TimeInterval(current.intervalSeconds))))
             }
         }
         postWing()

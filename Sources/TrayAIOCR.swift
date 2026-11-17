@@ -164,7 +164,7 @@ enum TrayAIOCR {
     static func analyze(imageAt url: URL) async -> TrayAIImageAnalysis? {
         await Task.detached(priority: .userInitiated) { () -> TrayAIImageAnalysis? in
             guard let image = loadImage(at: url, maxPixel: analysisMaxPixel) else {
-                AppLog.log("Tray AI: couldn't decode image \(url.lastPathComponent)")
+                AppLog.log("Tray AI: couldn't decode an image (.\(url.pathExtension))")
                 return nil
             }
             return analyzeSync(image)

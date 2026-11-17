@@ -54,6 +54,8 @@ enum NotchMetrics {
             devStatusExpandedHeight
         } else if tab == .menuBar {
             menuBarExpandedHeight
+        } else if tab == .dj {
+            collapsedSize.height + DJLayout.contentHeight + drawerBottomPadding
         } else if tallTabs.contains(tab) {
             trayExpandedHeight
         } else if tab == .today {
@@ -160,7 +162,7 @@ final class NotchState: ObservableObject {
         case clicky
         /// Upcoming meetings and the timer.
         case today
-        /// iLovePDF-style file converter.
+        /// On-device PDF and file converter.
         case converter
         /// Knowledge Spaces: organization folders with their own agents.
         case spaces
@@ -198,12 +200,15 @@ final class NotchState: ObservableObject {
         case status
         /// Color Picker: formats, contrast, shades, palettes (Agents hub tile; ⌃⌥P picks).
         case colorPicker
+        /// SparkV DJ: turntable, Sound FX presets / EQ, live beat stats
+        /// (Agents hub tile, Media; Labs/DJ).
+        case dj
 
         /// Tabs opened from the Agents hub rather than the header.
         static let agentTabs: Set<Tab> = [
             .agents, .uiAudit, .jobs, .screen, .promptRefiner, .browser, .clipboard, .screenDistance,
             .focus, .search, .replyDrafter, .fileDrop, .downloads, .fans, .devStatus, .menuBar, .colorPicker,
-            .status,
+            .status, .dj,
         ]
     }
 
@@ -264,7 +269,7 @@ final class NotchState: ObservableObject {
 }
 
 /// How the island is drawn on the display it is on (Labs/IslandPlacement
-/// decides; NotchNookLayoutView draws it).
+/// decides; IslandLayoutView draws it).
 struct IslandSurface: Equatable {
     enum Shape: Equatable {
         /// glance-style silhouette flaring into the top edge.

@@ -492,7 +492,7 @@ def build() -> Deck:
     s = S["competition"]
     t, c = s["table"], s["chart"]
     dt = {r["item"]: r for r in c["data_table"]}
-    stack = [n for n in ("Wispr Flow Teams", "Granola Business", "Raycast Pro", "Paste", "CleanShot X")]
+    stack = [n for n in ("Dictation app (teams)", "Meeting-notes app", "AI launcher", "Clipboard app", "Screenshot app")]
     d.table_chart(s["header"], eyebrow="Consolidation", lead=s["subtitle"],
                   columns=t["columns"], rows=t["rows"], widths=[2.2, 2.4, 2.4], highlight_row=len(t["rows"]) - 1,
                   note=s["body"], chart={
@@ -502,7 +502,7 @@ def build() -> Deck:
                       "number_format": c["number_format"],
                       "source": "Stack = " + " + ".join(f"{n} {sd.fmt_num(dt[n]['usd'], '$#,##0.00').replace('.00', '')}"
                                                         for n in stack)
-                                + ". Monthly prices x 12. NotchNook and Alcove left out (one-time). Business plan §3.",
+                                + ". Monthly prices x 12. One-time notch apps left out. Business plan §3.",
                   }, notes=s["notes"], footer="Third-party list prices, Oct 2026. Legal review required before external use.")
 
     # 14 pricing ---------------------------------------------------------------------

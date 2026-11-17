@@ -34,7 +34,7 @@ struct AgentsHubView: View {
         VStack(spacing: AgentHubMetrics.barSpacing) {
             HubCategoryBar(categories: categories, selection: selected, counts: counts(visible)) { category in
                 // The drawer springs to the category's rows (the island's
-                // own spring, NotchNookLayoutView); the grid crossfades.
+                // own spring, IslandLayoutView); the grid crossfades.
                 layout.hub.category = category
             }
             .frame(height: AgentHubMetrics.barHeight)
@@ -252,6 +252,11 @@ enum HubCatalog {
         HubPackageTile(info: HubTileInfo(id: "lyrics", title: "Lyrics", systemImage: "quote.bubble.fill", tint: .pink,
                                          category: .media, help: "Synced lyrics"),
                        pinAction: { _ in LyricsWindow.shared.show() }) { _ in AnyView(LyricsHubTile()) },
+        // SparkV DJ (Media): the page has the turntable, Sound FX and stats.
+        HubPackageTile(info: HubTileInfo(id: "dj", title: "DJ", systemImage: "opticaldisc.fill",
+                                         tint: Color(red: 0.36, green: 0.85, blue: 1.0), category: .media,
+                                         help: "DJ: turntable, Sound FX presets and EQ, live beat stats"),
+                       opensTab: .dj) { actions in AnyView(DJHubTile(onOpen: { actions.openTab(.dj) })) },
         // Planner package (Planner; Launcher in System).
         HubPackageTile(info: HubTileInfo(id: "agenda", title: "Agenda", systemImage: "calendar.day.timeline.left", tint: .red, category: .planner,
                                          help: "Agenda: day, week and month"),
@@ -298,7 +303,7 @@ enum HubCatalog {
             AnyView(DevStatusHubTile(hubID: "devStatus"))
         },
         HubPackageTile(info: HubTileInfo(id: "scripts", title: "Scripts", systemImage: "terminal.fill", tint: Color(white: 0.78),
-                                         category: .developer, help: "Scripts: your shell commands' output, xbar-style"),
+                                         category: .developer, help: "Scripts: your shell commands' output as widgets"),
                        pinAction: { _ in DevStatusNavigator.shared.open(.scripts) }) { _ in
             AnyView(ScriptWidgetHubTile(hubID: "scripts"))
         },

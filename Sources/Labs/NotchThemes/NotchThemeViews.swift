@@ -191,7 +191,7 @@ private struct NotchThemeSwitch: View {
 /// of the island's frame. Plain draws nothing and adds no layout.
 struct NotchThemeBackdrop: View {
     let isExpanded: Bool
-    /// Body size without the flare (the `size` NotchNookLayoutView computes).
+    /// Body size without the flare (the `size` IslandLayoutView computes).
     let bodySize: CGSize
     let topRadius: CGFloat
     let bottomRadius: CGFloat

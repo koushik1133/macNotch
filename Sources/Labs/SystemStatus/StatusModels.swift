@@ -316,7 +316,7 @@ enum PrivacyAttribution {
 // MARK: - Keep awake
 
 enum KeepAwakeMode: String, CaseIterable, Codable, Sendable, Identifiable {
-    /// Display and Mac stay awake (Caffeine / Amphetamine default).
+    /// Display and Mac stay awake (the usual default).
     case display
     /// The Mac stays awake; the display may sleep (downloads, renders).
     case system

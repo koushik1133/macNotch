@@ -42,6 +42,16 @@ final class SystemKeyInterceptor {
     private let settings = HUDPlusSettings.shared
     /// Last brightness route, to log only when it changes.
     private var lastRoute: HUDBrightnessRoute?
+    /// Bluetooth outputs (AirPods) report stale levels for seconds after a
+    /// write, so presses step from the level last asked for, not a read-back.
+    private var volumeTarget: (device: AudioObjectID, level: Float, at: Date)?
+    private var pendingVolume: (device: AudioObjectID, level: Float)?
+    private var volumeWriteTask: Task<Void, Never>?
+    private var lastVolumeWrite = Date.distantPast
+    /// How long a press's level outlives what the device reports.
+    private static let volumeTargetLifetime: TimeInterval = 3
+    /// Key repeat is about 30 Hz; only the latest level goes to the device.
+    private static let volumeWriteInterval: TimeInterval = 0.12
 
     var isActive: Bool { tap != nil }
 
@@ -56,6 +66,10 @@ final class SystemKeyInterceptor {
     func stop() {
         trustWatch = nil
         removeTap()
+        volumeWriteTask?.cancel()
+        volumeWriteTask = nil
+        pendingVolume = nil
+        volumeTarget = nil
     }
 
     /// A tap made before Accessibility was (re-)granted never sees keys, and
@@ -127,12 +141,18 @@ final class SystemKeyInterceptor {
             return true
         case SystemKeyEvent.soundUp, SystemKeyEvent.soundDown:
             guard showsFeedback(nil) else { return false }
-            guard let device = HUDVolumeControl.defaultOutput(), HUDVolumeControl.canSetVolume(device) else { return false }
+            guard let device = HUDVolumeControl.defaultOutput(), HUDVolumeControl.canSetVolume(device),
+                  let current = HUDVolumeControl.volume(device) else { return false }
             if key.isKeyDown {
-                let current = HUDVolumeControl.volume(device) ?? 0
-                HUDVolumeControl.setVolume(device, Self.stepped(current, step: step, up: key.keyCode == SystemKeyEvent.soundUp))
-                // Either volume key unmutes, like macOS.
-                if HUDVolumeControl.isMuted(device) { HUDVolumeControl.setMuted(device, false) }
+                let now = Date()
+                var base = current
+                if let target = volumeTarget, target.device == device,
+                   now.timeIntervalSince(target.at) < Self.volumeTargetLifetime {
+                    base = target.level
+                }
+                let level = Self.stepped(base, step: step, up: key.keyCode == SystemKeyEvent.soundUp)
+                volumeTarget = (device, level, now)
+                queueVolumeWrite(level, device: device)
                 onHandled?(key.keyCode)
             }
             return true
@@ -148,6 +168,33 @@ final class SystemKeyInterceptor {
         default:
             return false
         }
+    }
+
+    /// Writes at once, or at most every `volumeWriteInterval` with the latest level.
+    private func queueVolumeWrite(_ level: Float, device: AudioObjectID) {
+        pendingVolume = (device, level)
+        let wait = Self.volumeWriteInterval - Date().timeIntervalSince(lastVolumeWrite)
+        if wait <= 0 {
+            writePendingVolume()
+        } else if volumeWriteTask == nil {
+            volumeWriteTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(wait))
+                guard !Task.isCancelled, let self else { return }
+                self.volumeWriteTask = nil
+                self.writePendingVolume()
+            }
+        }
+    }
+
+    private func writePendingVolume() {
+        guard let pending = pendingVolume else { return }
+        pendingVolume = nil
+        lastVolumeWrite = Date()
+        // Either volume key unmutes, like macOS, except on the way to 0 %.
+        if pending.level > 0, HUDVolumeControl.isMuted(pending.device) {
+            HUDVolumeControl.setMuted(pending.device, false)
+        }
+        HUDVolumeControl.setVolume(pending.device, pending.level)
     }
 
     /// Which display a brightness key is for and whether SparkV applies it.

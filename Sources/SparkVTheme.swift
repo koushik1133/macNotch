@@ -4,7 +4,7 @@ import SwiftUI
 /// Colors and type for both looks (`AppearanceStyle`). Every token resolves
 /// for the look in effect when it is read, so call sites stay the same:
 ///
-/// - **Apple** (default): the native macOS / Dynamic Island look. Pure
+/// - **Apple** (default): the native macOS look. Pure
 ///   black island, white text, grey secondary glyphs, white 16 % pill on the
 ///   active tab, per-agent tint colors, system blue (`Color.accentColor`)
 ///   for primary buttons, toggles, selection and links, iOS semantic

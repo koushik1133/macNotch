@@ -457,7 +457,7 @@ struct IslandStyleSettingsSection: View {
                                 range: Double(IslandGeometry.pillHeightRange.lowerBound)...Double(IslandGeometry.pillHeightRange.upperBound))
                 IslandSliderRow(title: "Top Margin", value: $settings.pillTopMargin,
                                 range: Double(IslandGeometry.pillTopMarginRange.lowerBound)...Double(IslandGeometry.pillTopMarginRange.upperBound))
-                IslandNote(text: "0 pt touches the top edge. About 30 pt floats it below the menu bar, like the Dynamic Island; pushing the pointer to the top edge still opens it, and open it reaches the edge.")
+                IslandNote(text: "0 pt touches the top edge. About 30 pt floats it below the menu bar; pushing the pointer to the top edge still opens it, and open it reaches the edge.")
             }
             if display.hasNotch, preset == .pill {
                 IslandNote(text: "On a display with a notch the pill always wraps the camera, so it hugs the top edge.")

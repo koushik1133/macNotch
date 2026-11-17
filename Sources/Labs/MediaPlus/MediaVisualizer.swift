@@ -231,6 +231,11 @@ final class MediaVisualizerController: ObservableObject {
         switch ambientShare {
         case .delivering:
             // Ambient Light's capture runs anyway: never start a second tap.
+            // Re-arm the grace so a brief gap in its audio later gets a
+            // fresh 3 s before ours starts.
+            ambientGraceUntil = nil
+            ambientGraceTask?.cancel()
+            ambientGraceTask = nil
             halt()
             if status != .sharingAmbientLight { status = .sharingAmbientLight; setSignal(true) }
             return

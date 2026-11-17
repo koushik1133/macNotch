@@ -63,7 +63,7 @@ enum UniversalSearchSource: String, CaseIterable, Codable, Sendable, Identifiabl
     }
 }
 
-/// Date filter chip (Rewind/Limitless-style time scoping).
+/// Date filter chip (time scoping).
 enum UniversalSearchDateFilter: String, CaseIterable, Codable, Sendable, Identifiable {
     case any
     case today

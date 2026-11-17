@@ -2,7 +2,7 @@ import Foundation
 import PDFKit
 import UniformTypeIdentifiers
 
-/// iLovePDF-style conversions that run entirely on this Mac (PDFKit, ImageIO,
+/// PDF and file conversions that run entirely on this Mac (PDFKit, ImageIO,
 /// CoreGraphics, TextKit, Vision, `/usr/bin/textutil`, `/usr/bin/unzip`).
 ///
 /// Everything is synchronous and nonisolated: call `run` from

@@ -152,7 +152,7 @@ final class DiagnosticsController: ObservableObject {
                 let header = firstLine(of: url)
                 let kind = SystemReportFiles.kind(name: url.lastPathComponent, header: header)
                 let version = header.flatMap(SystemReportFiles.appVersion).map { "SparkV \($0)" } ?? "SparkV"
-                let process = url.lastPathComponent.hasPrefix("com.sparkv.fanhelper") ? "Fan helper" : version
+                let process = version
                 out.append(DiagnosticReport(
                     url: url, source: .system, kind: kind,
                     date: values?.contentModificationDate ?? .distantPast,

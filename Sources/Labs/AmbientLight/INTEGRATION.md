@@ -1,7 +1,7 @@
 # Ambient Light: integration
 
-Car-style mood lighting that follows the music (the BE 6 "Groove Me" show,
-Mercedes ambient light sync, Hue Sync / DreamView bars): while music plays,
+Mood lighting that follows the music, as in car ambient lighting and
+music-synced light bars: while music plays,
 the island's outline glows and pulses, and optionally a thin light strip runs
 along every screen edge. Modes: **Ambient** (slow breathing in album colors),
 **Pulse** (bass), **Disco** (a new color per beat, max 3 flashes/s), **Wave**
@@ -99,7 +99,7 @@ the margin, `resizeForTab`) already uses `appliedThemeOutset`, so hot zones
 and clicks stay exactly as with a theme. With Ambient Light off and the Plain
 theme the panel is unchanged.
 
-## 4. NotchNookLayoutView.swift
+## 4. IslandLayoutView.swift
 
 ### 4a. The glow behind the island
 

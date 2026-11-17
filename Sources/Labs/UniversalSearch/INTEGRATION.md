@@ -112,7 +112,7 @@ universalSearch.stop()
 `start()` registers the global shortcut (default ⌥Space) and indexes once.
 `stop()` unregisters it.
 
-## 4. NotchNookLayoutView.swift: drawer content
+## 4. IslandLayoutView.swift: drawer content
 
 Add this case to the tab `switch` (around the `case .clipboard: ClipboardTabView()` line):
 
@@ -138,7 +138,7 @@ Agent(tab: .search, title: "Search", systemImage: "magnifyingglass", tint: .indi
 
 ## 6. Settings (gear) menu
 
-In `SettingsMenu` (NotchNookLayoutView.swift), add the environment object:
+In `SettingsMenu` (IslandLayoutView.swift), add the environment object:
 
 ```swift
 @EnvironmentObject private var universalSearch: UniversalSearchController

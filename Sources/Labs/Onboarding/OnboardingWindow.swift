@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// The onboarding window: a fixed-size dark window with a transparent title
-/// bar (like CleanShot X and Raycast's setup windows). It opens on the
+/// bar. It opens on the
 /// island's screen (wherever Island Placement put it, `LookIsland`),
 /// centered below the space the open drawer takes, so Try It can open the
 /// drawer without the window covering it.

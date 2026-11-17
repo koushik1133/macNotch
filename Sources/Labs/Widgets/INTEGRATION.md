@@ -45,7 +45,7 @@ If you keep it at the normal height (508x69), it still works. The grid becomes 4
 
 ### Header icon (recommended) or hub tile
 
-**Header icon (recommended).** The left header group measures 128 of 161.5 pt, so one more 24 pt `IconTab` fits (128 + 2 + 24 = 154). Widgets are everyday glanceables, so they belong next to Home. In `NotchNookLayoutView.swift` `HeaderRow`, after the Home icon:
+**Header icon (recommended).** The left header group measures 128 of 161.5 pt, so one more 24 pt `IconTab` fits (128 + 2 + 24 = 154). Widgets are everyday glanceables, so they belong next to Home. In `IslandLayoutView.swift` `HeaderRow`, after the Home icon:
 
 ```swift
             IconTab(systemImage: "rectangle.3.group.fill", tab: .widgets, help: "Widgets: world clocks, volume, habits, system and network")
@@ -57,7 +57,7 @@ If you keep it at the normal height (508x69), it still works. The grid becomes 4
             .agent(Agent(tab: .widgets, title: "Widgets", systemImage: "rectangle.3.group.fill", tint: .orange)),
 ```
 
-## 3. NotchNookLayoutView.swift: draw the tab
+## 3. IslandLayoutView.swift: draw the tab
 
 In the tab `switch`:
 

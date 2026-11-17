@@ -4,17 +4,17 @@ One box searches Spaces, meeting notes, Flow history and notes, clipboard
 history and the Tray. A mic button dictates the query, and an Ask mode
 answers questions with citations, on device.
 
-## How shipping tools do it (research), and what we copied
+## How shipping tools do it (research), and what we took
 
-| Product | What we took |
+| Source or pattern | What we took |
 |---|---|
-| **Raycast** root search ([manual: search bar](https://manual.raycast.com/search-bar), [keyboard shortcuts](https://manual.raycast.com/keyboard-shortcuts), [v1.40 changelog](https://www.raycast.com/changelog/macos-v1/1-40-0)) | <ul><li>Fuzzy matching: letters can be typed out of position ("ftime" → FaceTime).</li><li>Ranking that learns from what you open, and from the search term (or a prefix of it) you typed when you opened it.</li><li>A sensitivity threshold.</li><li>↑↓ and ⌃N/⌃P move the selection; ⌘↑/⌘↓ jump between sections.</li><li>Esc closes; ⇥ hands the query to AI ("Quick AI"); an action bar with ↩ and ⌘↩.</li><li>Back to an empty box after a while ("pop to root", 90 s here).</li></ul> |
-| **Alfred** | <ul><li>⌥Space as the default hotkey.</li><li>"Knowledge": the item you picked for a query comes first the next time you type that query.</li></ul> |
+| **Launcher root search** | <ul><li>Fuzzy matching: letters can be typed out of position ("ftime" → FaceTime).</li><li>Ranking that learns from what you open, and from the search term (or a prefix of it) you typed when you opened it.</li><li>A sensitivity threshold.</li><li>↑↓ and ⌃N/⌃P move the selection; ⌘↑/⌘↓ jump between sections.</li><li>Esc closes; ⇥ hands the query to AI ("Quick AI"); an action bar with ↩ and ⌘↩.</li><li>Back to an empty box after a while ("pop to root", 90 s here).</li></ul> |
+| **Launcher hotkey and memory** | <ul><li>⌥Space as the default hotkey.</li><li>"Knowledge": the item you picked for a query comes first the next time you type that query.</li></ul> |
 | **Spotlight** | <ul><li>A "Top Hit" row, then one section per category.</li><li>Title-prefix matches rank first.</li><li>Esc first clears the box, then closes.</li><li>The panel sits in the upper part of the screen.</li></ul> |
-| **Rewind / Limitless** "Ask" | <ul><li>Full-text search over meeting transcripts, with excerpts around the hit.</li><li>Scoping by source and date.</li><li>Natural-language answers that cite the retrieved items (retrieve first, then answer only from those items).</li></ul> |
+| **Personal-memory "Ask"** | <ul><li>Full-text search over meeting transcripts, with excerpts around the hit.</li><li>Scoping by source and date.</li><li>Natural-language answers that cite the retrieved items (retrieve first, then answer only from those items).</li></ul> |
 | **fzf** ([src/algo/algo.go](https://github.com/junegunn/fzf/blob/master/src/algo/algo.go), MIT, © Junegunn Choi) | <ul><li>The scoring model: the same constants (match 16, gap −3/−1, boundary 8, whitespace boundary 10, delimiter 9, camelCase 7, consecutive 4, first character ×2) and the same character classes.</li><li>The V1 forward scan plus backward shortening.</li><li>An exact-substring pass that keeps the best-scoring occurrence.</li><li>AND matching of space-separated terms (extended search).</li></ul> |
 | **Mozilla Places frecency** | Recency buckets for frecency: 4 days 100, 14 days 70, 31 days 50, 90 days 30, older 10. |
-| **Cindori FloatingPanel / Raycast** | <ul><li>A non-activating `NSPanel`: it takes keystrokes but the app you were in stays frontmost, so ⌘↩ "Paste" lands there.</li><li>Clicking outside closes it.</li></ul> |
+| **Floating panel** | <ul><li>A non-activating `NSPanel`: it takes keystrokes but the app you were in stays frontmost, so ⌘↩ "Paste" lands there.</li><li>Clicking outside closes it.</li></ul> |
 
 fzf's scoring was reimplemented in Swift (`UniversalSearchFuzzy.swift`) rather
 than vendored: fzf is Go. The credit is in the source header. No proprietary
@@ -40,8 +40,8 @@ UniversalSearchCorpus.build ─► [Document] ──► UniversalSearchEngine.se
   once, and kept as a `String`, a `[Character]` and UTF-8 bytes:
   - The title and keywords are matched fuzzily.
   - The body is matched as text (word prefix, then substring) with `memmem`
-    over folded UTF-8. Fuzzy matching over long text only matches noise;
-    Raycast and Alfred also match fuzzily on titles only.
+    over folded UTF-8. Fuzzy matching over long text only matches noise, so
+    launchers commonly match fuzzily on titles only.
 
   Background work goes through `UniversalSearchBackground.run`, which cancels
   the detached task when the caller is cancelled. A plain `Task.detached`
@@ -106,7 +106,7 @@ UniversalSearchCorpus.build ─► [Document] ──► UniversalSearchEngine.se
   logged except error types.
 - The prompt tells the model that the sources are data, not instructions.
 - Nothing is typed into other apps, except ⌘↩ on a clipboard item. That uses
-  `ClipboardController.paste`, the clipboard feature's own Maccy-style paste.
+  `ClipboardController.paste`, the clipboard feature's own paste.
 
 ## Tests
 

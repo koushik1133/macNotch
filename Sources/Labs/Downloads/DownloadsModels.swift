@@ -24,7 +24,7 @@ enum DownloadBrowser: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// Broad file category used by rules and the UI (Hazel's "Kind").
+/// Broad file category used by rules and the UI ("Kind").
 enum DownloadCategory: String, Codable, Sendable, CaseIterable, Identifiable {
     case image, document, video, audio, archive, installer, code, other
 

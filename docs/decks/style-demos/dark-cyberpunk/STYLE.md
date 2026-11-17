@@ -118,7 +118,7 @@ Gaps between stacked blocks are 16 px (rows of cards) or 24 px (a KPI row above 
 
 ## 7. Content rules used here
 
-- Every number is from `docs/SparkV-Business-Plan.md` or `docs/SparkV-Feature-Guide.md` (Oct 2026). Year-one stack = Granola $14 x 12 + Wispr Flow $144/yr + Paste $29.99/yr + CleanShot X $29 + NotchNook $25 = $395.99. Net per Pro sale = 39 − (5% + $0.50) = $36.55.
+- Every number is from `docs/SparkV-Business-Plan.md` or `docs/SparkV-Feature-Guide.md` (Oct 2026). Year-one stack = Meeting-notes app $14 x 12 + Dictation app $144/yr + Clipboard app $29.99/yr + Screenshot app $29 + Notch hub app $25 = $395.99. Net per Pro sale = 39 − (5% + $0.50) = $36.55.
 - No traction, revenue, user or team numbers exist yet. If a slide needs one, write a visible placeholder such as `[TBD: monthly active users]`.
 - Feature status tags copy the Feature Guide labels ("Verified headless", "Needs a live check").
 - Images: `img/01-home.png` and `img/10-agents-hub.png` are copies of `docs/screenshots/` renders. Only the slate render backdrop was made transparent; the app UI pixels are unchanged.

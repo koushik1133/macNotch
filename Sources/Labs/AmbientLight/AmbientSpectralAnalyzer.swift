@@ -91,6 +91,18 @@ final class AmbientSpectralAnalyzer {
     private var onsetHistoryIndex = 0
     private var onsetHistoryFilled = 0
     private var lowFluxScale: Float = 1e-3
+    // Kick detector for Music Haptics: kick-band flux only, its own
+    // adaptive threshold (last ~1 s) and peak picking, so every kick
+    // counts even when the full-band beat tracker merges or skips one.
+    private var kickHistory = [Float](repeating: 0, count: 90)
+    private var kickHistoryIndex = 0
+    private var kickPrevious: Float = 0
+    private var kickPreviousPrevious: Float = 0
+    private var kickPreviousThreshold: Float = 1
+    private var lastKickTime: Double = 0
+    private(set) var kickCount: UInt64 = 0
+    private(set) var kickStrength: Float = 0
+    private(set) var kickTime: Double = 0
     private var fullFluxScale: Float = 1e-3
     private var previousOnset: Float = 0
     private var previousPreviousOnset: Float = 0
@@ -266,6 +278,7 @@ final class AmbientSpectralAnalyzer {
         lowFluxScale = max(lowFluxScale * 0.9985, lowFlux, 1e-4)
         fullFluxScale = max(fullFluxScale * 0.9985, fullFlux, 1e-4)
         var onset = gate * (0.65 * lowFlux / lowFluxScale + 0.35 * fullFlux / fullFluxScale)
+        detectKick(gate * lowFlux / lowFluxScale, at: time)
         if !onset.isFinite { onset = 0 }
 
         // Adaptive threshold over the last second.
@@ -326,6 +339,30 @@ final class AmbientSpectralAnalyzer {
         return features
     }
 
+    private func detectKick(_ value: Float, at time: Double) {
+        var sum: Float = 0, squares: Float = 0
+        for v in kickHistory { sum += v; squares += v * v }
+        let n = Float(kickHistory.count)
+        let mean = sum / n
+        let deviation = max(0, squares / n - mean * mean).squareRoot()
+        let threshold = max(0.2, mean + 1.1 * deviation)
+        kickHistory[kickHistoryIndex] = value
+        kickHistoryIndex = (kickHistoryIndex + 1) % kickHistory.count
+        // One hop of delay: the previous hop is a kick when it peaked above
+        // its threshold.
+        let peakTime = time - Double(hopSize) / sampleRate
+        if kickPrevious > kickPreviousThreshold, kickPrevious >= value, kickPrevious > kickPreviousPrevious,
+           peakTime - lastKickTime >= 0.15 {
+            lastKickTime = peakTime
+            kickTime = peakTime
+            kickStrength = min(1, (kickPrevious - kickPreviousThreshold) / max(kickPreviousThreshold, 0.2))
+            kickCount &+= 1
+        }
+        kickPreviousPrevious = kickPrevious
+        kickPrevious = value
+        kickPreviousThreshold = threshold
+    }
+
     // MARK: Steps
 
     /// Windowed FFT of the circular buffer into `power` and `logMag`.
@@ -364,6 +401,28 @@ final class AmbientSpectralAnalyzer {
         // log(1 + c * magnitude): compresses loudness, keeps quiet partials.
         for bin in 0..<half {
             logMag[bin] = log1pf(1_000 * sqrtf(power[bin]))
+        }
+    }
+
+    /// Bar levels for a spectrum display (SparkV DJ): `out.count` bands
+    /// spaced logarithmically from `lowHz` to `highHz`, each the loudest bin
+    /// of the latest hop as log(1 + 1000·amplitude) (0 silent, ~7 full
+    /// scale). Call after `process(hop:at:)`, on the same queue.
+    func barLevels(into out: inout [Float], lowHz: Double = 35, highHz: Double = 15_000) {
+        let count = out.count
+        guard count > 0 else { return }
+        let half = fftSize / 2
+        let binHz = sampleRate / Double(fftSize)
+        let ratio = pow(highHz / lowHz, 1 / Double(count))
+        // `process` swapped the newest log spectrum into previousLogMag.
+        for band in 0..<count {
+            let from = lowHz * pow(ratio, Double(band))
+            let to = from * ratio
+            let lo = max(1, min(half - 1, Int(from / binHz)))
+            let hi = max(lo + 1, min(half, Int((to / binHz).rounded(.up))))
+            var peak: Float = 0
+            for bin in lo..<hi where previousLogMag[bin] > peak { peak = previousLogMag[bin] }
+            out[band] = peak
         }
     }
 

@@ -110,7 +110,7 @@ Build it from shapes, back to front:
 
 **4. Metrics (white).** Eyebrow and H1 dashboard across 12 cols (H1 at y 1.167, h 0.525). KPI cards (mist) on cols 1 to 4: 1.0, 1.992, 3.6, 1.717 and 1.0, 3.9, 3.6, 1.717. Chart card (mist) on cols 5 to 12: 4.867, 1.992, 7.467, 3.625, padding 0.233 x 0.267 in, 7 rows (label column 1.967 in, value column 0.8 in right-aligned, bar 14 px tall). A hairline sits above the "Five apps" total row. Three tiles across: y 5.917, h 0.917, w 3.6 each at x 1.0 / 4.867 / 8.733, each with a hairline on top, number column 1.233 in.
 
-Chart data (USD, scale $0 to $400): Granola $168.00 (42%), Wispr Flow $144.00 (36%), Paste $29.99 (7.5%), CleanShot X $29.00 (7.25%), NotchNook $25.00 (6.25%), Five apps $395.99 (99%, ink bar), SparkV Pro $39.00 (9.75%, red bar).
+Chart data (USD, scale $0 to $400): Meeting-notes app $168.00 (42%), Dictation app $144.00 (36%), Clipboard app $29.99 (7.5%), Screenshot app $29.00 (7.25%), Notch hub app $25.00 (6.25%), Five apps $395.99 (99%, ink bar), SparkV Pro $39.00 (9.75%, red bar).
 
 **5. Comparison (mist).** Eyebrow and H1 at y 1.167. Two 6-col columns: left 1.0, right 6.8, each 5.533 wide. Column heads at y 2.1 (h 0.275, 1 px ink rule under). Five rows of 0.7 in from y 2.375, hairline under each. Left cell: name 22 px Semibold, category 16 px ink-2, price right-aligned in a 1.583 in column (20 px ink, qualifier 13 px ink-3). Right cell: SparkV feature name and description. Summary row at y 5.875, h 0.633, no rule; the SparkV summary is red.
 

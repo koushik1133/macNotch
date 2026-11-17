@@ -12,7 +12,7 @@ struct QuickCaptureFocus: Sendable, Equatable {
 }
 
 /// Reads the selected text of the frontmost app through Accessibility, the
-/// way PopClip-style tools and the selected-text crates do it:
+/// standard way:
 /// `AXSelectedText` on the system-wide focused element, then
 /// `AXSelectedTextRange` + `AXStringForRange`, then the frontmost app's own
 /// focused element. Chromium/Electron apps build their accessibility tree

@@ -1,8 +1,8 @@
 import AppKit
 
 // Keyboard model of the clipboard stack panel (⌘⇧V), kept free of views so
-// the harness can drive it with synthetic keys. Behaviour follows Paste's
-// stack and Maccy's popup: numbers 1–9 on the newest items, ↑/↓ and the
+// the harness can drive it with synthetic keys. Behaviour:
+// numbers 1–9 on the newest items, ↑/↓ and the
 // scroll wheel move the selection, ↩ pastes, ⌘1…9 pastes that item,
 // Space previews, ⌫ deletes, P pins, typing filters, Esc closes.
 
@@ -118,10 +118,19 @@ final class ClipboardStackModel: ObservableObject {
         isPreviewing = false
         armedDeleteID = nil
         pointerMoved = false
+        lastSelectFromPointer = false
         scrollAccumulator = 0
     }
 
-    func select(_ index: Int) {
+    /// The last selection came from the pointer (hover or click), so the
+    /// list shouldn't scroll to it.
+    var lastSelectFromPointer = false
+
+    func select(_ index: Int, fromPointer: Bool = false) {
+        lastSelectFromPointer = fromPointer
+        // Keyboard moves scroll rows under a still pointer: hover mustn't
+        // take the selection back until the pointer really moves.
+        if !fromPointer { pointerMoved = false }
         let count = visibleItems.count
         guard count > 0 else { selection = 0; return }
         selection = min(max(0, index), count - 1)
@@ -295,7 +304,7 @@ enum ClipboardStackPlacement {
 }
 
 /// Finds the text caret of the focused app through Accessibility (the
-/// bounds of the selected range), as Maccy's "at text cursor" position does.
+/// bounds of the selected range), the "at text cursor" position.
 enum ClipboardCaretLocator {
     /// Caret rect in Accessibility coordinates, or nil (no AX access, no
     /// text field, or an app that reports nothing useful).

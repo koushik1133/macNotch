@@ -32,7 +32,7 @@ final class ScrubberInteraction: ObservableObject {
 }
 
 /// Thin progress line under the track info that turns into a slider on
-/// hover (Dynamic Island / NotchNook style): the bar thickens, a knob
+/// hover: the bar thickens, a knob
 /// appears and dragging or clicking seeks. Bookmarks show as ticks; a click
 /// near one, or a drag that passes close to it, snaps to it exactly.
 ///

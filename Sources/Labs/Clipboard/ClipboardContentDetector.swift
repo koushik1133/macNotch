@@ -4,8 +4,8 @@ import Foundation
 // (a link, an email address, a phone number, a colour, a file path, code),
 // so the stack panel, the Clipboard tab and the C menu can offer the one
 // action that fits ("Open", "Compose", "Call via FaceTime", a swatch,
-// "Reveal in Finder", monospaced text). Raycast and Paste do the same with
-// colours and links; detection follows Apple's NSDataDetector for links and
+// "Reveal in Finder", monospaced text), colours and links included;
+// detection follows Apple's NSDataDetector for links and
 // phone numbers plus plain regexes. Pure: no AppKit, no UI, unit-tested by
 // the harness in the scratch folder.
 
@@ -347,7 +347,9 @@ enum ClipboardContentDetector {
         if let url = ClipboardCapture.webLink(text) { return url }
         guard let match = wholeMatch(text, linkDetector), let url = match.url else { return nil }
         // mailto: is an email; file: is a path.
-        guard let scheme = url.scheme?.lowercased(), scheme != "mailto", scheme != "file" else { return nil }
+        // Only web links get an Open button (any other scheme could launch
+        // an app's URL handler).
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return nil }
         // A bare word with a dot ("file.txt", "v1.2") isn't worth an Open button.
         if !text.contains("://"), !text.lowercased().hasPrefix("www."), !text.contains("/") {
             let tld = text.split(separator: ".").last.map(String.init)?.lowercased() ?? ""

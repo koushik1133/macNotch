@@ -66,8 +66,10 @@ struct MeetingRecord: Identifiable, Codable, Equatable, Sendable {
     var segments: [TranscriptSegment]
     var notes: MeetingNotes?
     var answers: [SuggestedAnswer]
-    /// What the user typed during the meeting (Granola-style notepad). The
+    /// What the user typed during the meeting (the notepad). The
     /// minutes are written around these points. Optional so meetings saved
     /// before this field existed still decode.
     var userNotes: String? = nil
+    /// The language it was transcribed in ("te-IN"); nil for older meetings.
+    var language: String? = nil
 }

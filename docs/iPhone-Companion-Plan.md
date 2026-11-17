@@ -37,7 +37,7 @@ Macs already give you two "Apple-like" pieces for free:
 2. **Capture from anywhere on the iPhone:** a share extension ("Save to SparkV" files into the Spaces Inbox or a chosen Space), a home-screen quick note, and dictation.
 3. **Glanceable:**
    - Home and Lock Screen **widgets**: next meeting, my open tasks, today's focus time, habits.
-   - A **Live Activity** and Dynamic Island while a meeting is recorded on the Mac (elapsed time, "3 tasks so far") or a Focus session runs (time left).
+   - A **Live Activity** on the Lock Screen and at the top of the screen while a meeting is recorded on the Mac (elapsed time, "3 tasks so far") or a Focus session runs (time left).
    - An Apple Watch complication later.
 4. **Handoff:** the meeting or note you have open on the Mac appears in the iPhone app switcher, and the other way round.
 5. **Shortcuts and Siri** through App Intents on both platforms:

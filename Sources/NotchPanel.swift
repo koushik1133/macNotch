@@ -39,8 +39,12 @@ final class NotchPanel: NSPanel {
     /// it on screen like the desktop. Both stay on every Space and over
     /// full-screen apps.
     func setHidesInMissionControl(_ hides: Bool) {
+        _ = hides
         let behavior: NSWindow.CollectionBehavior = [
-            .canJoinAllSpaces, .fullScreenAuxiliary, hides ? .transient : .stationary, .ignoresCycle,
+            // Always stationary: a transient panel slid away with the other
+            // windows when the wallpaper was clicked (Show Desktop). The
+            // notch now stays in Mission Control too; `hides` is ignored.
+            .canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle,
         ]
         if collectionBehavior != behavior { collectionBehavior = behavior }
     }

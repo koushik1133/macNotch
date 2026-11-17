@@ -286,7 +286,7 @@ final class ScreenRecorderResultModel: ObservableObject {
 }
 
 /// Floating card in the bottom-right corner after a recording, like the
-/// macOS screenshot thumbnail and CleanShot's Quick Access Overlay.
+/// macOS screenshot thumbnail.
 @MainActor
 final class ScreenRecorderResultPanel {
     static let size = CGSize(width: 356, height: 104)

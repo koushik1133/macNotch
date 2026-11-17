@@ -62,7 +62,7 @@ The default drawer height (`NotchMetrics.expandedSize`, 540×115) fits the page,
 Agent(tab: .replyDrafter, title: "Reply", systemImage: "arrowshape.turn.up.left.fill", tint: .cyan),
 ```
 
-`NotchNookLayoutView.swift`: add the drawer page to the `switch state.tab`, after `case .screenDistance: ScreenDistanceDrawerView()` (the switch must stay exhaustive, or the build fails):
+`IslandLayoutView.swift`: add the drawer page to the `switch state.tab`, after `case .screenDistance: ScreenDistanceDrawerView()` (the switch must stay exhaustive, or the build fails):
 
 ```swift
 case .replyDrafter: ReplyDrafterDrawerView()
@@ -87,7 +87,7 @@ Check the header at rest and while recording ("● 59:59") before shipping it.
 
 ## 5. Settings (gear menu)
 
-In `SettingsMenu` (`NotchNookLayoutView.swift`), declare:
+In `SettingsMenu` (`IslandLayoutView.swift`), declare:
 
 ```swift
 @EnvironmentObject private var replyDrafter: ReplyDrafterController
@@ -100,7 +100,7 @@ Button("Draft Reply…  \(replyDrafter.shortcutLabel)") { replyDrafter.draftRepl
 ReplyDrafterMenuToggles(settings: replyDrafter.settings)
 ```
 
-Add this wrapper struct at file scope in `NotchNookLayoutView.swift`:
+Add this wrapper struct at file scope in `IslandLayoutView.swift`:
 
 ```swift
 private struct ReplyDrafterMenuToggles: View {

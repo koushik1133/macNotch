@@ -58,6 +58,9 @@ final class AppVolumeController: ObservableObject {
     private var gains: [String: Double]
     private var groups: [AppAudioGroup] = []
     private var routes: [String: AppGainRoute] = [:]
+    /// Process objects App Volumes plays itself right now (SparkV DJ leaves
+    /// them out of its tap so they aren't heard twice).
+    var routedProcessObjects: [AudioObjectID] { routes.values.flatMap(\.objects) }
     /// Routes whose start finished (main-actor copy of their state).
     private var liveRoutes: Set<String> = []
     private var problems: [String: String] = [:]
@@ -496,8 +499,14 @@ final class AppVolumeController: ObservableObject {
     private func checkHealth(id: String, route: AppGainRoute) {
         healthTasks[id]?.cancel()
         healthTasks[id] = Task { [weak self] in
-            // Bluetooth outputs can take a second to start.
-            try? await Task.sleep(for: .seconds(2))
+            // Bluetooth outputs (AirPods waking up) can take several seconds
+            // before the first IO cycle; wait up to 8 s for it.
+            var waited = 0
+            while waited < 32, route.state.cycles.load(ordering: .relaxed) == 0 {
+                try? await Task.sleep(for: .milliseconds(250))
+                waited += 1
+                guard !Task.isCancelled else { return }
+            }
             guard let self, !Task.isCancelled, self.routes[id] === route else { return }
             if route.state.cycles.load(ordering: .relaxed) == 0 {
                 AppLog.log("AppVolume: \(route.name)’s route isn’t running; undoing it")

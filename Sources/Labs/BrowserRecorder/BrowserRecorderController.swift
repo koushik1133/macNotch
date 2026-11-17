@@ -524,7 +524,7 @@ final class BrowserRecorderController: ObservableObject {
         AppLog.log("BrowserRecorder: saved recorded flow \(flow.id) (\(flow.steps.count) steps)")
     }
 
-    /// Healenium-style write-back: the selectors that worked go first; the
+    /// Self-healing write-back: the selectors that worked go first; the
     /// old ones stay behind them as fallbacks.
     private func applyHealing(_ event: BRRunnerEvent) {
         guard UserDefaults.standard.bool(forKey: Self.autoApplyHealingKey),

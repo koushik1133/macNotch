@@ -634,8 +634,8 @@ struct IslandForeignWindow: Equatable, Sendable {
 }
 
 enum IslandKnownApps {
-    /// Menu bar managers. IDs from each project's published app bundle;
-    /// Wispr Flow's was read from the installed copy with `mdls`.
+    /// Apps SparkV detects to warn about overlaps. IDs from each app's
+    /// published bundle (or read from an installed copy with `mdls`).
     static let menuBarManagers: [String: String] = [
         "com.jordanbaird.Ice": "Ice",
         "com.surteesstudios.Bartender": "Bartender",
@@ -658,7 +658,7 @@ enum IslandKnownApps {
     static let menuBarManagerNames: Set<String> = ["Ice", "Bartender 4", "Bartender 5", "Bartender", "Hidden Bar", "Dozer", "Vanilla", "iBar"]
     static let notchAppNames: Set<String> = ["boring.notch", "NotchNook", "Alcove", "MediaMate", "Atoll", "TopNotch", "DynamicLake"]
 
-    /// Uses fn for its own dictation (verified: the installed Wispr Flow).
+    /// Apps that use fn for their own dictation (verified on an installed copy).
     static let fnDictationApps: [String: String] = ["com.electron.wispr-flow": "Wispr Flow"]
 
     static func isMenuBarManager(bundleID: String?, name: String?) -> Bool {
@@ -707,9 +707,9 @@ enum IslandCoexistenceRules {
     /// notch drawer); deeper windows are overlays, not islands.
     static let maxDepth: CGFloat = 400
 
-    /// A menu bar manager's own bar (Ice Bar, Bartender Bar…) hanging under
+    /// A menu bar manager's own bar hanging under
     /// or over the island. Status-item-shaped windows in the menu bar row
-    /// are not bars: Ice, Hidden Bar and Dozer hide items by stretching a
+    /// are not bars: menu bar managers hide items by stretching a
     /// divider item to about 10,000 pt, which sits across the notch while
     /// the hidden section is collapsed (their normal state). So a bar must
     /// reach below the menu bar row, be narrower than 80 % of the screen,

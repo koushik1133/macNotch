@@ -12,8 +12,7 @@ import SwiftUI
 /// the store's own filing suggestion (or the last-used Space, if the user
 /// picked that) is applied. The band under the notch says where it went and
 /// a small action strip below it offers Change Space, Open and Undo — the
-/// "act first, offer undo" pattern of Gmail's Undo Send and CleanShot's
-/// quick-access overlay rather than a destination picker before saving.
+/// "act first, offer undo" pattern rather than a destination picker before saving.
 @MainActor
 final class QuickCaptureController: ObservableObject {
     enum Phase: Equatable {
@@ -75,36 +74,6 @@ final class QuickCaptureController: ObservableObject {
         updateHotkey()
         // No Vision prewarm at launch: it kept the text models (and a stuck
         // recognizer thread) resident for hours. Models load on first use.
-    }
-
-    /// Vision's accurate text recognizer loads its models on first use in a
-    /// process, which took 90 s and more on a busy Mac in testing (0.2 s once
-    /// warm). Load it once in the background, a while after launch, so the
-    /// first screenshot capture files in about a second.
-    private static var didPrewarm = false
-    var prewarmDelay: Duration = .seconds(45)
-
-    private func prewarmVisionIfNeeded() {
-        guard !Self.didPrewarm, settings.isEnabled, settings.capturesScreenshot else { return }
-        Self.didPrewarm = true
-        let delay = prewarmDelay
-        Task.detached(priority: .background) {
-            try? await Task.sleep(for: delay)
-            guard let image = QuickCaptureController.prewarmImage() else { return }
-            let start = Date()
-            _ = TrayAIOCR.analyzeSync(image)
-            AppLog.log("Quick Capture: OCR ready (\(Int(Date().timeIntervalSince(start))) s)")
-        }
-    }
-
-    nonisolated static func prewarmImage() -> CGImage? {
-        guard let context = CGContext(data: nil, width: 64, height: 32, bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return nil }
-        context.setFillColor(gray: 1, alpha: 1)
-        context.fill(CGRect(x: 0, y: 0, width: 64, height: 32))
-        context.setFillColor(gray: 0, alpha: 1)
-        context.fill(CGRect(x: 8, y: 8, width: 4, height: 16))
-        return context.makeImage()
     }
 
     func stop() {

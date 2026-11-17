@@ -12,7 +12,7 @@ import SwiftUI
 /// Refreshes only when the page opens and, while it is open, when an app
 /// launches or quits; never on a timer. Real icons are opt-in (Screen
 /// Recording); otherwise each item shows its app's icon or a system symbol.
-/// An optional divider (the Hidden Bar technique) hides the icons you
+/// An optional divider item hides the icons you
 /// ⌘-drag to its left.
 @MainActor
 final class MenuBarOverflowController: ObservableObject {
@@ -228,7 +228,7 @@ final class MenuBarOverflowController: ObservableObject {
         }
     }
 
-    // MARK: Divider (Hidden Bar technique, opt-in)
+    // MARK: Divider (opt-in)
 
     private static let collapsedLength: CGFloat = 10_000
     private static let separatorLength: CGFloat = 10

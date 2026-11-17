@@ -35,7 +35,7 @@ enum QuickCaptureKind: String, Codable, CaseIterable, Sendable {
 enum QuickCaptureFallback: String, Codable, CaseIterable, Sendable {
     /// Leave it in the Inbox (Spaces may still suggest a Space later).
     case inbox
-    /// File it with the Space used last (Notion Web Clipper keeps its last destination).
+    /// File it with the Space used last.
     case lastUsed
 
     var title: String {
@@ -46,8 +46,7 @@ enum QuickCaptureFallback: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// The first capture source that applies, in the order Raycast/PopClip-style
-/// tools use: an explicit selection beats the page, the page beats a screenshot.
+/// The first capture source that applies, in this order: an explicit selection beats the page, the page beats a screenshot.
 enum QuickCapturePlan: Equatable, Sendable {
     case selection(String)
     case webPage(SpaceConnectors.Browser)

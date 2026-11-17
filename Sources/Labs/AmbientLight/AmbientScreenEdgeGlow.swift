@@ -33,7 +33,7 @@ final class AmbientEdgePanel: NSPanel {
         // isFloatingPanel resets `level`, so it comes first.
         isFloatingPanel = true
         level = Self.targetLevel
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle, .fullScreenDisallowsTiling]
         ignoresMouseEvents = true
         isOpaque = false
         backgroundColor = .clear
@@ -72,6 +72,18 @@ final class AmbientEdgePanel: NSPanel {
             strips.root.contentsScale = screen.backingScaleFactor
             // The top strip runs along the very top edge (over the menu bar).
             strips.layout(bounds: CGRect(origin: .zero, size: size), topInset: 0, thickness: edgeWidth)
+        }
+    }
+
+    /// Follows the island on this screen; the camera housing otherwise.
+    func setIsland(_ rect: CGRect?, radius: CGFloat) {
+        guard let metal, let screen else { return }
+        let f = screen.frame
+        if let rect, rect.width > 20, f.insetBy(dx: -1, dy: -1).contains(CGPoint(x: rect.midX, y: rect.maxY - 1)) {
+            let height = max(0, f.maxY - rect.minY)
+            metal.setNotchTarget((rect.minX - f.minX, rect.maxX - f.minX, height), radius: radius)
+        } else {
+            metal.setNotchTarget(Self.notch(of: screen), radius: 9)
         }
     }
 
@@ -152,7 +164,9 @@ final class AmbientScreenEdgeGlow {
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.activeSpaceDidChangeNotification, NSWorkspace.didActivateApplicationNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.refreshSuppression() }
+                // A new desktop or full-screen app: put the edges back in front
+                // there (isVisible stays true for a window left on another space).
+                MainActor.assumeIsolated { self?.refreshSuppression(reorder: true) }
             })
         }
         observers.append(NotificationCenter.default.addObserver(
@@ -186,6 +200,14 @@ final class AmbientScreenEdgeGlow {
             pollTimer?.invalidate()
             pollTimer = nil
             for panel in panels.values { panel.orderOut(nil) }
+        }
+    }
+
+    /// The island's live outline in screen coordinates (nil: use the camera
+    /// housing). Each panel wraps it on its own screen.
+    func setIsland(_ rect: CGRect?, radius: CGFloat) {
+        for panel in panels.values where panel.isVisible {
+            panel.setIsland(rect, radius: radius)
         }
     }
 
@@ -240,7 +262,7 @@ final class AmbientScreenEdgeGlow {
         refreshSuppression()
     }
 
-    func refreshSuppression() {
+    func refreshSuppression(reorder: Bool = false) {
         guard isShown else { return }
         reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         screenShared = AmbientDisplaySuppression.isScreenShared()
@@ -250,7 +272,7 @@ final class AmbientScreenEdgeGlow {
         let hideAll = screenShared || !externalReasons.isEmpty
         for (id, panel) in panels {
             let visible = !hideAll && !suppressed.contains(id)
-            if visible, !panel.isVisible || panel.level != AmbientEdgePanel.targetLevel {
+            if visible, reorder || !panel.isVisible || !panel.isOnActiveSpace || panel.level != AmbientEdgePanel.targetLevel {
                 panel.invalidateContent()
                 panel.present()
             } else if !visible, panel.isVisible {

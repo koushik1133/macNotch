@@ -262,8 +262,8 @@ enum CalendarOpenTarget: String, CaseIterable, Identifiable, Sendable {
     case googleWeb
     /// Outlook on the web, at the event's day.
     case outlookWeb
-    /// Whichever app opens calendar files on this Mac (Fantastical, BusyCal,
-    /// Outlook…). It opens the app; only Calendar can be sent to the event.
+    /// Whichever app opens calendar files on this Mac (Calendar, Outlook or
+    /// another calendar app). It opens the app; only Calendar can be sent to the event.
     case defaultApp
 
     var id: String { rawValue }
@@ -280,7 +280,7 @@ enum CalendarOpenTarget: String, CaseIterable, Identifiable, Sendable {
 
 enum CalendarLinks {
     /// ical://ekevent/<eventIdentifier>?method=show&options=more, the form
-    /// MeetingBar and Itsycal open Calendar.app with. Undocumented, so
+    /// that opens Calendar.app on the event. Undocumented, so
     /// callers fall back to opening Calendar when it fails.
     static func calendarApp(eventIdentifier: String) -> URL? {
         let id = eventIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)

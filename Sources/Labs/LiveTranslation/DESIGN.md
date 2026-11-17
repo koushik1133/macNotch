@@ -19,13 +19,13 @@ While a meeting is recording, SparkV translates what other participants say into
 
 - The `.lowLatency` strategy (macOS 26.4) returned `notInstalled` for every pair here. SparkV therefore uses it only when `LanguageAvailability(preferredStrategy: .lowLatency)` says the pair is installed.
 
-**Google Meet translated captions / Google Translate "Transcribe"** (research.google/blog/stabilizing-live-speech-translation-in-google-translate; arXiv 2004.03643, "Re-translation versus Streaming for Simultaneous Translation")
-- They use *re-translation*: the growing source prefix is translated again from scratch on every update.
+**Re-translation with masking** (arXiv 2004.03643, "Re-translation versus Streaming for Simultaneous Translation")
+- *Re-translation*: the growing source prefix is translated again from scratch on every update.
 - Flicker is controlled by *masking*: the last k words of the translation are hidden until the source sentence ends.
 - The authors report this matches or beats streaming models, and masking cut erasure from 2.1 to 0.1 at almost the same quality.
 
-**Microsoft Teams live translated captions** (Teams support pages; Message Center MC1266022)
-- Teams detects each speaker's spoken language automatically and updates it as the conversation goes on.
+**Live translated captions in meeting apps**
+- They detect each speaker's spoken language automatically and update it as the conversation goes on.
 - Each listener picks their own caption language.
 
 **macOS Live Captions**
@@ -49,7 +49,7 @@ While a meeting is recording, SparkV translates what other participants say into
    - `NLLanguageRecognizer`, limited to the 26 languages Translation supports.
    - Short or ambiguous text (for example "sí" or "okay") reuses that speaker's last confident language. With no history, it falls back to the transcriber's language (`Locale.current`, which is what MeetingTranscriber listens in).
    - Speech already in the target language is never sent to a translator. "Same language" means the same language code and script, so en-US speech counts as English for an en-GB reader, while zh-Hans and zh-Hant are different.
-4. **Whose speech:** only other participants by default, as in Meet and Teams. **Translate My Own Speech** adds the microphone. While other participants can't be captured (Screen Recording not allowed, or system audio failed), the microphone is captioned anyway; otherwise there would be nothing to show.
+4. **Whose speech:** only other participants by default. **Translate My Own Speech** adds the microphone. While other participants can't be captured (Screen Recording not allowed, or system audio failed), the microphone is captioned anyway; otherwise there would be nothing to show.
    - Speech already in the target language is captioned as spoken (chip shows only the language, no arrow). It used to be hidden, which left an English meeting with an English target with no captions at all.
 5. **The band:**
    - It replaces the recording band while captions flow, at priority 66, just above recording (65).
@@ -98,4 +98,4 @@ Captions can only be as good as the transcript, and MeetingTranscriber listens i
 
 ## Credits
 
-No third-party code was vendored. The approach follows Apple's Translation documentation and Google Research's published re-translation and masking method. The icons are SF Symbols (`character.bubble.fill`, `captions.bubble.fill`, `arrow.down.circle.fill`).
+No third-party code was vendored. The approach follows Apple's Translation documentation and the published re-translation and masking method. The icons are SF Symbols (`character.bubble.fill`, `captions.bubble.fill`, `arrow.down.circle.fill`).

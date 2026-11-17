@@ -386,7 +386,8 @@ final class LiveMeetingAssist: ObservableObject, MeetingLiveAssisting {
             symbol: flag.kind.symbol, tint: flag.kind.tint
         ) { [weak self] in
             MeetingFlagToast(flag: flag) { self?.dismiss(flagID: flag.id) }
-        })
+        }
+        .interactive())
     }
 
     private func refreshCaptionBand() {
@@ -400,7 +401,8 @@ final class LiveMeetingAssist: ObservableObject, MeetingLiveAssisting {
             symbol: "captions.bubble", tint: SparkVTheme.recording
         ) {
             MeetingCaptionBand(assist: self)
-        })
+        }
+        .interactive())
     }
 
     // MARK: Model pass and persistence

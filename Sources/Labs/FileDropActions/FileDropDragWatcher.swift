@@ -5,8 +5,7 @@ import UniformTypeIdentifiers
 /// thumbnail) and reports where the pointer is, so the shelf can appear as
 /// the drag nears the notch.
 ///
-/// Same technique as the notch shelves (NotchNook, NotchDrop, Dropover's
-/// "drop to notch"): the drag pasteboard's `changeCount` is remembered on
+/// The usual notch-shelf technique ("drop to notch"): the drag pasteboard's `changeCount` is remembered on
 /// mouse-down and compared on mouse-dragged; a change means a new drag
 /// session started, and its declared types say whether it carries files.
 /// Global monitors see every pointer event bound to other apps without
@@ -15,7 +14,7 @@ import UniformTypeIdentifiers
 /// shelf. The pasteboard's contents are never read here, only its types.
 ///
 /// During a file drag it also watches for a *shake* (three quick left-right
-/// reversals) or a held modifier key, Dropover style: either one summons
+/// reversals) or a held modifier key: either one summons
 /// the drop shelf right at the pointer, so files don't have to travel to
 /// the notch. That math runs only while a file drag is live.
 @MainActor

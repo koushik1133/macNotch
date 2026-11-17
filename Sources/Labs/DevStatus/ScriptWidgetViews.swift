@@ -12,7 +12,7 @@ struct ScriptWidgetsPage: View {
             if controller.configs.isEmpty {
                 ExtrasNotice(symbol: "terminal",
                              title: "No scripts yet",
-                             detail: "Show a command's output here, xbar-style: the first line big, the rest below. Presets include crypto prices, disk space and git status.",
+                             detail: "Show a command's output here: the first line big, the rest below. Presets include crypto prices, disk space and git status.",
                              action: ("New Script…", { ScriptEditorWindowController.shared.show(nil) }))
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
@@ -408,7 +408,7 @@ struct ScriptWidgetHubTile: View {
             systemImage: "terminal.fill",
             tint: Color(white: 0.78),
             isActive: pinned != nil,
-            help: "Scripts: your shell commands' output, xbar-style"
+            help: "Scripts: your shell commands' output as widgets"
         ) {
             DevStatusNavigator.shared.section = .scripts
             (onOpen ?? DevStatusNavigator.shared.openDrawer)()

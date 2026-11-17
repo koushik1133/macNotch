@@ -368,7 +368,7 @@ final class NotchWindowController: NSWindowController {
             meetingIntel?.coordinator.wantsOffer(for: call) ?? false
         }
         // A file dragged out of a shelf and dropped in another app closes the
-        // drawer right away (Shift-drop keeps it open, Dropover-style).
+        // drawer right away (Shift-drop keeps it open).
         let dragEnd = NotificationCenter.default.addObserver(forName: TrayDragOut.didEndNotification, object: nil, queue: .main) { [weak self] note in
             let dropped = note.userInfo?["dropped"] as? Bool == true
             let keepOpen = note.userInfo?["keepOpen"] as? Bool == true
@@ -441,8 +441,8 @@ final class NotchWindowController: NSWindowController {
                 DispatchQueue.main.async { MainActor.assumeIsolated { _ = self?.handleActivityBandPointer(moved: false) } }
             }
         // A volume or brightness bar lifts the island above full-screen apps.
-        feedbackLevelObserver = activities.$current
-            .map { $0?.kind.isLiveFeedback == true }
+        feedbackLevelObserver = activities.$current.combineLatest(activities.$compact)
+            .map { $0?.kind.isLiveFeedback == true || $1?.kind.isLiveFeedback == true }
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] _ in
@@ -563,6 +563,9 @@ final class NotchWindowController: NSWindowController {
         CodingAgentsController.shared.onOpenDrawer = openDev
         CodingAgentsController.shared.start()
         DevCIController.shared.connect(activities: activities, opensTab: .devStatus)
+        DevTopController.shared.connect(activities: activities, opensTab: .devStatus)
+        DevPins.shared.activities = activities
+        DevPins.shared.opensTab = .devStatus
         DevCIController.shared.start()
         ScriptWidgetsController.shared.connect(activities: activities, opensTab: .devStatus)
         ScriptWidgetsController.shared.start()
@@ -988,7 +991,7 @@ final class NotchWindowController: NSWindowController {
             quiet: !placement.quietReasons.isEmpty,
             revealed: isMain && isRevealed,
             isInteracting: isMain && state.isExpanded && isInteractionInProgress,
-            hudShowing: activities.current?.kind.isLiveFeedback == true,
+            hudShowing: isShowingLiveFeedback,
             showsHUDWhileHidden: s.showsHUDWhileHidden,
             systemHUDReplaced: hud.isEnabled && hud.replacesSystemHUD,
             voiceShowing: dictation.phase != .idle || clicky.phase != .idle,
@@ -1022,6 +1025,11 @@ final class NotchWindowController: NSWindowController {
         if !decision.isHidden { cancelTopEdgeReveal() }
         setPanelShown(decision.isOnScreen, animated: animated)
         updateLevel()
+        // Entering full screen: the app's toolbar window appears after the
+        // animation; check for it once more.
+        if placement.isFullScreen(placement.islandDisplayID) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.updateLevel() }
+        }
         updateMirrorVisibility()
     }
 
@@ -1046,6 +1054,12 @@ final class NotchWindowController: NSWindowController {
         }
     }
 
+    /// A volume or brightness HUD on the island: in the band, or in the
+    /// wings beside the notch (the inline style).
+    private var isShowingLiveFeedback: Bool {
+        activities.current?.kind.isLiveFeedback == true || activities.compact?.kind.isLiveFeedback == true
+    }
+
     /// Full screen with the island showing: one level below the menu bar
     /// macOS slides down, so the island never covers it; open, it is back
     /// above everything.
@@ -1055,16 +1069,43 @@ final class NotchWindowController: NSWindowController {
         // slides in with (the notch has no menu bar under it); on a display
         // without a notch it would cover the middle of that menu bar.
         let revealAbove = isRevealed && (geometry?.hasNotch ?? false)
-        let lowered = placement.isFullScreen(placement.islandDisplayID) && !state.isExpanded && !visibility.isHidden && !revealAbove
+        // On a notched display the island always stays at the status-bar
+        // level: the menu bar never draws behind the hardware notch, and a
+        // wrong full-screen guess (a zoomed window, Safari's toolbar) used
+        // to leave the island under the menu bar.
+        let notched = geometry?.hasNotch ?? false
+        let lowered = !notched && placement.isFullScreen(placement.islandDisplayID) && !state.isExpanded && !visibility.isHidden && !revealAbove
         // Just under the menu bar macOS slides down (`.floating` sat under some
         // full-screen apps, hiding the island and its volume bar there); a
         // volume or brightness bar goes above everything.
-        let feedback = activities.current?.kind.isLiveFeedback == true
-        let level: NSWindow.Level = lowered && !feedback ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
+        let feedback = isShowingLiveFeedback
+        // Safari (and other apps) draw their full-screen toolbar in a separate
+        // window above that lowered level, hiding the island under it.
+        let covered = lowered && Self.frontAppCoversNotch(notchRect)
+        let level: NSWindow.Level = lowered && !feedback && !covered ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
         if panel.level != level { panel.level = level }
         // The teleprompter and the large mirror sit one level below the
         // island (in full screen too) and fade out while the drawer is open.
         ExtrasIslandCover.islandChanged(expanded: state.isExpanded, level: level)
+    }
+
+    /// The frontmost app has a raised window (a full-screen toolbar) over the
+    /// notch. Window bounds and owners only, no titles: no permission needed.
+    private static func frontAppCoversNotch(_ notch: NSRect) -> Bool {
+        guard notch.width > 0, let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+              let primary = NSScreen.screens.first,
+              let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+        else { return false }
+        // Cocoa (bottom-left) to CG (top-left) coordinates.
+        let target = CGRect(x: notch.minX, y: primary.frame.maxY - notch.maxY, width: notch.width, height: notch.height)
+        for window in list {
+            guard (window[kCGWindowOwnerPID as String] as? pid_t) == pid,
+                  let layer = window[kCGWindowLayer as String] as? Int, layer > 0,
+                  let dict = window[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: dict) else { continue }
+            if bounds.intersects(target) { return true }
+        }
+        return false
     }
 
     /// ⌃⌥H (opt-in): hides the island, or brings back one that is hidden
@@ -1283,7 +1324,11 @@ final class NotchWindowController: NSWindowController {
             } else if !shown, mirror.panel.isVisible {
                 LiveBandMotion.fadeOut(mirror.panel)
             }
-            let level: NSWindow.Level = placement.isFullScreen(id) && !decision.isHidden ? .floating : .statusBar
+            // Same rule as the main island: notched displays stay at the
+            // status-bar level; others sit just under the menu bar macOS
+            // slides down (`.floating` sat under some full-screen apps).
+            let lowered = !mirror.hasNotch && placement.isFullScreen(id) && !decision.isHidden && !isShowingLiveFeedback
+            let level: NSWindow.Level = lowered ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1) : .statusBar
             if mirror.panel.level != level { mirror.panel.level = level }
         }
     }
@@ -1377,7 +1422,7 @@ final class NotchWindowController: NSWindowController {
                 guard let self, !self.focus.isActive else { return }
                 var settings = self.focus.settings
                 if let minutes { settings.focusMinutes = minutes }
-                self.focus.startSession(using: settings)
+                self.focus.startSession(using: settings, runsShortcuts: false)
             },
             endFocus: { [weak self] in self?.focus.end() },
             openMeeting: { [weak self] id in self?.meetingAssistant.openNotesWindow(meetingID: id) },
@@ -1524,6 +1569,14 @@ final class NotchWindowController: NSWindowController {
             observe(name, on: workspace) {
                 $0.forceCollapse()
                 $0.placement.pauseWatching()
+            }
+        }
+        // Another app in front: its full-screen toolbar may cover the island
+        // (checked again once its full-screen animation settles).
+        observe(NSWorkspace.didActivateApplicationNotification, on: workspace) { controller in
+            controller.updateLevel()
+            for delay in [0.5, 1.5] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak controller] in controller?.updateLevel() }
             }
         }
         // Fast user switching: nothing shows for the other user.
@@ -2695,6 +2748,7 @@ final class NotchWindowController: NSWindowController {
 
     /// The room beside the housing changed: the wings lay out again.
     private func wingRoomChanged() {
+        hud.islandRoomChanged()
         hotZoneCache = nil
         state.wingClearanceRevision &+= 1
         for mirror in mirrors.values { mirror.state.wingClearanceRevision &+= 1 }
@@ -2753,7 +2807,7 @@ final class NotchWindowController: NSWindowController {
     /// island and the All Displays mirrors share it).
     private func islandRoot(state: NotchState) -> some View {
         // Rebuilt when the look changes (gear menu › Appearance).
-        NotchNookLayoutView()
+        IslandLayoutView()
             .followsAppearance()
             .environmentObject(state)
             .environmentObject(media)

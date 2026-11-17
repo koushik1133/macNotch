@@ -88,7 +88,7 @@ Replace with:
                        help: "Today: meetings, agenda, reminders, timers, weather and launcher", hubStandIn: "tab.today"),
 ```
 
-### Step 3c — `Sources/NotchNookLayoutView.swift`
+### Step 3c — `Sources/IslandLayoutView.swift`
 
 Today's tooltip in the classic header. Only for a build without Look & Layout's step 3e. Apply it **after** Look & Layout: 3e's find contains this line, so changing it first would break 3e.
 
@@ -104,7 +104,7 @@ Replace with:
             IconTab(systemImage: "calendar", tab: .today, help: "Today: meetings, agenda, reminders, timers, weather and launcher", pill: pill)
 ```
 
-### Step 4 — `Sources/NotchNookLayoutView.swift`
+### Step 4 — `Sources/IslandLayoutView.swift`
 
 Gear menu: one "Planner" submenu. Open a page; Timers, Reminders, Weather and Launcher items. `timer` and `macros` are already environment objects of `SettingsMenu`. The Meetings submenu needs no change: `MeetingsMenuItems` now also has Calendars, Show All-Day Events and Open Events In. The anchor line is kept, so Downloads' "after Live Activities" submenu still goes in.
 
@@ -119,7 +119,7 @@ Replace with:
             Menu("Live Activities") {
 ```
 
-### Step 5 — `Sources/NotchNookLayoutView.swift`
+### Step 5 — `Sources/IslandLayoutView.swift`
 
 Home buttons can open apps too. An "Apps" section in the button picker, used by the gear menu and both capsule menus.
 
@@ -151,7 +151,7 @@ Replace with:
         }
 ```
 
-### Step 6 — `Sources/NotchNookLayoutView.swift`
+### Step 6 — `Sources/IslandLayoutView.swift`
 
 A Home capsule bound to an app shows the app's icon. Cached, 32 px; no file-system call once drawn.
 

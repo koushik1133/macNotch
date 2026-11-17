@@ -38,7 +38,7 @@ enum CIParsing {
                 branch: run["head_branch"] as? String,
                 event: run["event"] as? String,
                 outcome: outcome(status: status, conclusion: conclusion),
-                url: (run["html_url"] as? String).flatMap(URL.init(string:)),
+                url: DevCIController.webURL(run["html_url"] as? String),
                 updatedAt: JSONLTail.date(run["updated_at"]),
                 number: (run["run_number"] as? NSNumber)?.intValue
             )
@@ -65,7 +65,7 @@ enum CIParsing {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let jobs = object["jobs"] as? [[String: Any]] else { return nil }
         let failed = jobs.first { ($0["conclusion"] as? String) == "failure" } ?? jobs.first
-        return (failed?["html_url"] as? String).flatMap(URL.init(string:))
+        return DevCIController.webURL(failed?["html_url"] as? String)
     }
 
     /// "owner/repo" from what the user typed (a URL or the short form).
@@ -104,14 +104,30 @@ enum CIParsing {
 /// The optional GitHub token (a fine-grained, read-only "Actions" token) in
 /// the login keychain. Never written to UserDefaults or the log.
 enum DevCIKeychain {
-    private static let service = "SparkV.devStatus.github"
+    /// Under the com.sparkv. prefix so Reset and Uninstall remove it.
+    private static let service = "com.sparkv.devstatus.github"
+    private static let legacyService = "SparkV.devStatus.github"
     private static let account = "token"
 
-    private static var query: [String: Any] {
+    private static var query: [String: Any] { query(service) }
+
+    private static func query(_ service: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account]
     }
 
+    /// Moves a token saved under the old service name (once).
+    private static func migrateLegacy() {
+        var q = query(legacyService)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess, let data = result as? Data else { return }
+        let token = String(decoding: data, as: UTF8.self)
+        if save(token) { SecItemDelete(query(legacyService) as CFDictionary) }
+    }
+
     static func hasToken() -> Bool {
+        migrateLegacy()
         var q = query
         q[kSecReturnAttributes as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -120,6 +136,7 @@ enum DevCIKeychain {
     }
 
     static func load() -> String? {
+        migrateLegacy()
         var q = query
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -142,6 +159,7 @@ enum DevCIKeychain {
 
     static func delete() {
         SecItemDelete(query as CFDictionary)
+        SecItemDelete(query(legacyService) as CFDictionary)
     }
 }
 
@@ -168,6 +186,11 @@ final class DevCIController: ObservableObject {
     @Published var isEnabled: Bool { didSet { defaults.set(isEnabled, forKey: Self.key("enabled")); reschedule(now: true) } }
     @Published private(set) var repos: [String]
     @Published private(set) var runs: [String: [CIRun]] = [:]
+    /// Open pull requests per repo (newest first, at most 5).
+    @Published private(set) var pulls: [String: [CIPull]] = [:]
+    /// Latest deployment per repo (Vercel, Netlify, Cloudflare… report here
+    /// through their GitHub integrations).
+    @Published private(set) var deploys: [String: CIDeploy] = [:]
     @Published private(set) var status: Status = .off
     @Published private(set) var hasToken = false
     @Published var notifiesFailures: Bool { didSet { defaults.set(notifiesFailures, forKey: Self.key("notify")) } }
@@ -296,6 +319,7 @@ final class DevCIController: ObservableObject {
         for repo in repos {
             guard !Task.isCancelled else { return }
             await poll(repo, token: token)
+            await pollExtras(repo, token: token)
         }
         if case .loading = status { status = .idle }
     }
@@ -335,6 +359,71 @@ final class DevCIController: ObservableObject {
         }
     }
 
+    // MARK: Pull requests and deployments
+
+    /// When pull requests and deployments were last asked for, per repo,
+    /// and a rate-limit pause for them.
+    private var extrasPolledAt: [String: Date] = [:]
+    private var extrasPausedUntil: Date?
+
+    private func getJSON(_ path: String, token: String?) async -> Any? {
+        guard let url = URL(string: "https://api.github.com/" + path) else { return nil }
+        var request = URLRequest(url: url)
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        guard let (data, response) = try? await session.data(for: request), let http = response as? HTTPURLResponse else { return nil }
+        if http.statusCode == 403 || http.statusCode == 429 {
+            let reset = http.value(forHTTPHeaderField: "X-RateLimit-Reset").flatMap(Double.init).map { Date(timeIntervalSince1970: $0) }
+            extrasPausedUntil = reset ?? Date().addingTimeInterval(15 * 60)
+            return nil
+        }
+        guard http.statusCode == 200 else { return nil }
+        return try? JSONSerialization.jsonObject(with: data)
+    }
+
+    /// Only http(s) links from the API are opened (a deployment status can
+    /// carry any URL).
+    nonisolated static func webURL(_ string: String?) -> URL? {
+        guard let string, let url = URL(string: string), let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else { return nil }
+        return url
+    }
+
+    private func pollExtras(_ repo: String, token: String?) async {
+        // At most every 5 minutes (every 15 without a token: GitHub allows
+        // 60 unauthenticated requests an hour), never while rate-limited.
+        if let paused = extrasPausedUntil, paused > Date() { return }
+        let spacing: TimeInterval = token == nil ? 15 * 60 : 5 * 60
+        if let last = extrasPolledAt[repo], Date().timeIntervalSince(last) < spacing { return }
+        extrasPolledAt[repo] = Date()
+        if let list = await getJSON("repos/\(repo)/pulls?state=open&per_page=5", token: token) as? [[String: Any]], repos.contains(repo) {
+            pulls[repo] = list.compactMap { CIPull(json: $0, repo: repo) }
+        }
+        guard let list = await getJSON("repos/\(repo)/deployments?per_page=1", token: token) as? [[String: Any]],
+              let first = list.first, let id = first["id"] as? Int else { return }
+        let statuses = await getJSON("repos/\(repo)/deployments/\(id)/statuses?per_page=1", token: token) as? [[String: Any]]
+        let latest = statuses?.first
+        let deploy = CIDeploy(repo: repo, id: id,
+                              environment: first["environment"] as? String ?? "deploy",
+                              state: latest?["state"] as? String ?? "pending",
+                              url: Self.webURL(latest?["environment_url"] as? String ?? latest?["target_url"] as? String))
+        let previous = deploys[repo]
+        guard repos.contains(repo) else { return }
+        deploys[repo] = deploy
+        if let previous, previous.id == deploy.id, previous.state != deploy.state, deploy.isFinished { postDeploy(deploy) }
+    }
+
+    private func postDeploy(_ deploy: CIDeploy) {
+        guard let activities, notifiesFailures || deploy.state == "success" else { return }
+        let ok = deploy.state == "success"
+        let tint = ok ? SparkVTheme.success : SparkVTheme.destructive
+        let symbol = ok ? "checkmark.icloud.fill" : "xmark.icloud.fill"
+        activities.post(LiveActivity(id: "devStatus.deploy", kind: .notification, priority: 64, duration: 6, opensTab: opensTab,
+                                     symbol: symbol, tint: tint) {
+            CodingAgentEventBand(symbol: symbol, tint: tint,
+                                 title: ok ? "Deployed to \(deploy.environment)" : "Deploy to \(deploy.environment) failed",
+                                 detail: deploy.repo)
+        })
+    }
+
     // MARK: Opening
 
     /// Opens the failing job (or the run) in the browser.
@@ -361,4 +450,37 @@ final class DevCIController: ObservableObject {
                                  detail: CodingAgentsController.redacted([run.repo, run.branch].compactMap { $0 }.joined(separator: " · ")))
         })
     }
+}
+
+/// An open pull request.
+struct CIPull: Identifiable, Equatable, Sendable {
+    let id: Int
+    let number: Int
+    let title: String
+    let author: String
+    let isDraft: Bool
+    let reviewers: [String]
+    let url: URL?
+
+    init?(json: [String: Any], repo: String) {
+        guard let id = json["id"] as? Int, let number = json["number"] as? Int else { return nil }
+        self.id = id
+        self.number = number
+        title = json["title"] as? String ?? "#\(number)"
+        author = (json["user"] as? [String: Any])?["login"] as? String ?? ""
+        isDraft = json["draft"] as? Bool ?? false
+        reviewers = (json["requested_reviewers"] as? [[String: Any]] ?? []).compactMap { $0["login"] as? String }
+        url = DevCIController.webURL(json["html_url"] as? String)
+    }
+}
+
+/// The newest deployment of a repo and its latest status.
+struct CIDeploy: Equatable, Sendable {
+    let repo: String
+    let id: Int
+    let environment: String
+    /// GitHub states: pending, queued, in_progress, success, failure, error, inactive.
+    let state: String
+    let url: URL?
+    var isFinished: Bool { ["success", "failure", "error"].contains(state) }
 }

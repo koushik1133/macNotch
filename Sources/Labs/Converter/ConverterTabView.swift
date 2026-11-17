@@ -18,7 +18,7 @@ private enum ConverterLayout {
 }
 
 /// Converter tab for the drawer (~508×114 pt): drop files, pick one of the
-/// formats that fit them, drag the result anywhere. iLovePDF-style tools,
+/// formats that fit them, drag the result anywhere. PDF and file tools,
 /// all on this Mac.
 ///
 /// Rows: dropped files · format buttons (or an inline password/text field)

@@ -193,7 +193,7 @@ Source: `wc -l Sources/Labs/<module>/*.swift`, 22 Oct 2026.
   ```
   NotchPanel (NSPanel: .borderless + .nonactivatingPanel, level .statusBar,
               .canJoinAllSpaces + .fullScreenAuxiliary, ignoresMouseEvents at rest)
-     └─ NotchHostingView (acceptsFirstMouse) ─ NotchNookLayoutView
+     └─ NotchHostingView (acceptsFirstMouse) ─ IslandLayoutView
            ├─ header: 6 tabs left · Focus, Record, Agents hub, Flow, Clicky, gear right
            └─ 21 drawer pages (NotchState.Tab) · AgentsHubView: 22 tiles
   NotchWindowController
@@ -204,7 +204,7 @@ Source: `wc -l Sources/Labs/<module>/*.swift`, 22 Oct 2026.
   Labs contract: DESIGN.md (research + decisions) → INTEGRATION.md (wiring steps)
                  → one `cp Sources/Labs/X/*.swift` line in build.sh
                  → lead wires the shared files (NotchState, NotchWindowController,
-                    NotchNookLayoutView, AgentsHubView)
+                    IslandLayoutView, AgentsHubView)
   ```
 - **Images:** `screenshots/10-agents-hub.png` in NotchFrame (right column). Motion: R2, crop C.
 - **Speaker notes:** The whole app is one borderless, non-activating panel at status-bar level. It joins every Space, including full-screen apps, never steals focus, and lets clicks fall through while the island is closed. AppKit normally pushes windows below the menu bar, so the panel overrides `constrainFrameRect` to sit at the absolute top edge. The window controller owns 31 long-lived feature objects plus the shared ActivityCenter. New features are built in isolation in a Labs folder: a DESIGN.md with the research and decisions, an INTEGRATION.md with exact wiring steps, then one copy line in build.sh. Only the lead touches the four shared files, which is what let us build features in parallel without merge fights.
@@ -215,9 +215,9 @@ Source: `wc -l Sources/Labs/<module>/*.swift`, 22 Oct 2026.
 
 ---
 
-### Slide 4: Live activities with Dynamic Island rules
+### Slide 4: Live activities with compact-island rules
 - **Layout:** feature showcase with screenshot
-- **Header:** Live activities with Dynamic Island rules
+- **Header:** Live activities with compact-island rules
 - **Subtitle:** A priority queue that never covers your work
 - **Body:**
   - Compact wings grow sideways inside the menu bar, 30–112 pt per side
@@ -226,7 +226,7 @@ Source: `wc -l Sources/Labs/<module>/*.swift`, 22 Oct 2026.
   - Persistent activities peek for 4 s, then rest in the wings
 - **Images (strip of bands, each in a mini NotchFrame, 100% scale):** `screenshots/46-compact-wings.png`, `42-volume-hud.png`, `43-battery.png`, `44-airpods.png`, `45-notification.png`, `47-screen-recording.png`. Motion: R3, crop B (bands) and crop D (wings).
 - **Status line (caption):** Bands render from source; key interception, banners and Bluetooth need a live check.
-- **Speaker notes:** The closed island follows Dynamic Island rules. Compact activities grow sideways inside the menu-bar height, so nothing below the menu bar is covered. Short alerts go into a priority queue whose clock only runs while they're visible, so a notification can't eat the charging alert. Volume and brightness are live feedback: newest wins and they're never replayed. Long-running things like a timer, a meeting or a recording peek in the band for four seconds and then tuck into the wings. All of this is one `ActivityCenter`, and every feature posts a `LiveActivity` with a priority, an optional compact form and a tab to open on hover. Honest status: the bands render from source, but key interception, banners and AirPods need the running app to confirm.
+- **Speaker notes:** The closed island follows strict compact-activity rules. Compact activities grow sideways inside the menu-bar height, so nothing below the menu bar is covered. Short alerts go into a priority queue whose clock only runs while they're visible, so a notification can't eat the charging alert. Volume and brightness are live feedback: newest wins and they're never replayed. Long-running things like a timer, a meeting or a recording peek in the band for four seconds and then tuck into the wings. All of this is one `ActivityCenter`, and every feature posts a `LiveActivity` with a priority, an optional compact form and a tab to open on hover. Honest status: the bands render from source, but key interception, banners and AirPods need the running app to confirm.
 - **Art direction:**
   - Composition: body on the left 5 columns; on the right a vertical stack of six mini NotchFrames (each 1224 x 180 at 100% → height 180 px plus bezel), 32 px apart, with a mono priority label at the right of each ("volume · live", "battery · 8 s", …). The wings frame (46) on top, highlighted.
   - Tokens: frames `notch`; labels `text-faint`; highlighted frame gets `glow`.
@@ -431,7 +431,7 @@ Source: FG "Verification summary".
   - Sparkle 2 updates with an EdDSA-signed appcast
   - Lemon Squeezy License API: activate, validate, deactivate
 - **Images:** none.
-- **Speaker notes:** SparkV can't be sandboxed. Apple's DTS says Accessibility APIs aren't compatible with the App Sandbox, and we also need event taps for the fn key, posted key events for paste, private DisplayServices for the HUD, the MediaRemote adapter for Now Playing, and child processes for Node and Shortcuts. NotchNook stays off the App Store for the same MediaRemote reason. So we ship direct: a Developer ID certificate replaces today's local identity, every nested binary is signed with the Hardened Runtime and a secure timestamp, the DMG is notarized and stapled, and Sparkle 2 delivers updates from a signed appcast. Since Sequoia, an un-notarized app can't be opened with right-click Open, so notarization isn't optional for a paid product. The local identity stays for development builds. Sources for the sandbox constraints are in BP §5.
+- **Speaker notes:** SparkV can't be sandboxed. Apple's DTS says Accessibility APIs aren't compatible with the App Sandbox, and we also need event taps for the fn key, posted key events for paste, private DisplayServices for the HUD, the MediaRemote adapter for Now Playing, and child processes for Node and Shortcuts. Other notch apps stay off the App Store for the same MediaRemote reason. So we ship direct: a Developer ID certificate replaces today's local identity, every nested binary is signed with the Hardened Runtime and a secure timestamp, the DMG is notarized and stapled, and Sparkle 2 delivers updates from a signed appcast. Since Sequoia, an un-notarized app can't be opened with right-click Open, so notarization isn't optional for a paid product. The local identity stays for development builds. Sources for the sandbox constraints are in BP §5.
 - **Art direction:**
   - Composition: two equal columns (6 + 6) separated by a 2 px `line` divider; left list prefixed with a small "×" glyph in `text-faint`, right list with numbered steps 1–5 in mono `accent-text` (it's a pipeline). Optional thin arrow under the right column running 1 → 5.
   - Tokens: left header `text-muted`, right header `text`; step numbers `accent-text`.
@@ -484,12 +484,12 @@ Source: derived from BP §4 Lemon Squeezy fees (5% + 50¢, +0.5% on subscription
 
 | Product | Category | First-year cost | Basis | Source (BP §3) |
 | --- | --- | --- | --- | --- |
-| Granola Business | Meeting notes | 168.00 | $14/user/mo x 12 | granola.ai |
-| Wispr Flow Pro | Dictation | 144.00 | $144/yr | getvoibe.com |
-| Raycast Pro | Launcher + AI | 96.00 | $8/mo billed yearly | raycast.com blog |
-| Paste | Clipboard | 29.99 | $29.99/yr | App Store |
-| CleanShot X | Screenshots | 29.00 | one-time, 1 yr updates | toolradar |
-| NotchNook | Notch hub | 25.00 | one-time | iMore |
+| Meeting-notes app | Meeting notes | 168.00 | $14/user/mo x 12 | public list price |
+| Dictation app | Dictation | 144.00 | $144/yr | public list price |
+| AI launcher | Launcher + AI | 96.00 | $8/mo billed yearly | public list price |
+| Clipboard app | Clipboard | 29.99 | $29.99/yr | public list price |
+| Screenshot app | Screenshots | 29.00 | one-time, 1 yr updates | public list price |
+| Notch hub app | Notch hub | 25.00 | one-time | public list price |
 | **Stack total** | | **491.99** | | |
 | **SparkV Pro** | all of the above categories | **39.00** (launch 29.00) | one-time | BP §6a |
 

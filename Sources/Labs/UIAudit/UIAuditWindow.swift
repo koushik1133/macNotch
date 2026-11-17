@@ -611,10 +611,31 @@ struct UIAuditPromptButton: View {
     }
 }
 
+/// Loads a finding's screenshot once, off the main actor (the row's body
+/// runs again on every hover and refresh).
+@MainActor
+final class UIAuditScreenshotModel: ObservableObject {
+    @Published private(set) var image: NSImage?
+    private var loaded: URL?
+
+    func load(_ url: URL?) {
+        guard url != loaded else { return }
+        loaded = url
+        image = nil
+        guard let url else { return }
+        Task { @MainActor [weak self] in
+            let data = await Task.detached(priority: .userInitiated) { try? Data(contentsOf: url) }.value
+            guard let self, self.loaded == url, let data else { return }
+            self.image = NSImage(data: data)
+        }
+    }
+}
+
 struct UIAuditFindingRow: View {
     let finding: UIAuditFinding
     let expanded: Bool
     let screenshot: URL?
+    @StateObject private var loadedScreenshot = UIAuditScreenshotModel()
     let showPage: Bool
     let toggle: () -> Void
     let openScreenshot: () -> Void
@@ -681,7 +702,7 @@ struct UIAuditFindingRow: View {
             if let help = finding.helpUrl, let url = URL(string: help) {
                 Link("Rule documentation", destination: url).font(.system(size: 10.5)).foregroundStyle(SparkVTheme.link)
             }
-            if let screenshot, let image = NSImage(contentsOf: screenshot) {
+            if let image = loadedScreenshot.image {
                 Button(action: openScreenshot) {
                     Image(nsImage: image)
                         .resizable()
@@ -698,6 +719,7 @@ struct UIAuditFindingRow: View {
             }
         }
         .padding(.leading, 4)
+        .onAppear { loadedScreenshot.load(screenshot) }
     }
 
     private func field(_ name: String, _ value: String, mono: Bool = false) -> some View {

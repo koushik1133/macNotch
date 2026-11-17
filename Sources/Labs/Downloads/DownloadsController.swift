@@ -334,7 +334,7 @@ final class DownloadsController: ObservableObject {
         let generation = tickGeneration
         tickTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
+                try? await Task.sleep(for: self?.tracker?.tickInterval() ?? .seconds(1), tolerance: .milliseconds(200))
                 guard let self, !Task.isCancelled, let tracker = self.tracker else { break }
                 tracker.tick()
                 if !tracker.needsTicks { break }

@@ -3,7 +3,7 @@ import ApplicationServices
 import Carbon.HIToolbox
 
 /// Pastes whatever is on the general pasteboard into the frontmost app by
-/// posting ⌘V, the way Maccy does: the item is written first with every
+/// posting ⌘V: the item is written first with every
 /// stored representation, so rich text, images and files paste as
 /// themselves (TextInserter only types plain text, and adds dictation's
 /// smart spacing). Needs the Accessibility permission to post the keystroke;

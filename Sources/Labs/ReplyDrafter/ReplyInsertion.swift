@@ -3,10 +3,9 @@ import Foundation
 
 // Writing the draft into the message box with exact Undo/Redo.
 //
-// Production tools insert at the field's selection: Grammarly's desktop app
-// requires apps to expose the text and selected-text range through
-// Accessibility, Raycast's Quick Fix "pastes back" over the selection, and
-// macOS assistive apps replace `AXSelectedText`. So the draft replaces one
+// Writing tools insert at the field's selection: they read the text and
+// selected-text range through Accessibility, paste back over the selection,
+// or replace `AXSelectedText` as macOS assistive apps do. So the draft replaces one
 // range of the field (the user's notes, a selection, or an empty spot before
 // the signature), and every later version replaces exactly the range the
 // previous version occupies. Undo writes the previous version back into that

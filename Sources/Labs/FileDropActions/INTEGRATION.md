@@ -121,9 +121,9 @@ In `isInteractionInProgress`, replace the `return` line with:
         return pressBeganInPanel || isMenuTracking || camera.isAwaitingPermission || fileDrop.holdsDrawerOpen
 ```
 
-## 4. NotchNookLayoutView.swift
+## 4. IslandLayoutView.swift
 
-Environment object in `NotchNookLayoutView`:
+Environment object in `IslandLayoutView`:
 
 ```swift
     @EnvironmentObject private var fileDrop: FileDropController
@@ -208,7 +208,7 @@ cards: everything built on `TrayDragSource`) now checks in with
 `TrayDragOut` (TrayView.swift). `FileDropController.holdsDrawerOpen`, which
 is already part of `isInteractionInProgress`, is true for the whole drag,
 for 1.2 s of slide-back after a cancelled one, and for 6 s after a drop made
-with Shift held (Dropover's "keep the shelf open" gesture). **No wiring is
+with Shift held (the usual "keep the shelf open" gesture). **No wiring is
 needed for this.**
 
 Optional, closes the drawer right after a successful drop instead of on the

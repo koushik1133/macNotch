@@ -21,6 +21,7 @@ struct MeetingRecordingBand: View {
                 let problem = recorder.micProblem
                 let micOnly = recorder.systemAudioProblem != nil
                 Text(elapsed < 10 ? "Let participants know you're recording"
+                     : elapsed < 18 ? "Listening in \(MeetingLanguage.effectiveName)"
                      : problem ?? (micOnly ? "Recording your mic only" : "Recording meeting"))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(elapsed < 10 || problem != nil ? SparkVTheme.warning : SparkVTheme.text)

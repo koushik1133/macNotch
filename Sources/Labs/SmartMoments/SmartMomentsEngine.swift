@@ -181,10 +181,14 @@ final class SmartMomentsController: ObservableObject, SmartMomentsEngine {
         }
 
         switch trigger {
-        case .meetingStarted:
+        case .meetingStarted(let call):
             drop { $0.moment == .meetingSoon } // Join is moot now
-        case .meetingEnded:
+            // An app's calls share one key ("app:facetime"): this is a new
+            // call, so its end is offered again.
+            handledAt[Self.bookKey(.meetingEnded(call, recordedMeetingID: nil))] = nil
+        case .meetingEnded(let call, _):
             drop { $0.moment == .meetingStarted } // unanswered, now stale
+            handledAt[Self.bookKey(.meetingStarted(call))] = nil
         case .screenSharingStarted:
             // Copied or captured content must not stay on a shared screen.
             drop { MomentEngineRules.contentMoments.contains($0.moment) }
@@ -205,7 +209,7 @@ final class SmartMomentsController: ObservableObject, SmartMomentsEngine {
             return
         }
 
-        let bookKey = moment.rawValue + "|" + trigger.dedupeKey
+        let bookKey = Self.bookKey(trigger)
         if isDuplicate(trigger, bookKey: bookKey, now: now) {
             note(moment, "duplicate, cooldown")
             return
@@ -263,6 +267,10 @@ final class SmartMomentsController: ObservableObject, SmartMomentsEngine {
         if hooks.isSparkVCapturing() && moment != .meetingEnded { return "SparkV capture window open" }
         if hooks.isOnCall() && MomentEngineRules.quietDuringCalls.contains(moment) { return "on a call" }
         return nil
+    }
+
+    private static func bookKey(_ trigger: MomentTrigger) -> String {
+        trigger.moment.rawValue + "|" + trigger.dedupeKey
     }
 
     private func isDuplicate(_ trigger: MomentTrigger, bookKey: String, now: Date) -> Bool {

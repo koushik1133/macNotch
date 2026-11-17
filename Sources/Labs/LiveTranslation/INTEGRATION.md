@@ -51,7 +51,7 @@ In `tearDown()`, before `meetingAssistant.shutdown()`. This saves the translated
 
 `attach(to:)` is all the hookup there is. It subscribes to `meetingAssistant.$phase`, which starts and ends a session, and to `meetingAssistant.$current`. The live transcript is `current.segments`. `MeetingAssistant.ingest(_:)` appends each new segment and replaces a volatile segment in place (same id) with its final version, and every change republishes `current`. MeetingAssistant needs no new hook.
 
-## 3. Settings (gear menu): NotchNookLayoutView.swift → `SettingsMenu`
+## 3. Settings (gear menu): IslandLayoutView.swift → `SettingsMenu`
 
 Add the environment object:
 

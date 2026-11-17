@@ -67,6 +67,11 @@ enum TextInserter {
             copyToClipboard(text)
             AppLog.log("Dictation: focus is in SparkV itself; text left on the clipboard")
             return .failed("Click a text field first – text copied")
+        case .secureField:
+            // Dictation never types into password fields (nor pastes there).
+            copyToClipboard(text)
+            AppLog.log("Dictation: focus is a password field; not typed, text left on the clipboard")
+            return .failed("Password field – not typed, text copied")
         case .notInserted:
             await pasteViaPasteboard(attempt.text)
             AppLog.log("Dictation: inserted \(attempt.text.count) chars via Cmd+V into \(attempt.appID)")
@@ -80,6 +85,8 @@ enum TextInserter {
         case inserted
         case notInserted
         case ownApp
+        /// A password field: never typed into.
+        case secureField
     }
 
     private struct AXAttempt: Sendable {
@@ -107,6 +114,9 @@ enum TextInserter {
             return AXAttempt(result: .ownApp, text: original, appID: "SparkV")
         }
         let appID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier ?? frontmostID()
+        if copyString(focused, kAXSubroleAttribute) == kAXSecureTextFieldSubrole as String {
+            return AXAttempt(result: .secureField, text: original, appID: appID)
+        }
 
         // Smart spacing: dictating right after a word adds a separating space.
         var text = original

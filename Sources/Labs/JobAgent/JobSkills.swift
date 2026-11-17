@@ -402,7 +402,7 @@ enum JobSkills {
 
 // MARK: - Keywords
 
-/// Jobscan-style "other keywords": frequent content words and bigrams of the
+/// "Other keywords": frequent content words and bigrams of the
 /// JD, checked for exact (stemmed) presence in the resume.
 enum JobKeywords {
     static let stopwords: Set<String> = Set("""

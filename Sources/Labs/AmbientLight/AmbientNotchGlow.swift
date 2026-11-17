@@ -51,6 +51,17 @@ enum AmbientNotchGlowMetrics {
 final class AmbientNotchGlowView: NSView {
     let glow: AmbientOutlineGlow
     private var geometry: (CGSize, CGFloat, CGFloat)?
+    /// The island outline in this view's coordinates (latest target size).
+    private(set) var outlineRect: CGRect?
+    private(set) var outlineRadius: CGFloat = 9
+
+    /// The island as it is now, in screen coordinates (the screen-edge light
+    /// wraps this instead of the bare camera housing, so it grows and shrinks
+    /// with notifications, wings and the drawer).
+    var islandScreenRect: CGRect? {
+        guard let window, let outlineRect, !isHiddenOrHasHiddenAncestor else { return nil }
+        return window.convertToScreen(convert(outlineRect, to: nil))
+    }
 
     override init(frame frameRect: NSRect) {
         glow = AmbientOutlineGlow()
@@ -89,7 +100,9 @@ final class AmbientNotchGlowView: NSView {
         if let geometry, geometry.0 == new.0, geometry.1 == new.1, geometry.2 == new.2 { return }
         let animate = geometry != nil && window != nil
         geometry = new
+        outlineRadius = bottomRadius
         let (path, rect) = AmbientNotchGlowMetrics.outline(bodySize: bodySize, topRadius: topRadius, bottomRadius: bottomRadius)
+        outlineRect = rect
         glow.setOutline(path, in: rect, springResponse: animate ? AmbientNotchGlowMetrics.springResponse : nil)
     }
 }

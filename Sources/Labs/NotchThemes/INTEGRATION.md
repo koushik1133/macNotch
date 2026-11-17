@@ -26,7 +26,7 @@ Add next to the other Labs lines:
 cp Sources/Labs/NotchThemes/*.swift "$WORK/src/"
 ```
 
-## 2. NotchNookLayoutView.swift
+## 2. IslandLayoutView.swift
 
 In `body`, put the backdrop behind the island, **after** `.clipShape(shape)`
 (so it isn't clipped) and **before** `.offset(x:)` (so it moves with uneven
@@ -118,7 +118,7 @@ Replace the panel-frame block at the end:
         if state.isExpanded { updateClickThrough() }
 ```
 
-The island stays where it is: `NotchNookLayoutView` pins it top-center with
+The island stays where it is: `IslandLayoutView` pins it top-center with
 `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)`.
 
 ### 3d. resizeForTab: compare against the grown height
@@ -284,7 +284,7 @@ Keep `window?.ignoresMouseEvents = !expanded` and add, after the
         themePreviewTask?.cancel()
 ```
 
-## 4. Gear menu (NotchNookLayoutView.swift, `SettingsMenu`)
+## 4. Gear menu (IslandLayoutView.swift, `SettingsMenu`)
 
 After `Menu("Modes") { ModesMenuItems() }`:
 
