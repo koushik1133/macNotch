@@ -746,10 +746,13 @@ final class AmbientLightController: NSObject, ObservableObject {
             }
         }
         edges.setShown(settings.scope == .notchAndEdges && frame.presence > 0.001)
-        if edges.isShown, let view = notchViews.allObjects.first(where: { $0.islandScreenRect != nil }) {
-            edges.setIsland(view.islandScreenRect, radius: view.outlineRadius)
+        // The light wraps the island's body (not the wider flare at the
+        // top) and rounds into the top edge with the flare's radius, so it
+        // hugs the drawer's sides instead of leaving a gap beside them.
+        if edges.isShown, let view = notchViews.allObjects.first(where: { $0.islandBodyScreenRect != nil }) {
+            edges.setIsland(view.islandBodyScreenRect, radius: view.outlineRadius, flare: view.outlineTopRadius)
         } else {
-            edges.setIsland(nil, radius: 0)
+            edges.setIsland(nil, radius: 0, flare: 0)
         }
         edges.render(frame, palette: palette)
         hapticsLive = live

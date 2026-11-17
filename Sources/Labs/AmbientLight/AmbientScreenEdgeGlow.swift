@@ -76,14 +76,14 @@ final class AmbientEdgePanel: NSPanel {
     }
 
     /// Follows the island on this screen; the camera housing otherwise.
-    func setIsland(_ rect: CGRect?, radius: CGFloat) {
+    func setIsland(_ rect: CGRect?, radius: CGFloat, flare: CGFloat) {
         guard let metal, let screen else { return }
         let f = screen.frame
         if let rect, rect.width > 20, f.insetBy(dx: -1, dy: -1).contains(CGPoint(x: rect.midX, y: rect.maxY - 1)) {
             let height = max(0, f.maxY - rect.minY)
-            metal.setNotchTarget((rect.minX - f.minX, rect.maxX - f.minX, height), radius: radius)
+            metal.setNotchTarget((rect.minX - f.minX, rect.maxX - f.minX, height), radius: radius, flare: flare)
         } else {
-            metal.setNotchTarget(Self.notch(of: screen), radius: 9)
+            metal.setNotchTarget(Self.notch(of: screen), radius: 9, flare: 0)
         }
     }
 
@@ -205,9 +205,9 @@ final class AmbientScreenEdgeGlow {
 
     /// The island's live outline in screen coordinates (nil: use the camera
     /// housing). Each panel wraps it on its own screen.
-    func setIsland(_ rect: CGRect?, radius: CGFloat) {
+    func setIsland(_ rect: CGRect?, radius: CGFloat, flare: CGFloat) {
         for panel in panels.values where panel.isVisible {
-            panel.setIsland(rect, radius: radius)
+            panel.setIsland(rect, radius: radius, flare: flare)
         }
     }
 

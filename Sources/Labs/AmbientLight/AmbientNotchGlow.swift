@@ -54,6 +54,8 @@ final class AmbientNotchGlowView: NSView {
     /// The island outline in this view's coordinates (latest target size).
     private(set) var outlineRect: CGRect?
     private(set) var outlineRadius: CGFloat = 9
+    /// The flare where the island meets the screen edge (0 on a pill).
+    private(set) var outlineTopRadius: CGFloat = 0
 
     /// The island as it is now, in screen coordinates (the screen-edge light
     /// wraps this instead of the bare camera housing, so it grows and shrinks
@@ -61,6 +63,19 @@ final class AmbientNotchGlowView: NSView {
     var islandScreenRect: CGRect? {
         guard let window, let outlineRect, !isHiddenOrHasHiddenAncestor else { return nil }
         return window.convertToScreen(convert(outlineRect, to: nil))
+    }
+
+    /// The island's body without the flare, in screen coordinates: below the
+    /// flare its sides are this far in, so the screen-edge light wraps this
+    /// (and rounds into the top edge with `outlineTopRadius`) to hug them.
+    var islandBodyScreenRect: CGRect? {
+        guard let window, let outlineRect, !isHiddenOrHasHiddenAncestor else { return nil }
+        // ¾ pt tucked under the body: the island's continuous corners and
+        // the light's circular ones never leave a hairline between them.
+        let tuck: CGFloat = 0.75
+        var body = outlineRect.insetBy(dx: min(outlineTopRadius, outlineRect.width / 4) + tuck, dy: 0)
+        body.size.height = max(1, body.height - tuck)
+        return window.convertToScreen(convert(body, to: nil))
     }
 
     override init(frame frameRect: NSRect) {
@@ -101,6 +116,7 @@ final class AmbientNotchGlowView: NSView {
         let animate = geometry != nil && window != nil
         geometry = new
         outlineRadius = bottomRadius
+        outlineTopRadius = max(0, topRadius)
         let (path, rect) = AmbientNotchGlowMetrics.outline(bodySize: bodySize, topRadius: topRadius, bottomRadius: bottomRadius)
         outlineRect = rect
         glow.setOutline(path, in: rect, springResponse: animate ? AmbientNotchGlowMetrics.springResponse : nil)

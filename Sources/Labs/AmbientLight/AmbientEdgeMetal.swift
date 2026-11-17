@@ -37,7 +37,8 @@ struct AmbientEdgeUniforms: Equatable {
     var glow = SIMD4<Float>(0, 0, 0, 0)
     /// Base palette position, wobble amplitude, flow phase (laps), winding 0...1 (Wave).
     var flow = SIMD4<Float>(0, 0, 0, 0)
-    /// Palette color count, core line width (points), unused, unused.
+    /// Palette color count, core line width (points), top-corner rounding
+    /// where the island meets the top edge (points; its flare radius), unused.
     var misc = SIMD4<Float>(1, 1.4, 0, 0)
     var c0 = SIMD4<Float>(1, 0.16, 0.2, 1)
     var c1 = SIMD4<Float>(1, 0.16, 0.2, 1)
@@ -104,7 +105,7 @@ final class AmbientEdgeGPU: @unchecked Sendable {
         float4 notch;   // x0, x1, height (0 = none), bottom radius (pt)
         float4 glow;    // width (pt), brightness, sparkle, reach (pt)
         float4 flow;    // base, wobble amplitude, flow phase, winding
-        float4 misc;    // color count, core width (pt)
+        float4 misc;    // color count, core width (pt), top-corner rounding (pt)
         float4 c[4];
     };
 
@@ -171,7 +172,8 @@ final class AmbientEdgeGPU: @unchecked Sendable {
             float2 nh = float2((u.notch.y - u.notch.x) * 0.5, (u.notch.z + ext) * 0.5);
             float dNotch = sdRoundBox(p, nc, nh, u.notch.w);
             outside = max(outside, -dNotch);
-            dist = smin(dist, dNotch, 7.0);
+            // Round into the top edge like the island's own flare.
+            dist = smin(dist, dNotch, max(7.0, u.misc.z));
         }
         float d = max(dist, 0.0);
 
@@ -264,18 +266,22 @@ final class AmbientEdgeMetalRenderer {
                                     height: max(1, (size.height * scale).rounded()))
         CATransaction.commit()
         uniforms.screen = SIMD4(Float(size.width), Float(size.height), Float(cornerRadius), Float(scale))
-        setNotchTarget(notch, radius: 9)
+        setNotchTarget(notch, radius: 9, flare: 0)
         uniforms.notch = notchTarget
+        uniforms.misc.z = flareTarget
         self.edgeWidth = Float(edgeWidth)
         invalidate()
     }
 
     /// Where the cut-out around the island should be; the drawn one glides there.
     private var notchTarget = SIMD4<Float>(repeating: 0)
+    /// Rounding where the cut-out meets the top edge (the island's flare).
+    private var flareTarget: Float = 0
 
-    func setNotchTarget(_ notch: (x0: CGFloat, x1: CGFloat, height: CGFloat)?, radius: CGFloat) {
+    func setNotchTarget(_ notch: (x0: CGFloat, x1: CGFloat, height: CGFloat)?, radius: CGFloat, flare: CGFloat) {
+        flareTarget = Float(max(0, min(flare, 32)))
         if let notch, notch.x1 > notch.x0, notch.height > 0 {
-            notchTarget = SIMD4(Float(notch.x0), Float(notch.x1), Float(notch.height), Float(max(4, min(radius, 24))))
+            notchTarget = SIMD4(Float(notch.x0), Float(notch.x1), Float(notch.height), Float(max(4, min(radius, 48))))
         } else {
             notchTarget = .zero
         }
@@ -323,6 +329,11 @@ final class AmbientEdgeMetalRenderer {
                 if simd_reduce_max(abs(notchTarget - next)) < 0.25 { next = notchTarget }
                 uniforms.notch = next
             }
+        }
+        if uniforms.misc.z != flareTarget {
+            let k = Float(1 - exp(-dt * 16))
+            let next = uniforms.misc.z + (flareTarget - uniforms.misc.z) * k
+            uniforms.misc.z = abs(flareTarget - next) < 0.25 || reduceMotion ? flareTarget : next
         }
 
         let width = edgeWidth * Float(0.55 + 0.45 * min(1, max(0.2, intensity))) * Float(0.85 + 0.9 * frame.bloom)
