@@ -30,27 +30,67 @@ struct CallAppBadge: View {
     }
 }
 
-/// Elapsed call time in green, counted by SwiftUI itself (no timer of
-/// ours); a red slashed mic beside it while muted.
+/// Elapsed call time in a soft "live" capsule: a green dot and white
+/// digits on a faint green fill (red, with a slashed mic, while muted).
+/// Counted by SwiftUI itself (no timer of ours) and still: no animation
+/// runs in the closed island for it.
 struct CallElapsedLabel: View {
     let startedAt: Date
     var isMuted = false
     var fontSize: CGFloat = 12
+    /// Plain green digits for a line of text (the call band's subtitle).
+    var isInline = false
+
+    private var tint: Color { isMuted ? SparkVTheme.destructive : SparkVTheme.success }
 
     var body: some View {
-        HStack(spacing: 4) {
-            if isMuted {
-                Image(systemName: "mic.slash.fill")
-                    .font(.system(size: fontSize - 2, weight: .bold))
-                    .foregroundStyle(SparkVTheme.destructive)
-                    .accessibilityLabel("Microphone muted")
-            }
+        if isInline {
             Text(timerInterval: startedAt...Date.distantFuture, countsDown: false)
                 .font(.system(size: fontSize, weight: .semibold).monospacedDigit())
                 .foregroundStyle(SparkVTheme.success)
                 .lineLimit(1)
                 .fixedSize()
+        } else {
+            wings
         }
+    }
+
+    private var wings: some View {
+        // A wing squeezed by menu bar items keeps the live dot, not a
+        // clipped number.
+        ViewThatFits(in: .horizontal) {
+            capsule(showsTime: true)
+            capsule(showsTime: false)
+        }
+    }
+
+    private func capsule(showsTime: Bool) -> some View {
+        HStack(spacing: 4) {
+            if isMuted {
+                Image(systemName: "mic.slash.fill")
+                    .font(.system(size: fontSize - 2.5, weight: .bold))
+                    .foregroundStyle(tint)
+                    .accessibilityLabel("Microphone muted")
+            } else {
+                Circle()
+                    .fill(tint)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: tint.opacity(0.8), radius: 2.5)
+                    .accessibilityHidden(true)
+            }
+            if showsTime {
+                Text(timerInterval: startedAt...Date.distantFuture, countsDown: false)
+                    .font(.system(size: fontSize, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(SparkVTheme.text)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 20)
+        .background(Capsule().fill(tint.opacity(0.18)))
+        .overlay(Capsule().strokeBorder(tint.opacity(0.35), lineWidth: 0.5))
+        .fixedSize()
     }
 }
 
@@ -126,7 +166,7 @@ struct OngoingCallBand: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 HStack(spacing: 5) {
-                    CallElapsedLabel(startedAt: call.startedAt, fontSize: 11)
+                    CallElapsedLabel(startedAt: call.startedAt, fontSize: 11, isInline: true)
                     Text("·").foregroundStyle(SparkVTheme.textTertiary)
                     Text(muted ? "Microphone muted" : (call.hasGenericTitle ? "Microphone on" : call.service))
                         .foregroundStyle(muted ? SparkVTheme.destructive : SparkVTheme.textSecondary)

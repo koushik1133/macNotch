@@ -273,6 +273,7 @@ final class PrivacyIndicatorMonitor: ObservableObject {
         }
         .titled("Microphone & Camera")
         .accessibility(snapshot.headline + " in use")
+        .hiddenDuringCalls()
         .compact {
             PrivacyDots(sensors: sensors, size: 7)
                 .accessibilityLabel(snapshot.headline)
