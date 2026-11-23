@@ -9,7 +9,8 @@ import FoundationModels
 /// 1. `preprocess` (deterministic): hard fillers, "scratch that", spoken
 ///    punctuation and layout commands, spoken bullets.
 /// 2. The on-device Apple Intelligence model (FoundationModels) with a strict
-///    "reformat only" prompt, bounded by a time budget of about 4 s.
+///    "reformat only" prompt, bounded by a time budget of about 1.5 s; after two misses in a
+///    row it is skipped for ten minutes.
 /// 3. `isFaithful` rejects model output that answers, follows or rewrites the
 ///    transcript instead of cleaning it.
 /// 4. `ruleBased` is the fallback whenever the model is unavailable, errors,
@@ -26,11 +27,37 @@ final class DictationFormatter {
     /// Longer transcripts skip the model: they would not fit the time budget.
     private static let modelCharacterLimit = 2500
 
+    /// The model is skipped for a while after it was too slow or wrong twice
+    /// in a row, so the text is typed at once instead of after a wait that
+    /// ends in the rule-based result anyway.
+    private var modelMisses = 0
+    private var modelPausedUntil: Date?
+    private static let modelPause: TimeInterval = 10 * 60
+
+    private var isModelPaused: Bool {
+        guard let until = modelPausedUntil else { return false }
+        if Date() < until { return true }
+        modelPausedUntil = nil
+        return false
+    }
+
+    private func noteModel(succeeded: Bool) {
+        if succeeded {
+            modelMisses = 0
+            return
+        }
+        modelMisses += 1
+        guard modelMisses >= 2 else { return }
+        modelMisses = 0
+        modelPausedUntil = Date().addingTimeInterval(Self.modelPause)
+        AppLog.log("Dictation: AI formatting paused for 10 min (too slow); typing with the built-in rules")
+    }
+
     /// Loads the model while the user is still talking, so the first request
     /// does not pay the cold-start cost (measured ~6 s cold vs ~1 s warm).
     func prewarm() {
         guard #available(macOS 26.0, *) else { return }
-        guard preparedSession == nil else { return }
+        guard preparedSession == nil, !isModelPaused else { return }
         let model = Self.model()
         guard model.isAvailable else { return }
         let session = LanguageModelSession(model: model, instructions: Self.instructions)
@@ -55,7 +82,7 @@ final class DictationFormatter {
             return Self.finishLines(Self.tidy(prepared), addPeriods: false)
         }
 
-        if #available(macOS 26.0, *), prepared.count <= Self.modelCharacterLimit {
+        if #available(macOS 26.0, *), prepared.count <= Self.modelCharacterLimit, !isModelPaused {
             let session = (preparedSession as? LanguageModelSession) ?? {
                 let model = Self.model()
                 return model.isAvailable ? LanguageModelSession(model: model, instructions: Self.instructions) : nil
@@ -69,11 +96,14 @@ final class DictationFormatter {
                     let cleaned = Self.restoreLayout(input: prepared, output: Self.postprocessModelOutput(output))
                     if Self.isFaithful(input: prepared, output: cleaned) {
                         AppLog.log("Dictation: formatted by model in \(elapsed) ms")
+                        noteModel(succeeded: true)
                         return cleaned
                     }
                     AppLog.log("Dictation: model output rejected by sanity check after \(elapsed) ms")
+                    noteModel(succeeded: false)
                 } else {
                     AppLog.log("Dictation: model unavailable, failed or timed out after \(elapsed) ms")
+                    noteModel(succeeded: false)
                 }
             }
         } else {
@@ -93,8 +123,9 @@ final class DictationFormatter {
 
     @available(macOS 26.0, *)
     private static func runModel(_ session: LanguageModelSession, transcript: String) async -> String? {
-        // ~4 s for normal dictation, a little more for long passages.
-        let budget = min(8.0, 4.0 + Double(max(0, transcript.count - 300)) / 400)
+        // A warm model answers in about half a second; 1.5 s for normal
+        // dictation and a little more for long passages, never a long wait.
+        let budget = min(3.5, 1.5 + Double(max(0, transcript.count - 200)) / 500)
         let prompt = "<transcript>\(transcript)</transcript>"
         let maxTokens = min(1500, transcript.count / 2 + 120)
         return await AsyncTimeout.run(seconds: budget) {
