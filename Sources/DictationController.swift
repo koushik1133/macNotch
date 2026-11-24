@@ -51,6 +51,15 @@ final class DictationController: ObservableObject {
             }
         }
 
+        /// Virtual key code (kVK_Function, kVK_RightOption).
+        var virtualKey: CGKeyCode? {
+            switch self {
+            case .fn: 0x3F
+            case .rightOption: 0x3D
+            case .off: nil
+            }
+        }
+
         var monitorKey: PushToTalkMonitor.Key? {
             switch self {
             case .fn: .fn
@@ -169,6 +178,9 @@ final class DictationController: ObservableObject {
     /// Re-creates the key tap when Accessibility is granted (or re-granted).
     private var accessibilityWatch: AnyCancellable?
     private var commandTimeoutTask: Task<Void, Never>?
+    /// Watches the hotkey while the key monitor cannot run (no Accessibility).
+    private var missingAccessTask: Task<Void, Never>?
+    private var lastAccessNotice: TimeInterval = 0
 
     init() {
         let defaults = UserDefaults.standard
@@ -234,6 +246,7 @@ final class DictationController: ObservableObject {
         cancel()
         cancelCommandCapture()
         accessibilityWatch = nil
+        missingAccessTask?.cancel()
         resetTask?.cancel()
         monitor.stop()
         monitor.onEvent = nil
@@ -410,6 +423,50 @@ final class DictationController: ObservableObject {
         // so it never prompts: onboarding or the Dictate button asks, and the
         // tap is created as soon as the grant arrives (watchAccessibility).
         AppLog.log("Dictation: waiting for Accessibility")
+        watchKeyWithoutAccessibility()
+    }
+
+    /// Without Accessibility the key monitor cannot run, so holding the
+    /// hotkey did nothing at all. Until the monitor runs, the key's state is
+    /// read a few times a second (this needs no permission), and a hold
+    /// explains what is missing instead of staying silent.
+    private func watchKeyWithoutAccessibility() {
+        guard missingAccessTask == nil else { return }
+        missingAccessTask = Task { [weak self] in
+            var heldSince: TimeInterval?
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                guard let self, self.started, !self.monitor.isRunning,
+                      let key = self.hotkey.virtualKey else { break }
+                let now = ProcessInfo.processInfo.systemUptime
+                guard CGEventSource.keyState(.combinedSessionState, key: key) else {
+                    heldSince = nil
+                    continue
+                }
+                let since = heldSince ?? now
+                heldSince = since
+                if now - since >= 0.35, now - self.lastAccessNotice > 20 {
+                    self.lastAccessNotice = now
+                    self.explainMissingAccessibility()
+                }
+            }
+            self?.missingAccessTask = nil
+        }
+    }
+
+    private func explainMissingAccessibility() {
+        guard !isBusy else { return }
+        AppLog.log("Dictation: hotkey held without Accessibility")
+        requestAccessibility()
+        fail(Self.accessibilityMessage)
+    }
+
+    /// A switch that is already on but belongs to an older build has to be
+    /// removed and added again; say so instead of "allow".
+    private static var accessibilityMessage: String {
+        PermissionCenter.shared.isLikelyStaleGrant(.accessibility)
+            ? "Accessibility: remove SparkV from the list, then add it again"
+            : "Allow Accessibility for SparkV"
     }
 
     /// A tap created before the grant (or before the user switched
@@ -529,7 +586,7 @@ final class DictationController: ObservableObject {
             // Hotkey or Dictate button: a user action. Asks once per
             // signature, afterwards opens the Accessibility pane.
             requestAccessibility()
-            fail("Allow Accessibility for SparkV")
+            fail(Self.accessibilityMessage)
             return
         }
         resetTask?.cancel()
