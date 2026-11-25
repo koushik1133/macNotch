@@ -1089,7 +1089,7 @@ enum AutomationCatalog {
     static let groups: [AutomationGroup] = [
         AutomationGroup(title: "Windows", alwaysAllowed: true, items: [
             AutomationExample(url: "sparkv://settings", title: "Open Settings", detail: "On the last pane used."),
-            AutomationExample(url: "sparkv://settings/advanced", title: "Open a Settings pane", detail: "general, island, media, system, activities, planner, shelf, extras, appearance, accessibility, advanced."),
+            AutomationExample(url: "sparkv://settings/advanced", title: "Open a Settings pane", detail: "general, island, media, system, activities, planner, shelf, extras, appearance, shortcuts, accessibility, advanced."),
             AutomationExample(url: "sparkv://about", title: "About SparkV", detail: "Version and licenses."),
             AutomationExample(url: "sparkv://diagnostics", title: "Crash & Hang Reports", detail: "The local report viewer."),
         ]),

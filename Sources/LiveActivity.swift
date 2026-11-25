@@ -132,6 +132,9 @@ struct LiveActivity: Identifiable {
     /// clicks, and hovering it never opens the drawer (`opensTab` is
     /// ignored for the band, not for the wings).
     var isInteractive = false
+    /// Stays out of the wings while a call activity shows (the call already
+    /// says the microphone and camera are in use).
+    var hidesDuringCall = false
     /// What VoiceOver reads for the closed island while this activity shows
     /// (band and wings read as one element). Never put hidden text here.
     var accessibilityText: String?
@@ -227,6 +230,13 @@ struct LiveActivity: Identifiable {
     func titled(_ title: String?) -> LiveActivity {
         var copy = self
         copy.title = title
+        return copy
+    }
+
+    /// Leaves the wings to a call while one shows (see `hidesDuringCall`).
+    func hiddenDuringCalls(_ hides: Bool = true) -> LiveActivity {
+        var copy = self
+        copy.hidesDuringCall = hides
         return copy
     }
 
@@ -679,6 +689,11 @@ final class ActivityCenter: ObservableObject {
 
             lives = entries.values.filter { !$0.isTransient }.sorted { lhs, rhs in
                 lhs.priority == rhs.priority ? lhs.order > rhs.order : lhs.priority > rhs.priority
+            }
+            // A call says the mic and camera are in use: what only repeats
+            // that (the privacy dots) steps aside while it shows.
+            if lives.contains(where: { $0.activity.kind == .call }) {
+                lives.removeAll { $0.activity.hidesDuringCall }
             }
             if let pinned = pinnedCompactID, !lives.contains(where: { $0.id == pinned }) {
                 pinnedCompactID = nil

@@ -257,7 +257,7 @@ final class CallsController: ObservableObject {
             if let self { OngoingCallBand(controller: self, call: call, icon: icon) }
         }
         .compact {
-            CallAppBadge(icon: icon, size: 16)
+            CallAppBadge(icon: icon, size: 18)
         } trailing: {
             CallElapsedLabel(startedAt: started, isMuted: muted)
         }

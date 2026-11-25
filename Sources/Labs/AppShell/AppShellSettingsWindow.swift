@@ -1,10 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// The eleven Settings panes, in toolbar order. Every package files its
+/// The twelve Settings panes, in toolbar order. Every package files its
 /// `<X>SettingsSection` views under one of these in `AppShellSettingsPanes.swift`.
 enum SparkVSettingsPane: String, CaseIterable, Identifiable, Sendable {
-    case general, island, media, system, activities, planner, shelf, extras, appearance, accessibility, advanced
+    case general, island, media, system, activities, planner, shelf, extras, appearance, shortcuts, accessibility, advanced
 
     var id: String { rawValue }
 
@@ -19,6 +19,7 @@ enum SparkVSettingsPane: String, CaseIterable, Identifiable, Sendable {
         case .shelf: "Shelf"
         case .extras: "Extras"
         case .appearance: "Appearance"
+        case .shortcuts: "Shortcuts"
         case .accessibility: "Accessibility"
         case .advanced: "Advanced"
         }
@@ -36,6 +37,7 @@ enum SparkVSettingsPane: String, CaseIterable, Identifiable, Sendable {
         case .shelf: "tray.full"
         case .extras: "puzzlepiece.extension"
         case .appearance: "paintpalette"
+        case .shortcuts: "keyboard"
         case .accessibility: "accessibility"
         case .advanced: "wrench.and.screwdriver"
         }
@@ -50,6 +52,7 @@ enum SparkVSettingsPane: String, CaseIterable, Identifiable, Sendable {
             "notch": .island, "music": .media, "ambient": .media, "ambient-light": .media, "now-playing": .media, "hud": .system, "battery": .system,
             "live-activities": .activities, "calendar": .planner, "timer": .planner, "focus": .planner,
             "tray": .shelf, "files": .shelf, "look": .appearance, "theme": .appearance,
+            "keys": .shortcuts, "keyboard": .shortcuts, "hotkeys": .shortcuts, "keyboard-shortcuts": .shortcuts,
             "diagnostics": .advanced, "automation": .advanced, "reset": .advanced, "uninstall": .advanced,
         ]
         guard let pane = aliases[slug] else { return nil }
@@ -69,7 +72,7 @@ final class SparkVSettingsWindowController: NSObject, NSWindowDelegate {
 
     static let lastPaneKey = "AppShell.settings.lastPane"
     static let frameName = "SparkV.Settings"
-    /// Wide enough for the eleven toolbar items at their measured label
+    /// Wide enough for the twelve toolbar items at their measured label
     /// widths (longer translations widen the window instead of pushing
     /// panes into the toolbar's » menu); panes scroll inside.
     static var contentSize: NSSize {

@@ -4,7 +4,7 @@ import SwiftUI
 
 // Global, remappable keyboard shortcuts for the island: one to open and
 // close it (⌃⌥O by default, off until switched on in Settings › Island or
-// Settings › Accessibility) and one per drawer tab (none assigned until you
+// Settings › Shortcuts) and one per drawer tab (none assigned until you
 // record one). Saved in UserDefaults under "SparkV.drawerShortcuts.*".
 // Hotkeys are Carbon `RegisterEventHotKey` (ScreenRegionHotkey): no
 // Accessibility permission, no event tap, nothing runs between presses.
@@ -186,7 +186,7 @@ final class DrawerShortcutStore: ObservableObject {
 
 // MARK: - Settings
 
-/// Settings › Accessibility › Keyboard Shortcuts.
+/// Settings › Shortcuts › Drawer Shortcuts.
 struct DrawerShortcutsSettingsSection: View {
     @ObservedObject private var store = DrawerShortcutStore.shared
     @ObservedObject private var interaction = IslandInteractionSettings.shared
@@ -216,7 +216,7 @@ struct DrawerShortcutsSettingsSection: View {
                 Text("When a shortcut opens the drawer: ← → (or Tab), ⌘1–⌘9 jump to a tab, Esc closes.")
             }
         } header: {
-            Text("Keyboard Shortcuts")
+            Text("Drawer Shortcuts")
         } footer: {
             Text("Click a shortcut, then press the new keys (with ⌃, ⌥ or ⌘). Esc cancels, ⌫ clears. Tab shortcuts are off until you set one. A drawer opened by keyboard closes with Esc and gives the keyboard back to the app you were in.")
                 .font(.footnote)

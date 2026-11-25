@@ -225,10 +225,10 @@ enum HubCatalog {
                                          help: "Live Activities: the next running one beside the notch (⌃⌥A)"),
                        pinAction: { _ in LiveActivitiesController.current?.showNextFromKeyboard() }) { _ in AnyView(LiveActivitiesHubTile()) },
         HubPackageTile(info: HubTileInfo(id: "notificationsUnderNotch", title: "Alerts", systemImage: "bell.badge.fill",
-                                         tint: .red, category: .focus,
+                                         tint: .red, category: .system,
                                          help: "Notifications under the notch on or off")) { _ in AnyView(NotificationsHubTile()) },
         HubPackageTile(info: HubTileInfo(id: "calls", title: "Calls", systemImage: "phone.fill",
-                                         tint: .green, category: .media,
+                                         tint: .green, category: .system,
                                          help: "Calls: mute during a call, incoming calls on or off")) { _ in AnyView(CallsHubTile()) },
         // System Status (System; Mute Mic in Media).
         HubPackageTile(info: HubTileInfo(id: "status", title: "Status", systemImage: "battery.75percent",
@@ -270,7 +270,7 @@ enum HubCatalog {
         HubPackageTile(info: HubTileInfo(id: "weather", title: "Weather", systemImage: "cloud.sun.fill", tint: .cyan, category: .planner,
                                          help: "Weather (off until you choose a city)"),
                        pinAction: { _ in PlannerRouter.shared.show(.weather) }) { _ in AnyView(WeatherHubTile()) },
-        HubPackageTile(info: HubTileInfo(id: "launcher", title: "Launcher", systemImage: "square.grid.3x3.fill", tint: .indigo, category: .system,
+        HubPackageTile(info: HubTileInfo(id: "launcher", title: "Launcher", systemImage: "square.grid.3x3.fill", tint: .indigo, category: .planner,
                                          help: "Launcher: pinned apps and shortcuts"),
                        pinAction: { _ in PlannerRouter.shared.show(.launcher) }) { _ in AnyView(LauncherHubTile()) },
         // Shelf (Files).
@@ -368,7 +368,7 @@ enum HubCatalog {
                     help: "File Drop: rename, compress, convert, AirDrop"),
         HubTileInfo(id: "downloads", title: "Downloads", systemImage: "arrow.down.circle", tint: .blue, category: .files,
                     help: "Downloads: progress, recent files and sorting"),
-        HubTileInfo(id: "translate", title: "Translate", systemImage: "captions.bubble.fill", tint: .green, category: .media,
+        HubTileInfo(id: "translate", title: "Translate", systemImage: "captions.bubble.fill", tint: .green, category: .planner,
                     help: "Translate meeting captions live"),
         HubTileInfo(id: "uiAudit", title: "UI Audit", systemImage: "checkmark.rectangle.stack", tint: .green, category: .developer,
                     help: "UI Audit"),
@@ -422,17 +422,30 @@ enum HubCatalog {
                     help: "Clicky: ask about your screen", pinnable: false),
     ]
 
-    /// Default order for a header layout: built-ins, stand-ins for hidden
-    /// header controls, package tiles, Look & Layout, the capsule.
+    /// Default order for a header layout: every tile grouped by category
+    /// (see `groupedByCategory`), then the capsule.
     static func defaultOrder(header: HeaderLayout) -> [String] {
         let shownStandIns = Set(header.hubStandIns)
         // Smart Moments has a tile only when it is built and running.
         let builtIns = builtIn.filter { $0.id != "smartMoments" || SmartMomentsWiring.current != nil }
-        return builtIns.map(\.id)
+        let ids = builtIns.map(\.id)
             + standIns.map(\.id).filter { shownStandIns.contains($0) }
             + packageTiles.map(\.id)
             + lookTiles.map(\.id)
-            + [capsule.id]
+        return groupedByCategory(ids) + [capsule.id]
+    }
+
+    /// `ids` with each category's tiles together, categories in bar order
+    /// (Write, Screen, Focus, Files, Media, System, Developer, Planner) and
+    /// the order inside a category unchanged. The capsule stays last.
+    static func groupedByCategory(_ ids: [String]) -> [String] {
+        let rank = Dictionary(uniqueKeysWithValues: HubCategory.allCases.enumerated().map { ($1, $0) })
+        let tiles = ids.filter { $0 != capsule.id }
+        let sorted = tiles.enumerated().sorted { a, b in
+            let ra = rank[category(of: a.element)] ?? 0, rb = rank[category(of: b.element)] ?? 0
+            return ra != rb ? ra < rb : a.offset < b.offset
+        }.map(\.element)
+        return sorted + ids.filter { $0 == capsule.id }
     }
 
     /// Every tile that can ever appear (for the Customize window and pins).

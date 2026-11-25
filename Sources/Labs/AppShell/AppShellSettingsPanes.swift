@@ -18,6 +18,7 @@ enum SparkVSettingsPanes {
         switch pane {
         case .general:
             AppShellAboutSettingsSection()
+            AppShellPermissionsSettingsSection()
             AppShellStartupSettingsSection()
             AppShellMenuBarSettingsSection()
             AppShellUpdatesSettingsSection()
@@ -37,6 +38,7 @@ enum SparkVSettingsPanes {
                 IslandExcludedAppsSettingsSection()
                 IslandOpeningSettingsSection()
                 IslandMenuBarSettingsSection()
+                SettingsCardRow { MenuBarOverflowSettingsSection() }
             }
             Group {
                 SettingsCardRow { QuickTogglesSettingsSection() }
@@ -62,7 +64,6 @@ enum SparkVSettingsPanes {
 
         case .system:
             Group {
-                AppShellPermissionsSettingsSection()
                 HUDSettingsSection()
                 HUDDisplaysSettingsSection()
             }
@@ -74,7 +75,7 @@ enum SparkVSettingsPanes {
                 SettingsCardRow { BatterySettingsSection() }
                 SettingsCardRow { PeripheralBatterySettingsSection() }
                 SettingsCardRow { KeepAwakeSettingsSection() }
-                SettingsCardRow { MenuBarOverflowSettingsSection() }
+                SettingsCardRow { CapsLockSettingsSection() }
             }
             EnergySettingsSection()
             // ▸ System: add sections above this line
@@ -131,13 +132,16 @@ enum SparkVSettingsPanes {
             }
             // ▸ Appearance: add sections above this line
 
+        case .shortcuts:
+            ShortcutsReferenceSettingsSection()
+            DrawerShortcutsSettingsSection()
+            // ▸ Shortcuts: add sections above this line
+
         case .accessibility:
             TextContrastSettingsSection()
             AppShellAccessibilityStatusSection()
             IslandHapticsSettingsSection()
             VoiceOverAnnouncementsSettingsSection()
-            DrawerShortcutsSettingsSection()
-            SettingsCardRow { CapsLockSettingsSection() }
             // ▸ Accessibility: add sections above this line
 
         case .advanced:

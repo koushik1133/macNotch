@@ -51,6 +51,15 @@ final class DictationController: ObservableObject {
             }
         }
 
+        /// Virtual key code (kVK_Function, kVK_RightOption).
+        var virtualKey: CGKeyCode? {
+            switch self {
+            case .fn: 0x3F
+            case .rightOption: 0x3D
+            case .off: nil
+            }
+        }
+
         var monitorKey: PushToTalkMonitor.Key? {
             switch self {
             case .fn: .fn
@@ -169,6 +178,9 @@ final class DictationController: ObservableObject {
     /// Re-creates the key tap when Accessibility is granted (or re-granted).
     private var accessibilityWatch: AnyCancellable?
     private var commandTimeoutTask: Task<Void, Never>?
+    /// Watches the hotkey while the key monitor cannot run (no Accessibility).
+    private var missingAccessTask: Task<Void, Never>?
+    private var lastAccessNotice: TimeInterval = 0
 
     init() {
         let defaults = UserDefaults.standard
@@ -191,6 +203,9 @@ final class DictationController: ObservableObject {
         started = true
         monitor.onEvent = { [weak self] event, time in
             self?.handleKey(event, at: time)
+        }
+        SpeechModelDownload.onInstalled = { [weak self] in
+            self?.flash(.done("Dictation is ready"))
         }
         applyHotkey()
     }
@@ -231,6 +246,7 @@ final class DictationController: ObservableObject {
         cancel()
         cancelCommandCapture()
         accessibilityWatch = nil
+        missingAccessTask?.cancel()
         resetTask?.cancel()
         monitor.stop()
         monitor.onEvent = nil
@@ -407,6 +423,50 @@ final class DictationController: ObservableObject {
         // so it never prompts: onboarding or the Dictate button asks, and the
         // tap is created as soon as the grant arrives (watchAccessibility).
         AppLog.log("Dictation: waiting for Accessibility")
+        watchKeyWithoutAccessibility()
+    }
+
+    /// Without Accessibility the key monitor cannot run, so holding the
+    /// hotkey did nothing at all. Until the monitor runs, the key's state is
+    /// read a few times a second (this needs no permission), and a hold
+    /// explains what is missing instead of staying silent.
+    private func watchKeyWithoutAccessibility() {
+        guard missingAccessTask == nil else { return }
+        missingAccessTask = Task { [weak self] in
+            var heldSince: TimeInterval?
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                guard let self, self.started, !self.monitor.isRunning,
+                      let key = self.hotkey.virtualKey else { break }
+                let now = ProcessInfo.processInfo.systemUptime
+                guard CGEventSource.keyState(.combinedSessionState, key: key) else {
+                    heldSince = nil
+                    continue
+                }
+                let since = heldSince ?? now
+                heldSince = since
+                if now - since >= 0.35, now - self.lastAccessNotice > 20 {
+                    self.lastAccessNotice = now
+                    self.explainMissingAccessibility()
+                }
+            }
+            self?.missingAccessTask = nil
+        }
+    }
+
+    private func explainMissingAccessibility() {
+        guard !isBusy else { return }
+        AppLog.log("Dictation: hotkey held without Accessibility")
+        requestAccessibility()
+        fail(Self.accessibilityMessage)
+    }
+
+    /// A switch that is already on but belongs to an older build has to be
+    /// removed and added again; say so instead of "allow".
+    private static var accessibilityMessage: String {
+        PermissionCenter.shared.isLikelyStaleGrant(.accessibility)
+            ? "Accessibility: remove SparkV from the list, then add it again"
+            : "Allow Accessibility for SparkV"
     }
 
     /// A tap created before the grant (or before the user switched
@@ -526,7 +586,7 @@ final class DictationController: ObservableObject {
             // Hotkey or Dictate button: a user action. Asks once per
             // signature, afterwards opens the Accessibility pane.
             requestAccessibility()
-            fail("Allow Accessibility for SparkV")
+            fail(Self.accessibilityMessage)
             return
         }
         resetTask?.cancel()
@@ -736,13 +796,16 @@ enum DictationError: Error {
     case speechDenied
     case noMicrophone
     case recognizerUnavailable
+    /// macOS is still downloading the on-device speech model (first use).
+    case modelDownloading
 
     static func message(for error: any Error) -> String {
         switch error as? DictationError {
         case .microphoneDenied: "Allow Microphone for SparkV"
         case .speechDenied: "Allow Speech Recognition for SparkV"
         case .noMicrophone: "No microphone found"
-        case .recognizerUnavailable: "Speech recognition unavailable"
+        case .recognizerUnavailable: "Speech isn’t ready: turn on Dictation in Keyboard settings"
+        case .modelDownloading: "Getting the speech model – try again in a minute"
         case nil: "Dictation failed"
         }
     }
@@ -793,38 +856,57 @@ final class DictationRecorder {
         onText: @escaping @MainActor @Sendable (String) -> Void,
         onLevel: @escaping @Sendable (Float) -> Void
     ) async throws -> DictationRecorder {
-        if #available(macOS 26.0, *), let analyzer = await AnalyzerBackend.make(hints: hints, onText: onText) {
-            do {
-                let recorder = try await start(backend: analyzer, onLevel: onLevel)
-                AppLog.log("Dictation: SpeechAnalyzer started")
-                return recorder
-            } catch DictationError.noMicrophone {
-                throw DictationError.noMicrophone
-            } catch {
-                AppLog.log("Dictation: SpeechAnalyzer failed (\(error)), using SFSpeechRecognizer")
-            }
-        }
-        let legacy = try LegacyBackend(hints: hints, onText: onText)
-        let recorder = try await start(backend: legacy, onLevel: onLevel)
-        AppLog.log("Dictation: SFSpeechRecognizer started")
-        return recorder
-    }
+        let began = ProcessInfo.processInfo.systemUptime
+        func elapsed() -> Int { Int((ProcessInfo.processInfo.systemUptime - began) * 1000) }
 
-    private static func start(
-        backend: any TranscriptionBackend, onLevel: @escaping @Sendable (Float) -> Void
-    ) async throws -> DictationRecorder {
+        // The recognizer is set up while the microphone opens (the two used
+        // to run one after the other, and the first words were lost).
+        let analyzerTask = Task { @MainActor () -> (any TranscriptionBackend)? in
+            if #available(macOS 26.0, *) { return await AnalyzerBackend.make(hints: hints, onText: onText) }
+            return nil
+        }
         let capture = AudioCapture()
+        // Holds the audio until a recognizer is ready, then replays it.
+        let relay = BufferRelay()
         do {
-            // Capture first: audio is buffered while the recognizer warms up,
-            // so the first words are not lost.
-            try await capture.start(onBuffer: backend.sink, onLevel: onLevel)
-            try await backend.begin()
+            try await capture.start(onBuffer: { relay.send($0) }, onLevel: onLevel)
         } catch {
             await capture.stop()
-            await backend.cancel()
+            if let backend = await analyzerTask.value { await backend.cancel() }
             throw error
         }
-        return DictationRecorder(capture: capture, backend: backend)
+        let micReady = elapsed()
+
+        if let analyzer = await analyzerTask.value {
+            do {
+                relay.attach(analyzer.sink)
+                try await analyzer.begin()
+                relay.commit()
+                AppLog.log("Dictation: SpeechAnalyzer started (mic \(micReady) ms, ready \(elapsed()) ms)")
+                return DictationRecorder(capture: capture, backend: analyzer)
+            } catch {
+                AppLog.log("Dictation: SpeechAnalyzer failed (\(error)), using SFSpeechRecognizer")
+                await analyzer.cancel()
+            }
+        }
+        do {
+            let legacy = try LegacyBackend(hints: hints, onText: onText)
+            // Replays everything from the start, also after a failed analyzer.
+            relay.attach(legacy.sink)
+            try await legacy.begin()
+            relay.commit()
+            AppLog.log("Dictation: SFSpeechRecognizer started (mic \(micReady) ms, ready \(elapsed()) ms)")
+            return DictationRecorder(capture: capture, backend: legacy)
+        } catch {
+            relay.commit()
+            await capture.stop()
+            capture.discardKeptAudio()
+            // No recognizer yet because macOS is still fetching the speech model.
+            if case DictationError.recognizerUnavailable = error, SpeechModelDownload.isRunning {
+                throw DictationError.modelDownloading
+            }
+            throw error
+        }
     }
 
     /// Stops the microphone and returns the final transcript.
@@ -898,6 +980,50 @@ protocol TranscriptionBackend: AnyObject {
     func begin() async throws
     func finish() async -> String
     func cancel() async
+}
+
+/// The one-time speech model download macOS runs for SpeechAnalyzer.
+@MainActor
+enum SpeechModelDownload {
+    static var isRunning = false
+    /// Called on the main actor when the model finished installing.
+    static var onInstalled: (@MainActor () -> Void)?
+}
+
+/// Sits between the microphone and the recognizer while the recognizer is
+/// still starting: keeps copies of the audio, replays them to the sink that
+/// gets attached, and passes audio straight through after `commit()`.
+final class BufferRelay: @unchecked Sendable {
+    private let lock = NSLock()
+    private var backlog: [AVAudioPCMBuffer] = []
+    private var sink: (@Sendable (AVAudioPCMBuffer) -> Void)?
+    private var keepsBacklog = true
+    /// Start-up takes a second or two; this only bounds a stuck start.
+    private static let maximumBacklog = 1500
+
+    /// Audio thread.
+    func send(_ buffer: AVAudioPCMBuffer) {
+        lock.lock(); defer { lock.unlock() }
+        // A copy: before macOS 27 the tap reuses its buffer after returning.
+        if keepsBacklog, backlog.count < Self.maximumBacklog, let copy = AudioCapture.copy(buffer) {
+            backlog.append(copy)
+        }
+        sink?(buffer)
+    }
+
+    /// Replays everything heard so far into `sink`, then feeds it live.
+    func attach(_ sink: @escaping @Sendable (AVAudioPCMBuffer) -> Void) {
+        lock.lock(); defer { lock.unlock() }
+        for buffer in backlog { sink(buffer) }
+        self.sink = sink
+    }
+
+    /// The recognizer started: stop keeping copies.
+    func commit() {
+        lock.lock(); defer { lock.unlock() }
+        keepsBacklog = false
+        backlog.removeAll()
+    }
 }
 
 private func joinTranscript(_ head: String, _ tail: String) -> String {
@@ -1136,7 +1262,7 @@ final class AudioCapture: @unchecked Sendable {
         }
     }
 
-    private static func copy(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+    static func copy(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
         guard let source = buffer.floatChannelData,
               let copy = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength),
               let destination = copy.floatChannelData else { return nil }
@@ -1163,13 +1289,60 @@ final class AudioCapture: @unchecked Sendable {
 /// Audio thread only.
 final class MonoDownmix: @unchecked Sendable {
     private let mixer = MeetingMonoMixer()
+    private let sampleRate: Double
 
-    init(sampleRate: Double) {}
+    // Automatic gain: a quiet microphone (the MacBook array often peaks
+    // around -40 dB) is lifted to a normal speech level, because the
+    // recognizer returned nothing or wrong words for audio that quiet.
+    private var gain: Float = 1
+    private var envelope: Float = 0
+    /// Peak the speech is lifted to (about -10 dB).
+    private static let targetPeak: Float = 0.3
+    /// Never more than +30 dB.
+    private static let maximumGain: Float = 31.6
+    /// Below about -54 dB is room tone: it never raises the gain.
+    private static let gate: Float = 0.002
+
+    init(sampleRate: Double) {
+        self.sampleRate = sampleRate
+    }
 
     func process(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         let format = buffer.format
-        if format.channelCount == 1, format.commonFormat == .pcmFormatFloat32 { return buffer }
-        return mixer.mix(buffer) ?? buffer
+        let mono = format.channelCount == 1 && format.commonFormat == .pcmFormatFloat32
+            ? buffer : (mixer.mix(buffer) ?? buffer)
+        applyGain(mono)
+        return mono
+    }
+
+    private func applyGain(_ buffer: AVAudioPCMBuffer) {
+        let frames = Int(buffer.frameLength)
+        guard frames > 0, buffer.format.channelCount == 1, let samples = buffer.floatChannelData?[0] else { return }
+        var peak: Float = 0
+        for index in 0..<frames { peak = max(peak, abs(samples[index])) }
+
+        // Envelope: jumps up with speech, falls back over about three seconds.
+        let seconds = Float(Double(frames) / max(sampleRate, 1))
+        envelope *= exp(-seconds / 3)
+        if peak > Self.gate { envelope = max(envelope, peak) }
+        guard envelope > 0 else { return }
+
+        let wanted = min(Self.maximumGain, max(1, Self.targetPeak / envelope))
+        // Down at once (no clipping when speech gets louder), up gently.
+        if wanted < gain { gain = wanted }
+        let next = gain + (wanted - gain) * min(1, seconds / 0.25)
+        guard gain > 1.01 || next > 1.01 else {
+            gain = next
+            return
+        }
+        // Ramp across the buffer so a gain change is not audible as a click.
+        let step = (next - gain) / Float(frames)
+        var current = gain
+        for index in 0..<frames {
+            current += step
+            samples[index] = min(1, max(-1, samples[index] * current))
+        }
+        gain = next
     }
 }
 
@@ -1367,6 +1540,7 @@ final class AnalyzerBackend: TranscriptionBackend {
     private static func installAssets(for locale: Locale) {
         guard !isInstallingAssets else { return }
         isInstallingAssets = true
+        SpeechModelDownload.isRunning = true
         AppLog.log("Dictation: downloading speech model for \(locale.identifier)")
         Task.detached(priority: .utility) {
             do {
@@ -1376,10 +1550,14 @@ final class AnalyzerBackend: TranscriptionBackend {
                     try await request.downloadAndInstall()
                 }
                 AppLog.log("Dictation: speech model installed")
+                await MainActor.run { SpeechModelDownload.onInstalled?() }
             } catch {
                 AppLog.log("Dictation: speech model download failed: \(error)")
             }
-            await MainActor.run { AnalyzerBackend.isInstallingAssets = false }
+            await MainActor.run {
+                AnalyzerBackend.isInstallingAssets = false
+                SpeechModelDownload.isRunning = false
+            }
         }
     }
 }

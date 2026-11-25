@@ -105,6 +105,7 @@ struct AppShellMenuItems: View {
 
     var body: some View {
         Button("Settings…") { SparkVSettings.show() }
+        Button("Keyboard Shortcuts…") { SparkVSettings.show(.shortcuts) }
         Button(updates.menuTitle) { updates.checkNow(userInitiated: true) }
             .disabled(updates.isChecking)
         Menu("Troubleshooting") { AppShellTroubleshootingMenuItems() }
@@ -134,6 +135,7 @@ struct AppShellContextMenuItems: View {
         Text("SparkV \(SparkVAppInfo.versionText)")
         Divider()
         Button("Settings…") { SparkVSettings.show() }
+        Button("Keyboard Shortcuts…") { SparkVSettings.show(.shortcuts) }
         Button(updates.menuTitle) { updates.checkNow(userInitiated: true) }
             .disabled(updates.isChecking)
         Divider()
@@ -150,6 +152,7 @@ final class AppShellMenuTarget: NSObject, NSMenuItemValidation {
     static let shared = AppShellMenuTarget()
 
     @objc func openSettings(_ sender: Any?) { SparkVSettings.show() }
+    @objc func openShortcuts(_ sender: Any?) { SparkVSettings.show(.shortcuts) }
     @objc func checkForUpdates(_ sender: Any?) { UpdateController.shared.checkNow(userInitiated: true) }
     @objc func showAbout(_ sender: Any?) { SparkVAppInfo.showAbout() }
     @objc func quit(_ sender: Any?) { SparkVAppInfo.quit() }
@@ -242,6 +245,8 @@ enum AppShellMenus {
 
         let helpItem = NSMenuItem()
         let help = NSMenu(title: "Help")
+        help.addItem(item("Keyboard Shortcuts", #selector(AppShellMenuTarget.openShortcuts(_:))))
+        help.addItem(.separator())
         help.addItem(item("Automation Guide", #selector(AppShellMenuTarget.showAutomationGuide(_:))))
         help.addItem(item("Crash & Hang Reports", #selector(AppShellMenuTarget.showDiagnostics(_:))))
         help.addItem(item("SparkV on GitHub", #selector(AppShellMenuTarget.openRepository(_:))))
@@ -267,6 +272,7 @@ enum AppShellMenus {
         menu.addItem(.separator())
         menu.addItem(item("Open Drawer", #selector(AppShellMenuTarget.openDrawer(_:)), symbol: "rectangle.topthird.inset.filled"))
         menu.addItem(item("Settings…", #selector(AppShellMenuTarget.openSettings(_:)), symbol: "gearshape"))
+        menu.addItem(item("Keyboard Shortcuts…", #selector(AppShellMenuTarget.openShortcuts(_:)), symbol: "keyboard"))
         if UpdateController.shared.availableRelease == nil {
             menu.addItem(item("Check for Updates…", #selector(AppShellMenuTarget.checkForUpdates(_:)), symbol: "arrow.triangle.2.circlepath"))
         }
