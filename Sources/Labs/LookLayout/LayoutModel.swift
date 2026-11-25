@@ -36,10 +36,10 @@ enum HubCategory: String, CaseIterable, Identifiable, Codable, Sendable {
         case .screen: "Ask about the screen, copy text, record"
         case .focus: "Focus sessions, modes and screen distance"
         case .files: "Search, capture, files, downloads and sync"
-        case .media: "Music, light and live captions"
-        case .system: "Widgets, fans, moments, look and setup"
+        case .media: "Music, sound, light and camera"
+        case .system: "Alerts, calls, widgets, fans, look and setup"
         case .developer: "UI audits, browser flows and the canvas"
-        case .planner: "Meetings, jobs and today"
+        case .planner: "Meetings, captions, launcher, jobs and today"
         }
     }
 }

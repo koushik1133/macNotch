@@ -76,6 +76,7 @@ final class LayoutSettings: ObservableObject {
         static let headerPins = "SparkV.layout.headerPins"
         static let hubOrder = "SparkV.layout.hubOrder"
         static let hubHidden = "SparkV.layout.hubHidden"
+        static let hubGrouped = "SparkV.layout.hubGroupedByCategory"
         static let hubCategory = "SparkV.layout.hubCategory"
         static let openOn = "SparkV.layout.openOn"
         static let hidesEmptyShortcuts = "SparkV.layout.hidesEmptyShortcuts"
@@ -121,8 +122,18 @@ final class LayoutSettings: ObservableObject {
             pins: defaults.stringArray(forKey: Key.headerPins),
             knownPins: HubCatalog.pinnableIDs
         )
+        // Once: a saved hub order from before tiles were grouped by category
+        // is regrouped (the order inside each category is kept).
+        var savedOrder = defaults.stringArray(forKey: Key.hubOrder) ?? []
+        if !defaults.bool(forKey: Key.hubGrouped) {
+            if !savedOrder.isEmpty {
+                savedOrder = HubCatalog.groupedByCategory(savedOrder)
+                defaults.set(savedOrder, forKey: Key.hubOrder)
+            }
+            defaults.set(true, forKey: Key.hubGrouped)
+        }
         hub = HubLayout(
-            order: defaults.stringArray(forKey: Key.hubOrder) ?? [],
+            order: savedOrder,
             hidden: Set(defaults.stringArray(forKey: Key.hubHidden) ?? []),
             category: defaults.string(forKey: Key.hubCategory).flatMap(HubCategory.init(rawValue:)) ?? .all
         )

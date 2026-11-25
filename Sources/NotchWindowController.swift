@@ -2375,7 +2375,7 @@ final class NotchWindowController: NSWindowController {
     /// size, menu bar room, menu bar managers and other notch apps.
     private func connectInteraction() {
         interaction.onToggleHotkey = { [weak self] in self?.toggleFromKeyboard() }
-        // Settings › Accessibility › Keyboard Shortcuts: one per tab.
+        // Settings › Shortcuts › Drawer Shortcuts: one per tab.
         let shortcuts = DrawerShortcutStore.shared
         shortcuts.onTabShortcut = { [weak self] tab in self?.toggleFromKeyboard(tab: tab) }
         shortcuts.start()
